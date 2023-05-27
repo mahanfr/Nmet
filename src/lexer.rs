@@ -6,9 +6,9 @@ pub enum TToken {
     Identifier,
     Number,
     StringLiteral,
-    CharLiteral,
     DOLLAR,
     ATSIGN,
+    HASH,
     OPAREN,
     CPAREN,
     OCURLY,
@@ -57,16 +57,13 @@ pub enum TToken {
     Fun,
     ELSE,
     FOR,
-    WHILE,
-    LOOP,
+    ENDIF,
+    ENDFOR,
     BREAK,
     CONTINUE,
     RETURN,
-    INCLUDE,
     TO,
     IN,
-    ENUM,
-    STRUCT,
     EOF,
 }
 
@@ -142,7 +139,7 @@ pub struct Lexer {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Token {
     pub ttype: TToken,
     pub literal: Vec<u8>,
@@ -217,7 +214,7 @@ impl Lexer {
         }
     }
 
-    pub fn next_token(&mut self) -> Token {
+    pub fn next_token(&mut self) -> Option<Token> {
         self.trim_left();
         while !self.is_empty() {
             let sub = self.source[self.cur..self.cur+1].to_vec();
@@ -226,7 +223,7 @@ impl Lexer {
             self.trim_left();
         }
         let loc = (self.file_path.to_string(), self.row + 1, self.cur - self.bol + 1);
-        if self.is_empty() {return Token::new(TToken::EOF, vec![], loc);}
+        if self.is_empty() {return None;}
         
         let first = self.source[self.cur];
 
@@ -238,22 +235,19 @@ impl Lexer {
             }
             let literal = self.source[index..self.cur].to_vec();
             match literal.as_slice() {
-                b"if" => {return Token::new(TToken::IF,literal,loc);}
-                b"else" => {return Token::new(TToken::ELSE,literal,loc);}
-                b"for" => {return Token::new(TToken::FOR,literal,loc);}
-                b"while" => {return Token::new(TToken::WHILE,literal,loc);}
-                b"loop" => {return Token::new(TToken::LOOP,literal,loc);}
-                b"break" => {return Token::new(TToken::BREAK,literal,loc);}
-                b"continue" => {return Token::new(TToken::CONTINUE,literal,loc);}
-                b"return" => {return Token::new(TToken::RETURN,literal,loc);}
-                b"include" => {return Token::new(TToken::INCLUDE,literal,loc);}
-                b"to" => {return Token::new(TToken::TO,literal,loc);}
-                b"in" => {return Token::new(TToken::IN,literal,loc);}
-                b"enum" => {return Token::new(TToken::ENUM,literal,loc);}
-                b"fun" => {return Token::new(TToken::Fun,literal,loc);}
-                b"struct" => {return Token::new(TToken::STRUCT,literal,loc);}
+                b"if" => {return Some(Token::new(TToken::IF,literal,loc));}
+                b"else" => {return Some(Token::new(TToken::ELSE,literal,loc));}
+                b"endif" => {return Some(Token::new(TToken::ENDIF,literal,loc));}
+                b"for" => {return Some(Token::new(TToken::FOR,literal,loc));}
+                b"endfor" => {return Some(Token::new(TToken::ENDFOR,literal,loc));}
+                b"break" => {return Some(Token::new(TToken::BREAK,literal,loc));}
+                b"continue" => {return Some(Token::new(TToken::CONTINUE,literal,loc));}
+                b"return" => {return Some(Token::new(TToken::RETURN,literal,loc));}
+                b"to" => {return Some(Token::new(TToken::TO,literal,loc));}
+                b"in" => {return Some(Token::new(TToken::IN,literal,loc));}
+                b"fun" => {return Some(Token::new(TToken::Fun,literal,loc));}
                 _ => {
-                    return Token::new(TToken::Identifier,literal,loc);
+                    return Some(Token::new(TToken::Identifier,literal,loc));
                 }
             }
         }
@@ -264,65 +258,9 @@ impl Lexer {
                 self.drop_char();
             }
             let literal = self.source[index..self.cur].to_vec();
-            return Token::new(TToken::Number,literal,loc);
+            return Some(Token::new(TToken::Number,literal,loc));
         }
         
-        if first == b'\'' {
-            self.drop_char();
-            let mut literal = Vec::<u8>::new();
-            let char = self.source[self.cur];
-            if char == b'\'' {
-                println!("char literal can not be empty :{}:{}:{}",loc.0,loc.1,loc.2);
-                exit(1);
-            }
-            if char == b'\\' {
-                self.drop_char();
-                if self.is_empty() {
-                    println!("char literal unfinished escape sequence :{}:{}:{}",loc.0,loc.1,loc.2);
-                    exit(1);
-                }
-                let escape = self.source[self.cur];
-                match escape {
-                    b'n' => {
-                        literal.push(b'\n');
-                        self.drop_char();
-                    },
-                    b'\'' => {
-                        literal.push(b'\'');
-                        self.drop_char();
-                    },
-                    b't' => {
-                        literal.push(b'\t');
-                        self.drop_char();
-                    },
-                    b'r' => {
-                        literal.push(b'\r');
-                        self.drop_char();
-                    },
-                    b'\\' => {
-                        literal.push(b'\\');
-                        self.drop_char();
-                    },
-                    _ => {
-                        println!("unsupported escape sequence (\\{}) :{}:{}:{}",escape,loc.0,loc.1,loc.2);
-                        exit(1);
-                    }
-                }
-            }else{
-                literal.push(char);
-                self.drop_char();
-            }
-
-            if !self.is_empty() {
-                if self.source[self.cur] != b'\'' {
-                    println!("unsupported char :{}:{}:{}",loc.0,loc.1,loc.2);
-                    exit(1);
-                }
-                self.drop_char();
-                return Token::new(TToken::CharLiteral,literal,loc);
-            }
-        }
-
         if first == b'"' {
             self.drop_char();
             let mut literal = Vec::<u8>::new();
@@ -373,7 +311,7 @@ impl Lexer {
             }
             if !self.is_empty() {
                 self.drop_char();
-                return Token::new(TToken::StringLiteral,literal,loc);
+                return Some(Token::new(TToken::StringLiteral,literal,loc));
             }
         }
 
@@ -386,13 +324,13 @@ impl Lexer {
                         match TToken::is_double_char_token(first, next) {
                             Some(dtt) => {
                                 self.drop_char();
-                                return Token::new(dtt,vec![first,next],loc);
+                                return Some(Token::new(dtt,vec![first,next],loc));
                             },
                             None => ()
                         }
                     }
                 }
-                return Token::new(tt,[first].to_vec(),loc);
+                return Some(Token::new(tt,[first].to_vec(),loc));
             },
             None => ()
         }
@@ -410,16 +348,19 @@ pub fn expect_non_empty_token(token: &Token){
 }
 
 pub fn expect_token(lexer: &mut Lexer, types:Vec<TToken>) -> Token {
-    let token = lexer.next_token();
+    let token_option = lexer.next_token();
     
-    if token.ttype == TToken::EOF {
-        println!("expect one of {:?} found EOF {}:{}:{}",types,token.file_path,token.line,token.col);
-        exit(1);
-    }
-    if types.contains(&token.ttype) {
-        return token;
-    }else {
-        println!("expect one of {:?} found {:?} {}:{}:{}",types,token.ttype,token.file_path,token.line,token.col);
+    if let Some(token) = token_option {
+        if types.contains(&token.ttype) {
+            return token;
+        }else {
+            println!("expect one of {:?} found {:?} {}:{}:{}",types,
+                     token.ttype,token.file_path,token.line,token.col);
+            exit(1);
+        }
+    } else {
+        println!("expect one of {:?} found EOF {}:{}:{}",types,
+                 lexer.file_path,lexer.row + 1,lexer.cur - lexer.bol + 1);
         exit(1);
     }
 }
