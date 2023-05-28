@@ -1,3 +1,13 @@
-// hello
-if a == 3 {}
-b[2,3]
+// Code For Image generation
+
+
+@[image]
+<path = "./"> // Default
+<format = png> // Default
+<size = 800*600> // Default
+@.fill = 255 255 255 0;
+@[0,0] = 255 0 0 255;
+@[10..20,10..50] = 0 255 0 255;
+@.fin;
+
+!@[image]

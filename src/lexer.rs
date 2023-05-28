@@ -8,6 +8,7 @@ pub enum TToken {
     StringLiteral,
     DOLLAR,
     ATSIGN,
+    NOTATSIGN,
     HASH,
     OPAREN,
     CPAREN,
@@ -44,8 +45,6 @@ pub enum TToken {
     AND, // &
     OR, // |
     XOR, // ^
-    LEFTSHIFT, // <<
-    RIGHTSHIFT, // >>
     // opration
     SUB,
     PLUS,
@@ -54,7 +53,10 @@ pub enum TToken {
     MOD,
     // keywords
     IF,
-    Fun,
+    FUNCTION,
+    IMAGE,
+    VIDEO,
+    SOUND,
     ELSE,
     FOR,
     ENDIF,
@@ -116,10 +118,8 @@ impl TToken {
 
             b"&&" => {Some(TToken::ANDAND)},
             b"||" => {Some(TToken::OROR)},
-
-            b"<<" => {Some(TToken::LEFTSHIFT)},
-            b">>" => {Some(TToken::RIGHTSHIFT)},
-
+            
+            b"!@" => {Some(TToken::NOTATSIGN)},
             _ => {None}
         }
     }
@@ -161,6 +161,10 @@ impl Display for Token {
 impl Token {
     pub fn new(ttype: TToken, literal: Vec<u8>,loc : Loc) -> Self {
         Self {ttype, literal, file_path: loc.0, line: loc.1, col: loc.2}
+    }
+    
+    pub fn loc_string(&self) -> String {
+        format!("{}:{}:{}",self.file_path,self.line,self.col)
     }
 
     pub fn get_literal_string(&self) -> String {
@@ -216,9 +220,10 @@ impl Lexer {
 
     pub fn next_token(&mut self) -> Option<Token> {
         self.trim_left();
-        while !self.is_empty() {
-            let sub = self.source[self.cur..self.cur+1].to_vec();
-            if sub != b"//" {break;}
+        while !self.is_empty() && self.cur + 1 < self.source.len() {
+            let sub1 = self.source[self.cur];
+            let sub2 = self.source[self.cur+1];
+            if !(sub1 == b'/' && sub2 == b'/')  {break;}
             self.drop_line();
             self.trim_left();
         }
@@ -245,7 +250,10 @@ impl Lexer {
                 b"return" => {return Some(Token::new(TToken::RETURN,literal,loc));}
                 b"to" => {return Some(Token::new(TToken::TO,literal,loc));}
                 b"in" => {return Some(Token::new(TToken::IN,literal,loc));}
-                b"fun" => {return Some(Token::new(TToken::Fun,literal,loc));}
+                b"function" => {return Some(Token::new(TToken::FUNCTION,literal,loc));}
+                b"image" => {return Some(Token::new(TToken::IMAGE,literal,loc));}
+                b"sound" => {return Some(Token::new(TToken::SOUND,literal,loc));}
+                b"video" => {return Some(Token::new(TToken::VIDEO,literal,loc));}
                 _ => {
                     return Some(Token::new(TToken::Identifier,literal,loc));
                 }
@@ -340,10 +348,24 @@ impl Lexer {
     }
 }
 
-pub fn expect_non_empty_token(token: &Token){
-    if token.ttype == TToken::EOF {
-        println!("expect token found EOF {}:{}:{}",token.file_path,token.line,token.col);
+pub fn expect_non_empty_token(lexer: &mut Lexer) -> Token{
+    let token_option = lexer.next_token();
+    if let Some(token) = token_option {
+        return token;
+    } else {
+        println!("Expected Token found EOF {}:{}:{}",
+                 lexer.file_path,lexer.row + 1,lexer.cur - lexer.bol + 1);
         exit(1);
+    }
+}
+
+pub fn expect_any_token(lexer: &mut Lexer, callback: fn()) -> Token {
+    let token_option = lexer.next_token();
+    if let Some(token) = token_option {
+        return token;
+    } else {
+        callback();
+        return Token::new(TToken::EOF, vec![], (lexer.file_path.to_string(), lexer.row + 1, lexer.cur - lexer.bol + 1));
     }
 }
 
