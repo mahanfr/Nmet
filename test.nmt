@@ -1,13 +1,10 @@
-// Code For Image generation
-
-
+// Generate media using code
 @[image]
-<path = "./"> // Default
-<format = png> // Default
-<size = 800*600> // Default
-@.fill = 255 255 255 0;
-@[0,0] = 255 0 0 255;
-@[10..20,10..50] = 0 255 0 255;
-@.fin;
-
+<path = "./">
+<name = "output">
+<format = "png">
+<size = (800,600)>
+a[0,0] = 21;
+a[*] = 21;
+a[0..1,0] = 21;
 !@[image]
