@@ -2,7 +2,7 @@
 @[image]
 <path = "./">
 <name = "output">
-<format = "png">
+<format = "ppm">
 <size = (800,600)>
 a[0,0] = 21;
 a[*] = 21;

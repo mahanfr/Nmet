@@ -1,6 +1,6 @@
-program_file = _{SOI ~ (block)* ~ EOI}
+program_file = _{SOI ~ (main_block)* ~ EOI}
 
-block = _{block_start_tag ~ (stmt)* ~ block_end_tag}
+main_block = {block_start_tag ~ (stmt)* ~ block_end_tag}
 block_start_tag = {"@" ~ "[" ~ ident ~ "]"}
 block_end_tag = {"!@" ~ "[" ~ ident ~ "]"}
 stmt = _{assignment_expression | option}
