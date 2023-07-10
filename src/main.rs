@@ -119,6 +119,6 @@ fn main() {
     media.fill((0,0,0,0));
     // draw_rect(&mut media,10,10,100,50);
     // draw_circle(&mut media,10,10,100);
-    draw_triangle(&mut media,10,10,100,10,100,200);
+    draw_triangle(&mut media,100,100,50,200,150,200);
     media.generate_ppm_file();
 }
