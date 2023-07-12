@@ -1,9 +1,6 @@
-% transparent = none
-% path = "./test.ppm"
-image demo(800*600)
-
-fill: #ffffff
-color: #00ff00
-shape: circle 10 10 5
-
-end demo
+fun main() {
+    a := 2 * ((90 + 16) / 2)
+    if a == 106 {
+        # "Hello World!"
+    }
+}
