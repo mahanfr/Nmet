@@ -38,24 +38,6 @@ unless you have the code next to your code files. The Reson for this rather stra
 
 Use the `docs/README.md` to get started.
 
-
-## Roadmap
-
-- [x] Tokenize block of code
-- [ ] Read command line arguments
-- [ ] Parse tokens and generate ast
-    - [x] function
-    - [x] variable definition
-    - [x] operation
-    - [ ] if statments
-    - [ ] loops
-    - [ ] structs
-    - [ ] include
-- [ ] Compile to assambly
-- [ ] Test it!
-- [ ] Optimize
-- [ ] Bootstrap
-
 See the [open issues](https://github.com/othneildrew/Best-README-Template/issues) for a full list of proposed features (and known issues).
 
 
