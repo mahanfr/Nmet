@@ -5,12 +5,12 @@ global main
 extern printf
 
 main:
-    mov eax, 1
-    imul eax, 2
+    mov eax, -2
+    imul eax, 4
     push eax
     push message
     call printf
     add esp, 8
     ret
     
-message db "register = %08X", 10, 0
+message db "register = %d", 10, 0

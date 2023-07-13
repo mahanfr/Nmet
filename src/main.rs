@@ -3,6 +3,7 @@ use std::fs;
 use std::env::args;
 
 mod lexer;
+mod ast;
 use lexer::Lexer;
 
 // --- Static Compiler Defenition
@@ -48,6 +49,12 @@ fn compile_command(path: String) -> Result<(),Box<dyn Error>> {
 }
 
 fn main() -> Result<(),Box<dyn Error>> {
+    // let l_token = Token::new(TokenType::Int(2),"2".to_string(),("cum".to_string(),1,1));
+    // let o_token = Token::new(TokenType::Plus,"+".to_string(),("cum".to_string(),1,2));
+    // let r_token = Token::new(TokenType::Int(2),"2".to_string(),("cum".to_string(),1,3));
+    // let bin = Binary::new(l_token,o_token,r_token);
+    // println!("{}",bin.parse_to_asm());
+    // return Ok(());
     let mut arg = args().into_iter();
     arg.next();
     loop {
