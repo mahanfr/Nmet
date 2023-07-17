@@ -33,8 +33,7 @@
 
 ## About The Project
 
-A General Purpose Programming Language that you **Should Not** Program into. Inspierd by Rust, Zig and Odin But **it will not support** any additional library 
-unless you have the code next to your code files. The Reson for this rather strange restriction is to be more conscious of the codes we use in our programs.
+A General Purpose Programming Language that you **Should Not** Program into. Inspierd by Rust, Zig and Odin which generates assembely and executable code with it's own assambler and linker only available for linux (for now!)
 
 Use the `docs/README.md` to get started.
 
