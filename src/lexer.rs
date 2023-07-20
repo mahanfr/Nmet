@@ -1,7 +1,7 @@
 use std::process::exit;
 type Loc = (String,usize,usize);
 
-#[derive(Debug)]
+#[derive(Debug,PartialEq)]
 pub enum TokenType {
     Identifier,
     Int(i32),
@@ -24,6 +24,7 @@ pub enum TokenType {
     EqEq, // ==
 
     Log, // #
+    SemiColon, // ;
     Colon,
 
     OParen,
@@ -50,6 +51,10 @@ impl Token {
             line: loc.1,
             col: loc.2,
         }
+    }
+
+    pub fn get_loc_string(&self) -> String {
+        format!("{}:{}:{}",self.file_path,self.line,self.col)
     }
 }
 
@@ -105,6 +110,15 @@ impl Lexer {
         } 
     }
 
+    fn get_loc(&self) -> Loc {
+        (self.file_path.clone(), self.row + 1, self.cur - self.bol + 1)
+    }
+
+    fn get_loc_string(&self) -> String {
+        let loc:Loc = (self.file_path.clone(), self.row + 1, self.cur - self.bol + 1);
+        format!("{}:{}:{}",loc.0,loc.1,loc.2)
+    }
+
     pub fn next_token(&mut self) -> Option<Token> {
         self.trim_left();
         while !self.is_empty() {
@@ -118,7 +132,6 @@ impl Lexer {
         if self.is_empty() {
             return None
         }
-        let loc:Loc = (self.file_path.clone(), self.row + 1, self.cur - self.bol + 1);
         let first = self.source[self.cur];
         if first.is_ascii_alphabetic() || first == '_' {
             let index = self.cur;
@@ -128,8 +141,8 @@ impl Lexer {
             }
             let literal = String::from_iter(self.source[index..self.cur].to_vec());
             match Self::is_keyword(&literal) {
-                Some(keyword_token) => return Some(Token::new(keyword_token,literal,loc)),
-                None => return Some(Token::new(TokenType::Identifier,literal,loc))
+                Some(keyword_token) => return Some(Token::new(keyword_token,literal,self.get_loc())),
+                None => return Some(Token::new(TokenType::Identifier,literal,self.get_loc()))
             }
         }
         if first.is_ascii_digit() {
@@ -141,20 +154,20 @@ impl Lexer {
             }
             let literal = String::from_iter(self.source[index..self.cur].to_vec());
             let ttype_and_val = Self::parse_numeric_literal(&literal);
-            return Some(Token::new(ttype_and_val,literal,loc));
+            return Some(Token::new(ttype_and_val,literal,self.get_loc()));
         }
         if first == '\'' {
             self.drop();
             let mut literal = String::new();
             let char = self.source[self.cur];
             if char == '\'' {
-                println!("char literal can not be empty :{}:{}:{}",loc.0,loc.1,loc.2);
+                println!("char literal can not be empty {}",self.get_loc_string());
                 exit(1);
             }
             if char == '\\' {
                 self.drop();
                 if self.is_empty() {
-                    println!("char literal unfinished escape sequence :{}:{}:{}",loc.0,loc.1,loc.2);
+                    println!("char literal unfinished escape sequence {}",self.get_loc_string());
                     exit(1);
                 }
                 let escape = self.source[self.cur];
@@ -180,7 +193,7 @@ impl Lexer {
                         self.drop();
                     },
                     _ => {
-                        println!("unsupported escape sequence (\\{}) :{}:{}:{}",escape,loc.0,loc.1,loc.2);
+                        println!("unsupported escape sequence (\\{}) {}",escape,self.get_loc_string());
                         exit(1);
                     }
                 }
@@ -191,11 +204,11 @@ impl Lexer {
 
             if !self.is_empty() {
                 if self.source[self.cur] != '\'' {
-                    println!("unsupported char :{}:{}:{}",loc.0,loc.1,loc.2);
+                    println!("unsupported char {}",self.get_loc_string());
                     exit(1);
                 }
                 self.drop();
-                return Some(Token::new(TokenType::Char(first),literal,loc));
+                return Some(Token::new(TokenType::Char(first),literal,self.get_loc()));
             }
         }
 
@@ -206,13 +219,13 @@ impl Lexer {
                 let char = self.source[self.cur];
                 if char == '"' {break;}
                 if char == '\n' {
-                    println!("string literal not closed before end of line :{}:{}:{}",loc.0,loc.1,loc.2);
+                    println!("string literal not closed before end of line {}",self.get_loc_string());
                     exit(1);
                 }
                 if char == '\\' {
                     self.drop();
                     if self.is_empty() {
-                        println!("string literal unfinished escape sequence :{}:{}:{}",loc.0,loc.1,loc.2);
+                        println!("string literal unfinished escape sequence {}",self.get_loc_string());
                         exit(1);
                     }
 
@@ -239,7 +252,7 @@ impl Lexer {
                             self.drop();
                         },
                         _ => {
-                            println!("unsupported escape sequence (\\{}) :{}:{}:{}",escape,loc.0,loc.1,loc.2);
+                            println!("unsupported escape sequence (\\{}) {}",escape,self.get_loc_string());
                             exit(1);
                         }
                     }
@@ -249,7 +262,7 @@ impl Lexer {
             }
             if !self.is_empty() {
                 self.drop();
-                return Some(Token::new(TokenType::String,literal,loc));
+                return Some(Token::new(TokenType::String,literal,self.get_loc()));
             }
         }
 
@@ -266,20 +279,41 @@ impl Lexer {
                                 return Some(Token::new(
                                         dtt,
                                         String::from_iter(vec![first,next]),
-                                        loc)
+                                        self.get_loc())
                                     );
                             },
                             None => ()
                         }
                     }
                 }
-                return Some(Token::new(tt,first.to_string(),loc));
+                return Some(Token::new(tt,first.to_string(),self.get_loc()));
             },
             None => ()
         }
 
-        println!("string literal not closed before EOF :{}:{}:{}",loc.0,loc.1,loc.2);
+        println!("string literal not closed before EOF {}",self.get_loc_string());
         exit(1);
+    }
+
+    pub fn expect_token(&mut self,tokens: Vec<TokenType>) -> Token {
+        let Some(token) = self.next_token() else {
+            println!("Error: Unexpected EOF at {}",self.get_loc_string());
+            exit(-1);
+        };
+        if tokens.contains(&token.t_type) {
+            return token
+        }else {
+            println!("Error: Unexpected token ({:?}) at {}",token.t_type,self.get_loc_string());
+            exit(-1);
+        }
+    }
+
+    pub fn expect_some_token(&mut self) -> Token {
+        let Some(token) = self.next_token() else {
+            println!("Error: Unexpected EOF at {}",self.get_loc_string());
+            exit(-1);
+        };
+        token
     }
 
     fn is_keyword(literal: &String) -> Option<TokenType>{
@@ -303,6 +337,7 @@ impl Lexer {
             '/' => {Some(TokenType::Devide)},
             '#' => {Some(TokenType::Log)},
             ':' => {Some(TokenType::Colon)},
+            ';' => {Some(TokenType::SemiColon)},
             '=' => {Some(TokenType::Eq)},
             _ => {None}
         }
@@ -314,7 +349,6 @@ impl Lexer {
         double_char.push(next);
         match double_char.as_str() {
             "==" => {Some(TokenType::EqEq)},
-
             ":=" => {Some(TokenType::Define)}
             _ => {None}
         }

@@ -5,10 +5,12 @@ global main
 extern printf
 
 main:
-    mov eax, -2
-    imul eax, 4
+    mov eax,1 
+    add eax, 4
     push eax
     push message
+    call printf
+    call printf
     call printf
     add esp, 8
     ret

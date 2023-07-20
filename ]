@@ -75,36 +75,28 @@ enum Expr {
     ArrayIndex(ArrayIndex),
 }
 impl Expr {
-    pub fn parse(lexer: &mut Lexer, left: Option<Expr>) -> Option<Self>{
+    pub fn parse(lexer: &mut Lexer, left: Option<Expr>, dept: &mut i32) -> Option<Self>{
+        dept = dept - 1;
         let token = lexer.expect_some_token();
-        if token.t_type == TokenType::SemiColon {
+        if token.t_type == TokenType::SemiColon || dept == 0 {
             return None;
         }
         match token.t_type {
             TokenType::Plus | TokenType::Minus => {
                 let op = Op::from_token_type(&token);
+                let Some(right) = Self::parse(lexer, None, 1) else {
+                    println!("Error: Operation Missing right side {}",token.get_loc_string());
+                    exit(-1);
+                };
                 if left.is_none() {
-                    let single_token = lexer.expect_some_token();
-                    if let TokenType::Int(val) = single_token.t_type {
-                        let new_left = Self::Unary(UnaryExpr{op, right: Box::new(Expr::Int(val))});
-                        return Self::parse(lexer,Some(new_left));
-                    }
-                    let Some(right) = Self::parse(lexer, None) else {
-                        println!("Error: Operation Missing right side {}",token.get_loc_string());
-                        exit(-1);
-                    };
                     return Some(Self::Unary(UnaryExpr{op, right: Box::new(right)}));
                 } else {
-                    let Some(right) = Self::parse(lexer, None) else {
-                        println!("Error: Operation Missing right side {}",token.get_loc_string());
-                        exit(-1);
-                    };
                     return Some(Self::Binary(BinaryExpr{left: Box::new(left.unwrap()),op, right: Box::new(right)}));
                 }
             },
             TokenType::Multi | TokenType::Devide => {
                 let op = Op::from_token_type(&token);
-                let Some(right) = Self::parse(lexer, None) else {
+                let Some(right) = Self::parse(lexer, None, u32::MAX) else {
                     println!("Error: Operation Missing right side {}",token.get_loc_string());
                     exit(-1);
                 };
