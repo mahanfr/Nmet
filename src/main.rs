@@ -23,6 +23,8 @@ enum Op {
     Sub,
     Multi,
     Devide,
+    Oparen,
+    Cparen,
 }
 impl Op {
     pub fn from_token_type(token: &Token) -> Self {
@@ -35,6 +37,14 @@ impl Op {
                 println!("Error: Unexpected Op Token ({}) at {}",token.literal,token.get_loc_string());
                 exit(-1);
             }
+        }
+    }
+
+    pub fn get_op_precedence(op: &Op) -> u8 {
+        match op {
+            Op::Plus | Op::Sub => 1,
+            Op::Multi | Op::Devide => 2,
+            Op::Oparen | Op::Cparen => 0,
         }
     }
 }
@@ -75,68 +85,67 @@ enum Expr {
     ArrayIndex(ArrayIndex),
 }
 impl Expr {
-    pub fn parse(lexer: &mut Lexer, left: Option<Expr>) -> Option<Self>{
-        let token = lexer.expect_some_token();
-        if token.t_type == TokenType::SemiColon {
-            return None;
-        }
-        match token.t_type {
-            TokenType::Plus | TokenType::Minus => {
-                let op = Op::from_token_type(&token);
-                if left.is_none() {
-                    let single_token = lexer.expect_some_token();
-                    if let TokenType::Int(val) = single_token.t_type {
-                        let new_left = Self::Unary(UnaryExpr{op, right: Box::new(Expr::Int(val))});
-                        return Self::parse(lexer,Some(new_left));
+    pub fn parse(lexer: &mut Lexer) -> Expr {
+        let mut stack = Vec::<Op>::new();
+        let mut expr_stack = Vec::<Expr>::new();
+        loop {
+            println!("stack: {:?}\n\nexpr stack: {:?}",stack,expr_stack);
+            let token = lexer.expect_some_token();
+            if token.t_type == TokenType::SemiColon {
+                break;
+            }
+            
+            match token.t_type {
+                TokenType::Int(val) => {
+                    expr_stack.push(Expr::Int(val));
+                },
+                TokenType::OParen => {
+                    stack.push(Op::Oparen);
+                },
+                TokenType::CParen => {
+                    while !stack.is_empty() && stack.last().unwrap() != &Op::Oparen {
+                        let op = stack.pop().unwrap();
+                        Self::parse_expr_stack(&mut expr_stack, &op).unwrap();
+                        if !stack.is_empty() && stack.last().unwrap() != &Op::Oparen {
+                            println!("Error: Unexpected OParen found {} at {}",token.literal, token.get_loc_string());
+                            exit(-1);
+                        }
                     }
-                    let Some(right) = Self::parse(lexer, None) else {
-                        println!("Error: Operation Missing right side {}",token.get_loc_string());
-                        exit(-1);
-                    };
-                    return Some(Self::Unary(UnaryExpr{op, right: Box::new(right)}));
-                } else {
-                    let Some(right) = Self::parse(lexer, None) else {
-                        println!("Error: Operation Missing right side {}",token.get_loc_string());
-                        exit(-1);
-                    };
-                    return Some(Self::Binary(BinaryExpr{left: Box::new(left.unwrap()),op, right: Box::new(right)}));
-                }
-            },
-            TokenType::Multi | TokenType::Devide => {
-                let op = Op::from_token_type(&token);
-                let Some(right) = Self::parse(lexer, None) else {
-                    println!("Error: Operation Missing right side {}",token.get_loc_string());
-                    exit(-1);
-                };
-                if left.is_none() {
-                    println!("Error: Operation Missing left side {}",token.get_loc_string());
-                    exit(-1);
-                } else {
-                    return Some(Self::Binary(BinaryExpr{left: Box::new(left.unwrap()),op, right: Box::new(right)}));
-                }
-            },
-            TokenType::Int(val) => {
-                if left.is_some() {
-                    println!("Error: Unexpected token without Op ({}) at {}",token.literal,token.get_loc_string());
-                    exit(-1);
-                }else{
-                    let left = Some(Self::Int(val));
-                    let right = Self::parse(lexer, left.clone());
-                    if right.is_none() {
-                        return left;
-                    }else {
-                        return right;
+                },
+                TokenType::Plus | TokenType::Minus | TokenType::Multi | TokenType::Devide => {
+                    let op = Op::from_token_type(&token);
+                    while !stack.is_empty() && Op::get_op_precedence(stack.last().unwrap()) > Op::get_op_precedence(&op)  {
+                        Self::parse_expr_stack(&mut expr_stack, &stack.pop().unwrap()).unwrap();
                     }
+                    stack.push(op);
+                },
+                _ => {
+                    println!("Error: Unexpected token ({}) at {}",token.literal, token.get_loc_string());
+                    exit(-1);
                 }
-            },
-            _ => {
-                println!("Error: Unexpected token ({}) at {}",token.literal,token.get_loc_string());
-                exit(-1);
             }
         }
-    } 
-}
+        while !stack.is_empty() {
+            let op = stack.pop().unwrap();
+            Self::parse_expr_stack(&mut expr_stack, &op).unwrap();
+        }
+        expr_stack.pop().unwrap()
+    }
 
+    pub fn parse_expr_stack(expr_stack: &mut Vec<Expr>, op: &Op) -> Result<(),()> {
+        if op == &Op::Oparen {
+            return Ok(());
+        }
+        let Some(right) = expr_stack.pop() else { return Err(()); };
+        let Some(left) = expr_stack.pop() else { return Err(()); };
+        expr_stack.push(Expr::Binary(BinaryExpr{
+            right: Box::new(right), 
+            op: op.to_owned(), 
+            left: Box::new(left)
+        }));
+        Ok(())
+    }
+}
 
 fn padding_right(str : &str) -> String {
     let mut text = String::with_capacity(20);
@@ -176,10 +185,10 @@ fn compile_command(path: String) -> Result<(),Box<dyn Error>> {
 }
 
 fn main() -> Result<(),Box<dyn Error>> {
-    let source = "-1 + 2 + 3;".to_string();
+    let source = "((1 + 2) * (3 + 1));".to_string();
     let mut lexer = Lexer::new(String::new(),source);
-    let expr = Expr::parse(&mut lexer,None);
-    println!("{:#?}",expr.unwrap());
+    let expr_parser = Expr::parse(&mut lexer);
+    println!("{:?}",expr_parser);
     return Ok(());
     let mut arg = args().into_iter();
     arg.next();
