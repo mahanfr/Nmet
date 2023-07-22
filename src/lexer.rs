@@ -29,6 +29,8 @@ pub enum TokenType {
 
     OParen,
     CParen,
+    OBracket,
+    CBracket,
     OCurly,
     CCurly,
 }
@@ -58,7 +60,9 @@ impl Token {
     }
 }
 
-#[derive(Debug)]
+type LexerState = (usize,usize,usize);
+
+#[derive(Debug,Clone)]
 pub struct Lexer {
     file_path: String,
     source: Vec<char>,
@@ -329,6 +333,8 @@ impl Lexer {
         match char {
             '{' => {Some(TokenType::OCurly)},
             '}' => {Some(TokenType::CCurly)},
+            '[' => {Some(TokenType::OBracket)},
+            ']' => {Some(TokenType::CBracket)},
             '(' => {Some(TokenType::OParen)},
             ')' => {Some(TokenType::CParen)},
             '-' => {Some(TokenType::Minus)},

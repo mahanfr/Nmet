@@ -103,19 +103,14 @@ enum Expr {
     ArrayIndex(ArrayIndex),
 }
 impl Expr {
-    
     pub fn parse(lexer: &mut Lexer) -> Expr {
-        return Self::parse_expr(lexer, TokenType::SemiColon);
-    }
-
-    pub fn parse_expr(lexer: &mut Lexer, end_token: TokenType) -> Expr {
         let mut stack = Vec::<Op>::new();
         let mut expr_stack = Vec::<Expr>::new();
         let mut last_token : Option<TokenType> = None;
         loop {
             // println!("stack: {:?}\n\nexpr stack: {:?}",stack,expr_stack);
             let token = lexer.expect_some_token();
-            if token.t_type == end_token {
+            if token.t_type == TokenType::SemiColon {
                 break;
             }
             match token.t_type {
@@ -123,10 +118,15 @@ impl Expr {
                     expr_stack.push(Expr::Int(val));
                 },
                 TokenType::Identifier => {
-                    let variable_expr_type = Self::variable_expr_type(lexer.clone());
-                    match variable_expr_type {
-                        0 => { expr_stack.push(Expr::Variable(token.literal.to_string())); }
-                        _ => { todo!(); }
+                    let lexer_snapshot = lexer.clone();
+                    let tkn = lexer.expect_some_token();
+                    if tkn.t_type == TokenType::OParen {
+                        
+                    } else if tkn.t_type == TokenType::OBracket {
+
+                    } else {
+                        lexer.revert(&lexer_snapshot);
+                        expr_stack.push(Expr::Variable(token.literal.to_string()));
                     }
                 },
                 TokenType::OParen => {
@@ -182,22 +182,10 @@ impl Expr {
             Self::Unary(u) => format!("({}{})",u.op,Self::debug(u.right.as_ref())),
             Self::Binary(b) => format!("({} {} {})",Self::debug(b.left.as_ref()),b.op,Self::debug(b.right.as_ref())),
             Self::Int(val) => format!("{}",val),
-            Self::Variable(var) => format!("{}",var),
             _ => {todo!()} 
         }
     }
 
-    pub fn variable_expr_type(mut lexer: Lexer) -> u8 {
-        let next_token = lexer.expect_some_token();
-        if next_token.t_type == TokenType::OParen {
-            return 1;
-        } else if next_token.t_type == TokenType::OBracket {
-            return 2;
-        } else {
-            return 0;
-        }
-    }
-    
     fn parse_expr_stack(expr_stack: &mut Vec<Expr>, op: &Op) -> Result<(),String> {
         if op == &Op::Oparen {
             return Ok(());
