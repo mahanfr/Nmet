@@ -1,3 +1,4 @@
+use std::fmt::{Display, write};
 use std::{error::Error, process::exit};
 use std::fs;
 use std::env::args;
@@ -24,7 +25,8 @@ enum Op {
     Multi,
     Devide,
     Oparen,
-    Cparen,
+    Neg,
+    Pos
 }
 impl Op {
     pub fn from_token_type(token: &Token) -> Self {
@@ -44,8 +46,24 @@ impl Op {
         match op {
             Op::Plus | Op::Sub => 1,
             Op::Multi | Op::Devide => 2,
-            Op::Oparen | Op::Cparen => 0,
+            Op::Oparen => 0,
+            Op::Neg => u8::MAX,
+            Op::Pos => u8::MAX,
         }
+    }
+}
+impl Display for Op {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+       match self {
+           Op::Plus => write!(f,"+"),
+           Op::Sub => write!(f,"-"),
+           Op::Multi => write!(f,"*"),
+           Op::Devide => write!(f,"/"),
+           Op::Neg => write!(f,"-"),
+           Op::Pos => write!(f,"+"),
+           _ => write!(f,""),
+
+       } 
     }
 }
 
@@ -88,13 +106,13 @@ impl Expr {
     pub fn parse(lexer: &mut Lexer) -> Expr {
         let mut stack = Vec::<Op>::new();
         let mut expr_stack = Vec::<Expr>::new();
+        let mut last_token : Option<TokenType> = None;
         loop {
             println!("stack: {:?}\n\nexpr stack: {:?}",stack,expr_stack);
             let token = lexer.expect_some_token();
             if token.t_type == TokenType::SemiColon {
                 break;
             }
-            
             match token.t_type {
                 TokenType::Int(val) => {
                     expr_stack.push(Expr::Int(val));
@@ -106,14 +124,28 @@ impl Expr {
                     while !stack.is_empty() && stack.last().unwrap() != &Op::Oparen {
                         let op = stack.pop().unwrap();
                         Self::parse_expr_stack(&mut expr_stack, &op).unwrap();
-                        if !stack.is_empty() && stack.last().unwrap() != &Op::Oparen {
-                            println!("Error: Unexpected OParen found {} at {}",token.literal, token.get_loc_string());
-                            exit(-1);
-                        }
+                        // if !stack.is_empty() {
+                        //     if stack.last().unwrap() != &Op::Oparen || stack.last().unwrap() != &Op::Neg {
+                        //         println!("Error: Unexpected OParen found {} at {}",token.literal, token.get_loc_string());
+                        //         exit(-1);
+                        //     }
+                        // }
                     }
                 },
                 TokenType::Plus | TokenType::Minus | TokenType::Multi | TokenType::Devide => {
-                    let op = Op::from_token_type(&token);
+                    let op;
+                    if last_token.is_none(){
+                        op = Op::Neg;
+                    } else {
+                        match last_token.unwrap() {
+                            TokenType::Plus | TokenType::Minus | TokenType::Multi | TokenType::Devide| TokenType::OParen => {
+                                op = Op::Neg;
+                            },
+                            _ => {
+                                op = Op::from_token_type(&token);
+                            }
+                        } 
+                    }
                     while !stack.is_empty() && Op::get_op_precedence(stack.last().unwrap()) > Op::get_op_precedence(&op)  {
                         Self::parse_expr_stack(&mut expr_stack, &stack.pop().unwrap()).unwrap();
                     }
@@ -124,6 +156,7 @@ impl Expr {
                     exit(-1);
                 }
             }
+            last_token = Some(token.t_type);
         }
         while !stack.is_empty() {
             let op = stack.pop().unwrap();
@@ -132,17 +165,34 @@ impl Expr {
         expr_stack.pop().unwrap()
     }
 
-    pub fn parse_expr_stack(expr_stack: &mut Vec<Expr>, op: &Op) -> Result<(),()> {
+    pub fn debug(expr: &Expr) -> String {
+        match expr {
+            Self::Unary(u) => format!("({}{})",u.op,Self::debug(u.right.as_ref())),
+            Self::Binary(b) => format!("({} {} {})",Self::debug(b.left.as_ref()),b.op,Self::debug(b.right.as_ref())),
+            Self::Int(val) => format!("{}",val),
+            _ => {todo!()} 
+        }
+    }
+
+    fn parse_expr_stack(expr_stack: &mut Vec<Expr>, op: &Op) -> Result<(),String> {
         if op == &Op::Oparen {
             return Ok(());
         }
-        let Some(right) = expr_stack.pop() else { return Err(()); };
-        let Some(left) = expr_stack.pop() else { return Err(()); };
-        expr_stack.push(Expr::Binary(BinaryExpr{
-            right: Box::new(right), 
-            op: op.to_owned(), 
-            left: Box::new(left)
-        }));
+        if op == &Op::Neg {
+            let Some(right) = expr_stack.pop() else { return Err("Wrong Unary Definition".to_string()); };
+            expr_stack.push(Expr::Unary(UnaryExpr{
+                right: Box::new(right),
+                op: op.to_owned(), 
+            }));
+        } else {
+            let Some(right) = expr_stack.pop() else { return Err("Missing Left Side".to_string()); };
+            let Some(left) = expr_stack.pop() else { return Err("Missing Right Side".to_string()) };
+            expr_stack.push(Expr::Binary(BinaryExpr{
+                right: Box::new(right),
+                op: op.to_owned(), 
+                left: Box::new(left)
+            }));
+        }
         Ok(())
     }
 }
@@ -183,12 +233,46 @@ fn compile_command(path: String) -> Result<(),Box<dyn Error>> {
     }
     Ok(())
 }
+#[cfg(test)]
+mod expr_parsing_tests {
+    use crate::{lexer::Lexer, Expr};
+
+    #[test]
+    fn single_expr() {
+        let mut lexer = Lexer::new(String::new(),"1;".to_string());
+        let expr_parser = Expr::parse(&mut lexer);
+        assert_eq!(Expr::debug(&expr_parser), "1".to_string());
+
+        let mut lexer = Lexer::new(String::new(),"-1;".to_string());
+        let expr_parser = Expr::parse(&mut lexer);
+        assert_eq!(Expr::debug(&expr_parser), "(-1)".to_string());
+
+        let mut lexer = Lexer::new(String::new(),"1+2;".to_string());
+        let expr_parser = Expr::parse(&mut lexer);
+        assert_eq!(Expr::debug(&expr_parser), "(1 + 2)".to_string());
+    }
+
+    #[test]
+    fn multi_expr() {
+        let mut lexer = Lexer::new(String::new(),"-1 + 2 + 3;".to_string());
+        let expr_parser = Expr::parse(&mut lexer);
+        assert_eq!(Expr::debug(&expr_parser), "((-1) + (2 + 3))".to_string());
+
+        let mut lexer = Lexer::new(String::new(),"1 + 2 * 3;".to_string());
+        let expr_parser = Expr::parse(&mut lexer);
+        assert_eq!(Expr::debug(&expr_parser), "(1 + (2 * 3))".to_string());
+
+        let mut lexer = Lexer::new(String::new(),"2 / 3 * (-3 + -11);".to_string());
+        let expr_parser = Expr::parse(&mut lexer);
+        assert_eq!(Expr::debug(&expr_parser), "(2 / (3 * ((-3) + (-11))))".to_string());
+    }
+}
 
 fn main() -> Result<(),Box<dyn Error>> {
-    let source = "((1 + 2) * (3 + 1));".to_string();
+    let source = "2 / 3 * (-3 + -11);".to_string();
     let mut lexer = Lexer::new(String::new(),source);
     let expr_parser = Expr::parse(&mut lexer);
-    println!("{:?}",expr_parser);
+    println!("{:?}",Expr::debug(&expr_parser));
     return Ok(());
     let mut arg = args().into_iter();
     arg.next();
