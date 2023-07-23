@@ -1,7 +1,7 @@
 use std::process::exit;
 type Loc = (String,usize,usize);
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,Clone,Copy,PartialEq)]
 pub enum TokenType {
     Identifier,
     Int(i32),
@@ -25,7 +25,8 @@ pub enum TokenType {
 
     Log, // #
     SemiColon, // ;
-    Colon,
+    Colon, // :
+    Comma, // ,
 
     OParen,
     CParen,
@@ -35,7 +36,7 @@ pub enum TokenType {
     CCurly,
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct Token {
     pub file_path: String,
     pub col: usize,
@@ -60,12 +61,11 @@ impl Token {
     }
 }
 
-type LexerState = (usize,usize,usize);
-
 #[derive(Debug,Clone)]
 pub struct Lexer {
     file_path: String,
     source: Vec<char>,
+    token: Option<Token>,
     cur: usize,
     bol: usize,
     row: usize,
@@ -76,6 +76,7 @@ impl Lexer {
         Self {
             file_path,
             source: source.chars().collect::<Vec<char>>(),
+            token: None,
             cur: 0,
             bol: 0,
             row: 0,
@@ -123,7 +124,49 @@ impl Lexer {
         format!("{}:{}:{}",loc.0,loc.1,loc.2)
     }
 
+    pub fn peek(&mut self) -> Option<Token> {
+        let cur = self.cur;
+        let bol = self.bol;
+        let row = self.row;
+        let token = self._next_token();
+        self.cur = cur;
+        self.bol = bol;
+        self.row = row;
+        return token;
+    }
+
+    pub fn get_token_type(&self) -> TokenType{
+        let Some(tk) = self.token.clone() else {
+            eprintln!("Expected a Token, found Eof at {}",self.get_loc_string());
+            exit(-1);
+        };
+        return tk.t_type.clone();
+    }
+
+    pub fn match_token(&mut self, t_type: TokenType) {
+        let Some(tk) = self.token.clone() else {
+            eprintln!("Expected {:?}, found Eof at {}",t_type,self.get_loc_string());
+            exit(-1);
+        };
+        if tk.t_type == t_type {
+            self.next_token();
+        } else {
+            eprintln!("Expected {:?}, found {:?} at {}",t_type,tk.t_type,self.get_loc_string());
+            exit(-1);
+        }
+    }
+
+    pub fn get_token(&self) -> Option<Token> {
+        return self.token.clone();
+    }
+
     pub fn next_token(&mut self) -> Option<Token> {
+        let token = self._next_token();
+        self.token = token.clone();
+        return token;
+    }
+
+    fn _next_token(&mut self) -> Option<Token> {
         self.trim_left();
         while !self.is_empty() {
             if self.source[self.cur] == '~' {
