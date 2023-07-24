@@ -92,14 +92,56 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
             lexer.next_token();
             return Expr::Int(val);
         },
+        TokenType::Identifier => {
+            let ident_name = lexer.get_token().unwrap().literal;
+            if lexer.next_token().is_none() {
+                return Expr::Variable(ident_name);
+            }
+            match lexer.get_token_type() {
+                TokenType::OParen => {
+                    let args = function_call_args(lexer);
+                    return Expr::FunctionCall(parser::FunctionCall{identifier: ident_name, args});
+                },
+                TokenType::OBracket => {
+                    //let indexer = indexer(lexer);
+                    todo!();
+                },
+                _ => {
+                    return Expr::Variable(ident_name);
+                }
+            }
+        }
         _ => {
             todo!("ident, funcall and indexer");
         }
     }
 }
 
+
+pub fn function_call_args(lexer: &mut Lexer) -> Vec<Expr> {
+    let mut args = Vec::<Expr>::new();
+    lexer.match_token(TokenType::OParen);
+    loop {
+         //|| | expr | expr , expr
+        match lexer.get_token_type() {
+            TokenType::CParen => {
+                lexer.match_token(TokenType::CParen);
+                break;
+            },
+            _ => {
+                args.push(expr(lexer));
+                if lexer.get_token_type() == TokenType::Comma {
+                    lexer.match_token(TokenType::Comma);
+                }
+            }
+        }
+    }
+    args
+}
+
+
 fn main() -> Result<(),Box<dyn Error>> {
-    let mut lexer = Lexer::new(String::new(),"-(1*2);".to_string());
+    let mut lexer = Lexer::new(String::new(),"-(a(0,0)*2);".to_string());
     // TODO: Move to top root of parser
     lexer.next_token();
     println!("{:?}",expr(&mut lexer));

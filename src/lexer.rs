@@ -338,7 +338,7 @@ impl Lexer {
             None => ()
         }
 
-        println!("string literal not closed before EOF {}",self.get_loc_string());
+        eprintln!("Unexpected Character at {}",self.get_loc_string());
         exit(1);
     }
 
@@ -387,6 +387,7 @@ impl Lexer {
             '#' => {Some(TokenType::Log)},
             ':' => {Some(TokenType::Colon)},
             ';' => {Some(TokenType::SemiColon)},
+            ',' => {Some(TokenType::Comma)},
             '=' => {Some(TokenType::Eq)},
             _ => {None}
         }

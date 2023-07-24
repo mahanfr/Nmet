@@ -1,3 +1,10 @@
+
+define: expr {":=" | "::"} expr
+assgin: expr "=" expr
+
+function: fun func_signeture block
+func_signeture: ident "(" {"" | ident | ident {"," ident}*} "}"
+
 fun main() {
     a := 2 * ((90 + 16) / 2)
     if a == 106 {
