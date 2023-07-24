@@ -6,7 +6,7 @@ mod lexer;
 mod ast;
 mod parser;
 use lexer::{Lexer, TokenType};
-use parser::{Expr, Op, UnaryExpr, BinaryExpr};
+use parser::{Expr, Op, UnaryExpr, BinaryExpr, ArrayIndex};
 
 // --- Static Compiler Defenition
 static VERSION : &'static str = "v0.0.1-Beta";
@@ -103,8 +103,12 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
                     return Expr::FunctionCall(parser::FunctionCall{identifier: ident_name, args});
                 },
                 TokenType::OBracket => {
-                    //let indexer = indexer(lexer);
-                    todo!();
+                    let indexer = array_indexer(lexer);
+                    return Expr::ArrayIndex(
+                        ArrayIndex {
+                            identifier: ident_name, 
+                            indexer: Box::new(indexer)
+                        });
                 },
                 _ => {
                     return Expr::Variable(ident_name);
@@ -117,6 +121,12 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
     }
 }
 
+pub fn array_indexer(lexer: &mut Lexer) -> Expr {
+    lexer.match_token(TokenType::OBracket);
+    let index = expr(lexer);
+    lexer.match_token(TokenType::CBracket);
+    return index;
+}
 
 pub fn function_call_args(lexer: &mut Lexer) -> Vec<Expr> {
     let mut args = Vec::<Expr>::new();
