@@ -172,14 +172,6 @@ pub struct Function {
     block: Block,
 }
 
-#[derive(Debug)]
-enum Stmts {}
-
-#[derive(Debug)]
-pub struct Block {
-    stmts: Vec<Stmts>,
-}
-
 pub fn function_def(lexer: &mut Lexer) -> Function {
     lexer.match_token(TokenType::Fun);
     let Some(function_ident_token) = lexer.get_token() else {
@@ -196,18 +188,117 @@ pub fn function_def(lexer: &mut Lexer) -> Function {
     }
 }
 
+/*
+ * Stmt := {declare | expr { = expr}} ;
+ * declare := let Ident = expr;
+*/
+
+#[derive(Debug)]
+pub enum AssginOp {
+    Eq,
+}
+
+#[derive(Debug)]
+pub struct Assgin {
+    left : Expr,
+    right: Expr,
+    op: AssginOp,
+}
+
+#[derive(Debug)]
+pub enum Stmt {
+    // expr
+    Expr(Expr),
+    VariableDecl(VariableDeclare),
+    // expr = expr
+    Assgin(Assgin),
+}
+
+pub fn assgin(lexer: &mut Lexer) {}
+
+#[derive(Debug)]
+pub struct Block {
+    stmts: Vec<Stmt>,
+}
+
 pub fn block(lexer: &mut Lexer) -> Block {
     lexer.match_token(TokenType::OCurly);
-    let stmts = Vec::<Stmts>::new();
+    let mut stmts = Vec::<Stmt>::new();
     loop {
-        if lexer.get_token_type() == TokenType::CCurly {
-            break;
+        if lexer.get_token_type() == TokenType::CCurly { break; }
+        match lexer.get_token_type() {
+            TokenType::Let => {
+                stmts.push(variable_declare(lexer));
+            },
+            _ => {
+                let left_expr = expr(lexer);
+                match lexer.get_token_type() {
+                    TokenType::Eq => {
+                        lexer.match_token(TokenType::Eq);
+                        let right_expr = expr(lexer);
+                        stmts.push(Stmt::Assgin(Assgin {
+                            left: left_expr,
+                            right: right_expr,
+                            op: AssginOp::Eq,
+                        }));
+                    },
+                    TokenType::SemiColon => {
+                        stmts.push(Stmt::Expr(left_expr));
+                    },
+                    _ => {
+                        eprintln!("Error: Expected Semicolon at {}",lexer.get_loc_string());
+                        exit(-1);
+                    }
+                }
+                lexer.match_token(TokenType::SemiColon);
+            }
         }
-        // TODO:
-        lexer.next_token();
     }
     lexer.match_token(TokenType::CCurly);
     return Block{stmts}
+}
+
+#[derive(Debug)]
+pub struct VariableDeclare {
+    mutable: bool,
+    ident: String,
+    init_value: Option<Expr>,
+    // type
+}
+
+pub fn variable_declare(lexer: &mut Lexer) -> Stmt {
+   lexer.match_token(TokenType::Let);
+   let ident_token = lexer.get_token().unwrap();
+   lexer.match_token(TokenType::Identifier);
+   let mut is_mutable: bool = true;
+   let mut init_value: Option<Expr> = None;
+   match lexer.get_token_type() {
+        TokenType::ColonEq => {
+            is_mutable = false;
+            lexer.match_token(TokenType::ColonEq);
+            init_value = Some(expr(lexer));
+        },
+        TokenType::Eq => {
+            is_mutable = true;
+            lexer.match_token(TokenType::Eq);
+            init_value = Some(expr(lexer));
+        },
+        TokenType::SemiColon => {},
+        _ => {
+            eprintln!("Error: Expected \"=\" or \":=\" found ({:?}) at {}",
+                lexer.get_token_type(),
+                lexer.get_loc_string()
+            );
+            exit(-1);
+        }
+   }
+   lexer.match_token(TokenType::SemiColon);
+   return Stmt::VariableDecl(VariableDeclare {
+       mutable: is_mutable,
+       ident: ident_token.literal,
+       init_value
+   });
+
 }
 
 pub fn function_def_args(lexer: &mut Lexer) -> Vec<FunctionArg> {
@@ -251,6 +342,7 @@ pub struct ProgramFile {
 }
 
 pub fn static_variable_def(lexer: &mut Lexer) -> StaticVariable {
+    lexer.match_token(TokenType::Let);
     let Some(ident_token) = lexer.get_token() else {
         eprintln!("Error: Expected Identifier found Eof at {}",lexer.get_loc_string());
         exit(-1);
@@ -271,7 +363,7 @@ pub fn program(lexer: &mut Lexer) -> ProgramFile {
             TokenType::Fun => {
                 items.push(ProgramItem::Func(function_def(lexer)));
             },
-            TokenType::Identifier => {
+            TokenType::Let => {
                 items.push(ProgramItem::StaticVar(static_variable_def(lexer)));
             },
             _ => {
@@ -292,10 +384,14 @@ pub fn program(lexer: &mut Lexer) -> ProgramFile {
 
 fn main() -> Result<(),Box<dyn Error>> {
     let source = 
-        r#"
-            a :: 1 + 2;
-            fun main(args,kwargs) {}
-        "#;
+    r#"
+        let a :: 1 + 2;
+        fun main(args,kwargs) {
+            let a = 12;
+            a = 13;
+            12;
+        }
+    "#;
     let mut lexer = Lexer::new(String::new(),source.to_string());
     // TODO: Move to top root of parser
     // lexer.next_token();

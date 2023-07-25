@@ -9,8 +9,6 @@ pub enum TokenType {
     Char(char),
     String,
     
-    Define, // :=
-
     Plus, // +
     Minus, // -
     Multi, // *
@@ -18,6 +16,7 @@ pub enum TokenType {
 
     Fun, // fun
     If, // if
+    Let, // let
     Else, // else
 
     Eq, // =
@@ -370,6 +369,7 @@ impl Lexer {
             "if" => {return Some(TokenType::If)},
             "else" => {return Some(TokenType::Else)},
             "fun" => {return Some(TokenType::Fun)},
+            "let" => {return Some(TokenType::Let)},
             _ => None
         }
     }
