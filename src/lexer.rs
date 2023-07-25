@@ -20,12 +20,14 @@ pub enum TokenType {
     If, // if
     Else, // else
 
-    Eq, // ==
-    EqEq, // ==
+    Eq, // =
+    DoubleEq, // ==
+    ColonEq, // :=
 
     Log, // #
     SemiColon, // ;
     Colon, // :
+    DoubleColon, // ::
     Comma, // ,
 
     OParen,
@@ -63,9 +65,9 @@ impl Token {
 
 #[derive(Debug,Clone)]
 pub struct Lexer {
-    file_path: String,
+    pub file_path: String,
     source: Vec<char>,
-    token: Option<Token>,
+    pub token: Option<Token>,
     cur: usize,
     bol: usize,
     row: usize,
@@ -119,7 +121,7 @@ impl Lexer {
         (self.file_path.clone(), self.row + 1, self.cur - self.bol + 1)
     }
 
-    fn get_loc_string(&self) -> String {
+    pub fn get_loc_string(&self) -> String {
         let loc:Loc = (self.file_path.clone(), self.row + 1, self.cur - self.bol + 1);
         format!("{}:{}:{}",loc.0,loc.1,loc.2)
     }
@@ -398,8 +400,9 @@ impl Lexer {
         double_char.push(first);
         double_char.push(next);
         match double_char.as_str() {
-            "==" => {Some(TokenType::EqEq)},
-            ":=" => {Some(TokenType::Define)}
+            "==" => {Some(TokenType::DoubleEq)},
+            ":=" => {Some(TokenType::ColonEq)},
+            "::" => {Some(TokenType::DoubleColon)}
             _ => {None}
         }
     }

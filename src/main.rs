@@ -1,4 +1,4 @@
-use std::error::Error;
+use std::{error::Error, process::exit};
 use std::fs;
 use std::env::args;
 
@@ -116,7 +116,8 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
             }
         }
         _ => {
-            todo!("ident, funcall and indexer");
+            eprintln!("Unexpected Token ({:?}) while parsing expr at {}",lexer.get_token_type(),lexer.get_loc_string());
+            exit(-1);
         }
     }
 }
@@ -149,12 +150,157 @@ pub fn function_call_args(lexer: &mut Lexer) -> Vec<Expr> {
     args
 }
 
+#[derive(Debug)]
+pub struct StaticVariable {
+    ident: String,
+    value: Expr,
+}
+
+pub fn variable_def(lexer: &mut Lexer) {
+
+}
+
+#[derive(Debug)]
+pub struct FunctionArg {
+    identifier: String,
+}
+
+#[derive(Debug)]
+pub struct Function {
+    identifier: String,
+    args: Vec<FunctionArg>,
+    block: Block,
+}
+
+#[derive(Debug)]
+enum Stmts {}
+
+#[derive(Debug)]
+pub struct Block {
+    stmts: Vec<Stmts>,
+}
+
+pub fn function_def(lexer: &mut Lexer) -> Function {
+    lexer.match_token(TokenType::Fun);
+    let Some(function_ident_token) = lexer.get_token() else {
+        eprintln!("Function Defenition without Identifier at {}",lexer.get_loc_string());
+        exit(-1);
+    };
+    lexer.match_token(TokenType::Identifier);
+    let args = function_def_args(lexer);
+    let block = block(lexer);
+    return Function {
+        identifier: function_ident_token.literal.to_string(),
+        args,
+        block,
+    }
+}
+
+pub fn block(lexer: &mut Lexer) -> Block {
+    lexer.match_token(TokenType::OCurly);
+    let stmts = Vec::<Stmts>::new();
+    loop {
+        if lexer.get_token_type() == TokenType::CCurly {
+            break;
+        }
+        // TODO:
+        lexer.next_token();
+    }
+    lexer.match_token(TokenType::CCurly);
+    return Block{stmts}
+}
+
+pub fn function_def_args(lexer: &mut Lexer) -> Vec<FunctionArg> {
+    let mut args = Vec::<FunctionArg>::new();
+    lexer.match_token(TokenType::OParen);
+    loop {
+        match lexer.get_token_type() {
+            TokenType::CParen => {
+                lexer.match_token(TokenType::CParen);
+                break;
+            },
+            TokenType::Identifier => {
+                let ident = lexer.get_token().unwrap().literal;
+                args.push(FunctionArg{identifier: ident.to_string()});
+                lexer.match_token(TokenType::Identifier);
+                if lexer.get_token_type() == TokenType::Comma {
+                    lexer.match_token(TokenType::Comma);
+                }
+            },
+            _ => {
+                eprintln!("Error: Expected Identifier found ({:?}) at {}",lexer.get_token_type(),lexer.get_loc_string());
+                exit(-1);
+            }
+        }
+    }
+    args
+}
+
+#[derive(Debug)]
+pub enum ProgramItem {
+    Func(Function),
+    StaticVar(StaticVariable),
+}
+
+#[derive(Debug)]
+pub struct ProgramFile {
+    shebang: String,
+    file_path: String,
+    // attrs: Vec<Attr>
+    items: Vec<ProgramItem>,
+}
+
+pub fn static_variable_def(lexer: &mut Lexer) -> StaticVariable {
+    let Some(ident_token) = lexer.get_token() else {
+        eprintln!("Error: Expected Identifier found Eof at {}",lexer.get_loc_string());
+        exit(-1);
+    };
+    lexer.match_token(TokenType::Identifier);
+    lexer.match_token(TokenType::DoubleColon);
+    let expr = expr(lexer);
+    lexer.match_token(TokenType::SemiColon);
+    return StaticVariable {ident: ident_token.literal, value: expr};
+}
+
+pub fn program(lexer: &mut Lexer) -> ProgramFile {
+    lexer.next_token();
+    let mut items = Vec::<ProgramItem>::new();
+    loop {
+        if lexer.get_token().is_none() { break; }
+        match lexer.get_token_type() {
+            TokenType::Fun => {
+                items.push(ProgramItem::Func(function_def(lexer)));
+            },
+            TokenType::Identifier => {
+                items.push(ProgramItem::StaticVar(static_variable_def(lexer)));
+            },
+            _ => {
+                eprintln!("Error: Unexpected Token ({:?}) for top level program at {}",
+                    lexer.get_token_type(),
+                    lexer.get_loc_string()
+                );
+                exit(-1);
+            }
+        }
+    }
+    return ProgramFile{
+        shebang: String::new(),
+        file_path: lexer.file_path.clone(),
+        items,
+    }
+}
 
 fn main() -> Result<(),Box<dyn Error>> {
-    let mut lexer = Lexer::new(String::new(),"-(a(0,0)*2);".to_string());
+    let source = 
+        r#"
+            a :: 1 + 2;
+            fun main(args,kwargs) {}
+        "#;
+    let mut lexer = Lexer::new(String::new(),source.to_string());
     // TODO: Move to top root of parser
-    lexer.next_token();
-    println!("{:?}",expr(&mut lexer));
+    // lexer.next_token();
+    // println!("{:?}",expr(&mut lexer));
+    println!("{:#?}",program(&mut lexer));
     return Ok(());
     let mut arg = args().into_iter();
     arg.next();
