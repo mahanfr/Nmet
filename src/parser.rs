@@ -159,13 +159,28 @@ pub struct Assgin {
 }
 
 #[derive(Debug)]
+pub enum ElseBlock {
+    Elif(IFStmt),
+    Else(Block),
+    None,
+}
+
+#[derive(Debug)]
+pub struct IFStmt {
+    pub condition: Expr,
+    pub then_block: Block,
+    pub else_block: Box<ElseBlock>,
+}
+
+
+#[derive(Debug)]
 pub enum Stmt {
     // expr
     Expr(Expr),
     VariableDecl(VariableDeclare),
     // expr = expr
     Assgin(Assgin),
-    Block(Block),
+    If(IFStmt),
     Return(Expr),
 }
 
@@ -324,6 +339,24 @@ pub fn function_def(lexer: &mut Lexer) -> Function {
  * declare := let Ident = expr;
 */
 
+pub fn if_stmt(lexer: &mut Lexer) -> IFStmt {
+    lexer.match_token(TokenType::If);
+    let condition = expr(lexer);
+    let then_block = block(lexer);
+    if lexer.get_token_type() == TokenType::Else {
+        lexer.match_token(TokenType::Else);
+        if lexer.get_token_type() == TokenType::If {
+            let else_block = Box::new(ElseBlock::Elif(if_stmt(lexer)));
+            return IFStmt {condition, then_block, else_block};
+        } else {
+            let else_block = Box::new(ElseBlock::Else(block(lexer)));
+            return IFStmt {condition, then_block, else_block};
+        }
+    } else {
+        return IFStmt {condition, then_block, else_block: Box::new(ElseBlock::None)};
+    }
+}
+
 pub fn block(lexer: &mut Lexer) -> Block {
     lexer.match_token(TokenType::OCurly);
     let mut stmts = Vec::<Stmt>::new();
@@ -333,6 +366,9 @@ pub fn block(lexer: &mut Lexer) -> Block {
             TokenType::Let => {
                 stmts.push(variable_declare(lexer));
                 lexer.match_token(TokenType::SemiColon);
+            },
+            TokenType::If => {
+                stmts.push(Stmt::If(if_stmt(lexer)));
             },
             TokenType::Return => {
                 lexer.match_token(TokenType::Return);

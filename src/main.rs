@@ -60,6 +60,11 @@ fn main() -> Result<(),Box<dyn Error>> {
             let b = 12;
             b = 13;
             10 + a == b;
+            if 1 == 1 {
+                a = a + 1;
+            } else if 2 != 1{
+                0;
+            } else {}
             return a;
         }
     "#;
