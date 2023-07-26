@@ -13,15 +13,22 @@ pub enum TokenType {
     Minus, // -
     Multi, // *
     Devide, // /
+    Not, // !
+    Bigger, // >
+    Smaller, // <
 
     Fun, // fun
     If, // if
     Let, // let
     Else, // else
+    Return, // return
 
     Eq, // =
     DoubleEq, // ==
     ColonEq, // :=
+    NotEq, // !=
+    BiggerEq, // >=
+    SmallerEq, // <=
 
     Log, // #
     SemiColon, // ;
@@ -370,6 +377,7 @@ impl Lexer {
             "else" => {return Some(TokenType::Else)},
             "fun" => {return Some(TokenType::Fun)},
             "let" => {return Some(TokenType::Let)},
+            "return" => {return Some(TokenType::Return)},
             _ => None
         }
     }
@@ -391,6 +399,9 @@ impl Lexer {
             ';' => {Some(TokenType::SemiColon)},
             ',' => {Some(TokenType::Comma)},
             '=' => {Some(TokenType::Eq)},
+            '!' => {Some(TokenType::Not)},
+            '>' => {Some(TokenType::Bigger)},
+            '<' => {Some(TokenType::Smaller)},
             _ => {None}
         }
     }
@@ -403,6 +414,9 @@ impl Lexer {
             "==" => {Some(TokenType::DoubleEq)},
             ":=" => {Some(TokenType::ColonEq)},
             "::" => {Some(TokenType::DoubleColon)}
+            "!=" => {Some(TokenType::NotEq)}
+            ">=" => {Some(TokenType::BiggerEq)}
+            "<=" => {Some(TokenType::SmallerEq)}
             _ => {None}
         }
     }
