@@ -165,7 +165,8 @@ pub enum Stmt {
     VariableDecl(VariableDeclare),
     // expr = expr
     Assgin(Assgin),
-    Return,
+    Block(Block),
+    Return(Expr),
 }
 
 #[derive(Debug)]
@@ -331,6 +332,12 @@ pub fn block(lexer: &mut Lexer) -> Block {
         match lexer.get_token_type() {
             TokenType::Let => {
                 stmts.push(variable_declare(lexer));
+                lexer.match_token(TokenType::SemiColon);
+            },
+            TokenType::Return => {
+                lexer.match_token(TokenType::Return);
+                stmts.push(Stmt::Return(expr(lexer)));
+                lexer.match_token(TokenType::SemiColon);
             },
             _ => {
                 let left_expr = expr(lexer);
@@ -386,7 +393,6 @@ pub fn variable_declare(lexer: &mut Lexer) -> Stmt {
             exit(-1);
         }
    }
-   lexer.match_token(TokenType::SemiColon);
    return Stmt::VariableDecl(VariableDeclare {
        mutable: is_mutable,
        ident: ident_token.literal,

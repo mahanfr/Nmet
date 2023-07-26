@@ -6,7 +6,6 @@ mod lexer;
 mod ast;
 mod parser;
 use lexer::{Lexer, TokenType};
-use parser::{Expr, Op, UnaryExpr, BinaryExpr, ArrayIndex};
 
 use crate::parser::program;
 
@@ -52,6 +51,7 @@ fn compile_command(path: String) -> Result<(),Box<dyn Error>> {
     Ok(())
 }
 
+// IF Else
 fn main() -> Result<(),Box<dyn Error>> {
     let source = 
     r#"
@@ -60,6 +60,7 @@ fn main() -> Result<(),Box<dyn Error>> {
             let b = 12;
             b = 13;
             10 + a == b;
+            return a;
         }
     "#;
     let mut lexer = Lexer::new(String::new(),source.to_string());
