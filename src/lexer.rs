@@ -23,6 +23,8 @@ pub enum TokenType {
     Else, // else
     Return, // return
     While, // while
+    Break, // break
+    Continue, // continue
 
     Eq, // =
     DoubleEq, // ==
@@ -380,6 +382,8 @@ impl Lexer {
             "let" => {return Some(TokenType::Let)},
             "return" => {return Some(TokenType::Return)},
             "while" => {return Some(TokenType::While)},
+            "break" => {return Some(TokenType::Break)},
+            "continue" => {return Some(TokenType::Continue)},
             _ => None
         }
     }

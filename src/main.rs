@@ -63,7 +63,8 @@ fn main() -> Result<(),Box<dyn Error>> {
                 a = a + 1;
             }
             while 1==1 {
-                a = a + 1;
+                continue;
+                break;
             }
             return a;
         }

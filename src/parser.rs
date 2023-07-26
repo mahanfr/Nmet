@@ -183,6 +183,8 @@ pub enum Stmt {
     While(WhileStmt),
     If(IFStmt),
     Return(Expr),
+    Break,
+    Continue,
 }
 
 #[derive(Debug)]
@@ -379,6 +381,16 @@ pub fn block(lexer: &mut Lexer) -> Block {
         match lexer.get_token_type() {
             TokenType::Let => {
                 stmts.push(variable_declare(lexer));
+                lexer.match_token(TokenType::SemiColon);
+            },
+            TokenType::Break => {
+                lexer.match_token(TokenType::Break);
+                stmts.push(Stmt::Break);
+                lexer.match_token(TokenType::SemiColon);
+            },
+            TokenType::Continue => {
+                lexer.match_token(TokenType::Continue);
+                stmts.push(Stmt::Continue);
                 lexer.match_token(TokenType::SemiColon);
             },
             TokenType::If => {
