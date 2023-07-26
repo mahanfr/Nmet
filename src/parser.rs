@@ -180,8 +180,15 @@ pub enum Stmt {
     VariableDecl(VariableDeclare),
     // expr = expr
     Assgin(Assgin),
+    While(WhileStmt),
     If(IFStmt),
     Return(Expr),
+}
+
+#[derive(Debug)]
+pub struct WhileStmt {
+    pub condition: Expr,
+    pub block: Block,
 }
 
 #[derive(Debug)]
@@ -357,6 +364,13 @@ pub fn if_stmt(lexer: &mut Lexer) -> IFStmt {
     }
 }
 
+pub fn while_stmt(lexer: &mut Lexer) -> WhileStmt {
+    lexer.match_token(TokenType::While);
+    let condition = expr(lexer);
+    let block = block(lexer);
+    return WhileStmt{condition,block};
+}
+
 pub fn block(lexer: &mut Lexer) -> Block {
     lexer.match_token(TokenType::OCurly);
     let mut stmts = Vec::<Stmt>::new();
@@ -369,6 +383,9 @@ pub fn block(lexer: &mut Lexer) -> Block {
             },
             TokenType::If => {
                 stmts.push(Stmt::If(if_stmt(lexer)));
+            },
+            TokenType::While => {
+                stmts.push(Stmt::While(while_stmt(lexer)));
             },
             TokenType::Return => {
                 lexer.match_token(TokenType::Return);

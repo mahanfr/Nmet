@@ -51,7 +51,6 @@ fn compile_command(path: String) -> Result<(),Box<dyn Error>> {
     Ok(())
 }
 
-// IF Else
 fn main() -> Result<(),Box<dyn Error>> {
     let source = 
     r#"
@@ -62,9 +61,10 @@ fn main() -> Result<(),Box<dyn Error>> {
             10 + a == b;
             if 1 == 1 {
                 a = a + 1;
-            } else if 2 != 1{
-                0;
-            } else {}
+            }
+            while 1==1 {
+                a = a + 1;
+            }
             return a;
         }
     "#;

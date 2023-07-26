@@ -22,6 +22,7 @@ pub enum TokenType {
     Let, // let
     Else, // else
     Return, // return
+    While, // while
 
     Eq, // =
     DoubleEq, // ==
@@ -378,6 +379,7 @@ impl Lexer {
             "fun" => {return Some(TokenType::Fun)},
             "let" => {return Some(TokenType::Let)},
             "return" => {return Some(TokenType::Return)},
+            "while" => {return Some(TokenType::While)},
             _ => None
         }
     }
