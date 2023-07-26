@@ -14,9 +14,7 @@ pub enum Op {
     Sub,
     Multi,
     Devide,
-    Oparen,
-    Neg,
-    Pos
+    Not,
 }
 impl Op {
     pub fn from_token_type(token_type: TokenType) -> Self {
@@ -25,19 +23,10 @@ impl Op {
             TokenType::Minus => return Self::Sub,
             TokenType::Multi => return Self::Multi,
             TokenType::Devide => return Self::Devide,
+            TokenType::Not => return Self::Not,
             _ => {
                 todo!("return Error");
             }
-        }
-    }
-
-    pub fn get_op_precedence(op: &Op) -> u8 {
-        match op {
-            Op::Plus | Op::Sub => 1,
-            Op::Multi | Op::Devide => 2,
-            Op::Oparen => 0,
-            Op::Neg => u8::MAX,
-            Op::Pos => u8::MAX,
         }
     }
 }
@@ -48,10 +37,7 @@ impl Display for Op {
            Op::Sub => write!(f,"-"),
            Op::Multi => write!(f,"*"),
            Op::Devide => write!(f,"/"),
-           Op::Neg => write!(f,"-"),
-           Op::Pos => write!(f,"+"),
-           _ => write!(f,""),
-
+           Op::Not => write!(f,"!"),
        } 
     }
 }
@@ -248,7 +234,7 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
             lexer.match_token(TokenType::CParen);
             return value;
         },
-        TokenType::Plus | TokenType::Minus => {
+        TokenType::Plus | TokenType::Minus | TokenType::Not => {
             let op = Op::from_token_type(lexer.get_token_type()); 
             lexer.next_token();
             let value = factor(lexer);
