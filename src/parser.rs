@@ -50,12 +50,12 @@ pub struct StaticVariable {
 
 #[derive(Debug)]
 pub struct FunctionArg {
-    pub identifier: String,
+    pub ident: String,
 }
 
 #[derive(Debug)]
 pub struct Function {
-    pub identifier: String,
+    pub ident: String,
     pub args: Vec<FunctionArg>,
     pub block: Block,
 }
@@ -76,13 +76,13 @@ pub struct BinaryExpr {
 
 #[derive(Debug,PartialEq,Clone)]
 pub struct FunctionCall {
-    pub identifier: String,
+    pub ident: String,
     pub args: Vec<Expr>,
 }
 
 #[derive(Debug,PartialEq,Clone)]
 pub struct ArrayIndex {
-    pub identifier: String,
+    pub ident: String,
     pub indexer: Box<Expr>,
 }
 
@@ -277,13 +277,13 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
             match lexer.get_token_type() {
                 TokenType::OParen => {
                     let args = function_call_args(lexer);
-                    return Expr::FunctionCall(FunctionCall{identifier: ident_name, args});
+                    return Expr::FunctionCall(FunctionCall{ident: ident_name, args});
                 },
                 TokenType::OBracket => {
                     let indexer = array_indexer(lexer);
                     return Expr::ArrayIndex(
                         ArrayIndex {
-                            identifier: ident_name, 
+                            ident: ident_name, 
                             indexer: Box::new(indexer)
                         });
                 },
@@ -337,7 +337,7 @@ pub fn function_def(lexer: &mut Lexer) -> Function {
     let args = function_def_args(lexer);
     let block = block(lexer);
     return Function {
-        identifier: function_ident_token.literal.to_string(),
+        ident: function_ident_token.literal.to_string(),
         args,
         block,
     }
@@ -477,7 +477,7 @@ pub fn function_def_args(lexer: &mut Lexer) -> Vec<FunctionArg> {
             },
             TokenType::Identifier => {
                 let ident = lexer.get_token().unwrap().literal;
-                args.push(FunctionArg{identifier: ident.to_string()});
+                args.push(FunctionArg{ident: ident.to_string()});
                 lexer.match_token(TokenType::Identifier);
                 if lexer.get_token_type() == TokenType::Comma {
                     lexer.match_token(TokenType::Comma);

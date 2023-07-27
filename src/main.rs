@@ -1,11 +1,14 @@
+use std::io::{BufWriter, Write};
+use std::process::Command;
 use std::{error::Error, process::exit};
-use std::fs;
+use std::fs::{self, File};
 use std::env::args;
 
 mod lexer;
 mod ast;
 mod parser;
 use lexer::{Lexer, TokenType};
+use parser::{ProgramFile, ProgramItem};
 
 use crate::parser::program;
 
@@ -51,29 +54,59 @@ fn compile_command(path: String) -> Result<(),Box<dyn Error>> {
     Ok(())
 }
 
+pub fn compile(program: ProgramFile) -> Result<(),Box<dyn Error>> {
+    fs::create_dir_all("./build")?;
+    let stream = File::create("./build/output.asm")?;
+    let mut file = BufWriter::new(stream);
+    file.write(b";; This File is Automatically Created Useing Nemet Parser\n")?;
+    file.write(b";; Under MIT License Copyright MahanFarzaneh 2023-2024\n\n")?;
+    file.write(b"section .text\n")?;
+    file.write(b"global _start\n")?;
+
+    for item in program.items {
+        match item {
+            ProgramItem::Func(f) => {
+                if f.ident == "main" {
+                   file.write(b"_start:\n")?;
+                   file.write(b"    mov rax, 60\n")?;
+                   file.write(b"    mov rdi, 0\n")?;
+                   file.write(b"    syscall\n")?;
+                }
+            },
+            ProgramItem::StaticVar(s) => {
+                todo!();
+            }
+        }
+    }
+    file.flush()?;
+
+    Command::new("nasm")
+        .arg("-felf64")
+        .arg("-o")
+        .arg("./build/output.o")
+        .arg("./build/output.asm")
+        .output()?;
+    Command::new("ld")
+        .arg("-o")
+        .arg("./build/output")
+        .arg("./build/output.o")
+        .output()?;
+
+    Ok(())
+}
+
+
 fn main() -> Result<(),Box<dyn Error>> {
     let source = 
     r#"
-        let a :: 1 + 2;
-        fun main(args,kwargs) {
-            let b = 12;
-            b = 13;
-            10 + a == b;
-            if 1 == 1 {
-                a = a + 1;
-            }
-            while 1==1 {
-                continue;
-                break;
-            }
-            return a;
+        fun main() {
         }
     "#;
     let mut lexer = Lexer::new(String::new(),source.to_string());
     // TODO: Move to top root of parser
     // lexer.next_token();
     // println!("{:?}",expr(&mut lexer));
-    println!("{:#?}",program(&mut lexer));
+    compile(program(&mut lexer))?;
     return Ok(());
     let mut arg = args().into_iter();
     arg.next();
