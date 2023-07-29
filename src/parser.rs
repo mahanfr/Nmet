@@ -180,6 +180,7 @@ pub enum Stmt {
     VariableDecl(VariableDeclare),
     // expr = expr
     Assgin(Assgin),
+    Print(Expr),
     While(WhileStmt),
     If(IFStmt),
     Return(Expr),
@@ -381,6 +382,12 @@ pub fn block(lexer: &mut Lexer) -> Block {
         match lexer.get_token_type() {
             TokenType::Let => {
                 stmts.push(variable_declare(lexer));
+                lexer.match_token(TokenType::SemiColon);
+            },
+            TokenType::Print => {
+                lexer.match_token(TokenType::Print);
+                let expr = expr(lexer);
+                stmts.push(Stmt::Print(expr));
                 lexer.match_token(TokenType::SemiColon);
             },
             TokenType::Break => {
