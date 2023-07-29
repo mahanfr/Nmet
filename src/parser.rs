@@ -227,12 +227,12 @@ pub fn expr(lexer: &mut Lexer) -> Expr {
         if Expr::is_binary_op(t_type) {
             let op = Op::from_token_type(t_type);
             lexer.next_token();
-            let right = factor(lexer);
+            let right = term(lexer);
             term_expr = Expr::Binary(BinaryExpr {left: Box::new(term_expr), op, right: Box::new(right)});
         } else if Expr::is_compare_op(t_type) {
             let op = CompareOp::from_token_type(lexer.get_token_type());
             lexer.next_token();
-            let right = factor(lexer);
+            let right = term(lexer);
             term_expr = Expr::Compare(CompareExpr {left: Box::new(term_expr), op, right: Box::new(right)});
         } 
         else {break;}

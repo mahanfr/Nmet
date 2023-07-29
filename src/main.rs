@@ -5,7 +5,6 @@ use std::fs::{self, File};
 use std::env::args;
 
 mod lexer;
-mod ast;
 mod parser;
 use lexer::Lexer;
 use parser::{ProgramFile, ProgramItem, StaticVariable, Expr, Stmt};
@@ -51,12 +50,10 @@ fn help_command() -> Result<(),Box<dyn Error>> {
 fn compile_command(path: String) -> Result<(),Box<dyn Error>> {
     let source = fs::read_to_string(path.clone())
         .expect("Can not Read the file");
-    let mut lexer = Lexer::new(path.clone(),source);
-    let mut token = lexer.next_token();
-    while !token.is_none() {
-        println!("{:?}",token.unwrap());
-        token = lexer.next_token();
-    }
+    let mut lexer = Lexer::new(String::new(),source.to_string());
+    let mut ir_gen = IRGenerator::new();
+    ir_gen.compile(program(&mut lexer))?;
+    compile_to_exc()?;
     Ok(())
 }
 
@@ -163,7 +160,7 @@ impl IRGenerator {
                     _ => unreachable!(),
                 }
             },
-            Expr::Unary(u) => {
+            Expr::Unary(_) => {
                 todo!();
             },
             _ => {
@@ -177,6 +174,7 @@ impl IRGenerator {
         fs::create_dir_all("./build").unwrap();
         let stream = File::create("./build/output.asm").unwrap();
         let mut file = BufWriter::new(stream);
+        println!("[info] Generating asm files...");
         file.write(b";; This File is Automatically Created Useing Nemet Parser\n")?;
         file.write(b";; Under MIT License Copyright MahanFarzaneh 2023-2024\n\n")?;
         for line in &self.static_var_buf {
@@ -245,38 +243,41 @@ impl IRGenerator {
 
 }
 
-pub fn compile_to_exc(program: ProgramFile) -> Result<(),Box<dyn Error>> {
-    Command::new("nasm")
+pub fn compile_to_exc() -> Result<(),Box<dyn Error>> {
+    println!("[info] Assembling for elf64 - generaiting output.o");
+    let nasm_output = Command::new("nasm")
         .arg("-felf64")
         .arg("-o")
         .arg("./build/output.o")
         .arg("./build/output.asm")
-        .output()?;
-    Command::new("ld")
+        .output()
+        .expect("Can not run nasm command! do you have nasm installed?");
+    if !nasm_output.status.success() {
+        println!("[error] Failed to Assemble: Status code non zero");
+        println!("{}",String::from_utf8(nasm_output.stderr)?);
+    }
+    println!("[info] Linking object file...");
+    let linker_output = Command::new("ld")
         .arg("-o")
         .arg("./build/output")
         .arg("./build/output.o")
-        .output()?;
-
+        .output()
+        .expect("Can not link using ld command!");
+    if !linker_output.status.success() {
+        println!("[error] Failed to Assemble: Status code non zero");
+        println!("{}",String::from_utf8(linker_output.stderr)?);
+    }
+    println!("[sucsees] Executable File Has been Generated!");
+    // println!("+ Running The Generated Executable");
+    // let output = Command::new("./build/output")
+    //     .output()
+    //     .expect("Error Executing the program!");
+    // println!("{}",String::from_utf8(output.stdout)?);
     Ok(())
 }
 
-
 fn main() -> Result<(),Box<dyn Error>> {
-    //return Ok(());
-    let source = 
-    r#"
-        fun main() {
-            print 3*2+1;
-        }
-    "#;
-    let mut lexer = Lexer::new(String::new(),source.to_string());
-    // println!("{:#?}",program(&mut lexer));
-    // return Ok(());
-    let mut ir_gen = IRGenerator::new();
-    ir_gen.compile(program(&mut lexer))?;
-    return Ok(());
-    let mut arg = args().into_iter();
+    let mut arg = args();
     arg.next();
     loop {
         let Some(command) = arg.next() else {

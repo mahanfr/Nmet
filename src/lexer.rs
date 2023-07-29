@@ -68,9 +68,9 @@ impl Token {
         }
     }
 
-    pub fn get_loc_string(&self) -> String {
-        format!("{}:{}:{}",self.file_path,self.line,self.col)
-    }
+    // pub fn get_loc_string(&self) -> String {
+    //     format!("{}:{}:{}",self.file_path,self.line,self.col)
+    // }
 }
 
 #[derive(Debug,Clone)]
@@ -134,17 +134,6 @@ impl Lexer {
     pub fn get_loc_string(&self) -> String {
         let loc:Loc = (self.file_path.clone(), self.row + 1, self.cur - self.bol + 1);
         format!("{}:{}:{}",loc.0,loc.1,loc.2)
-    }
-
-    pub fn peek(&mut self) -> Option<Token> {
-        let cur = self.cur;
-        let bol = self.bol;
-        let row = self.row;
-        let token = self._next_token();
-        self.cur = cur;
-        self.bol = bol;
-        self.row = row;
-        return token;
     }
 
     pub fn get_token_type(&self) -> TokenType{
@@ -352,27 +341,6 @@ impl Lexer {
 
         eprintln!("Unexpected Character at {}",self.get_loc_string());
         exit(1);
-    }
-
-    pub fn expect_token(&mut self,tokens: Vec<TokenType>) -> Token {
-        let Some(token) = self.next_token() else {
-            println!("Error: Unexpected EOF at {}",self.get_loc_string());
-            exit(-1);
-        };
-        if tokens.contains(&token.t_type) {
-            return token
-        }else {
-            println!("Error: Unexpected token ({:?}) at {}",token.t_type,self.get_loc_string());
-            exit(-1);
-        }
-    }
-
-    pub fn expect_some_token(&mut self) -> Token {
-        let Some(token) = self.next_token() else {
-            println!("Error: Unexpected EOF at {}",self.get_loc_string());
-            exit(-1);
-        };
-        token
     }
 
     fn is_keyword(literal: &String) -> Option<TokenType>{
