@@ -17,23 +17,34 @@
   <h3 align="center">NeMeT</h3>
 
   <p align="center">
-    A Programming language that you can not code into
+    A Programming language with a really bad slogan
     <br />
-    <a href="https://github.com/mahanfarzaneh2000/nemet"><strong>Explore the docs »</strong></a>
+    <a href="https://github.com/mahanfarzaneh2000/nemet#quick-start"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/mahanfarzaneh2000/nemet">View Demo</a>
-    ·
     <a href="https://github.com/mahanfarzaneh2000/nemet/issues">Report Bug</a>
     ·
     <a href="https://github.com/mahanfarzaneh2000/nemet/issues">Request Feature</a>
   </p>
 </div>
 
+## Quick Start
+The Project is in development state and dose not come with a package yet and **It is Only available fot linux** but you can use wsl in windows!
+<br />
+For getting started clone the repository and build the project using Rust toolchain
+<br />
+Install [Nasm](https://www.nasm.org/) using your package manager or by downloading it from it's official website
+<br />
+Create a file like ```hello.nmt``` extention and write a simple program insde it. then you can run the following commands
+``` shell
+$ nemet ./hello.nmt
+$ ./build/output
+```
 
 ## About The Project
 
-A General Purpose Programming Language that you **Should Not** Program into. Inspierd by Rust, Zig and Odin which generates assembely and executable code with it's own assambler and linker only available for linux (for now!)
+A General Purpose Compiled Programming Language that generates x86-64 assembly as Intermediate representation (IR) which can be compiled to binary using nasm.
+We eventialy will move away from nasm and implement our own loader but the current goal is to become self hosted by writing the compiler in itself!
 
 Use the `docs/README.md` to get started.
 
