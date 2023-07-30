@@ -7,7 +7,7 @@ use std::env::args;
 mod lexer;
 mod parser;
 use lexer::Lexer;
-use parser::{ProgramFile, ProgramItem, StaticVariable, Expr, Stmt};
+use parser::{ProgramFile, ProgramItem, StaticVariable, Expr, Stmt, IFStmt, Block, ElseBlock};
 
 use crate::parser::program;
 
@@ -15,6 +15,35 @@ use crate::parser::program;
 static VERSION : &'static str = "v0.0.1-Beta";
 static COPYRIGHT : &'static str = "Mahan Farzaneh 2023-2024";
 static DEBUG : bool = true;
+
+
+// struct AsmInBlock {
+//     
+// }
+// 
+// enum AsmOp {
+//     Block(AsmInBlock),
+//     Jump(String),
+//     JumpNotEq(String),
+//     JumpEq(String),
+// }
+// 
+// struct AsmVariable {
+//     // TODO: type
+//     ident: String,
+//     offset: usize,
+//     size: usize, 
+// }
+// 
+// struct FuncAsmBlock {
+//     tag: String,
+//     ops: Vec<AsmOp>,
+//     scope_mem_size: usize,
+//     scope_variables: Vec<AsmVariable>,
+//     stack_count: usize,
+//     // TODO: frame size
+// }
+
 
 macro_rules! asm {
     ($($arg:tt)+) => (
@@ -112,22 +141,57 @@ impl IRGenerator {
         };
         self.static_var_buf.push(format!("{} db {}\n",stat_v.ident,value));
     }
+    
+    fn compile_block(&mut self, block : &Block) {
+        for stmt in &block.stmts {
+            self.compile_stmt(&stmt);
+        }
+    }
 
+    fn compile_if_stmt(&mut self, ifs: &IFStmt, exit_tag: usize) {
+        self.compile_expr(&ifs.condition);
+        let next_tag = match ifs.else_block.as_ref() {
+            ElseBlock::None => exit_tag,
+            _ => self.blocks_buf.len()
+        };
+        self.blocks_buf.push(asm!("jne .L{}", next_tag));
+        self.compile_block(&ifs.then_block);
+        match ifs.else_block.as_ref() {
+            ElseBlock::None => {
+                self.blocks_buf.push(asm!(".L{}:",next_tag));
+            },
+            ElseBlock::Else(b) => {
+                self.blocks_buf.push(asm!("jmp .L{}",exit_tag));
+                self.blocks_buf.push(asm!(".L{}:",next_tag));
+                self.compile_block(&b);
+                self.blocks_buf.push(asm!(".L{}:",exit_tag));
+            },
+            ElseBlock::Elif(iff) => {
+                self.blocks_buf.push(asm!("jmp .L{}",exit_tag));
+                self.blocks_buf.push(asm!(".L{}:",next_tag));
+                self.compile_if_stmt(iff,exit_tag);
+            }
+        }
+    }
 
     fn compile_stmt(&mut self, stmt: &Stmt) {
         match stmt {
             Stmt::Print(e) => {
-                self.comile_expr(&e);
+                self.compile_expr(&e);
                 self.blocks_buf.push(asm!("pop rdi"));
                 self.blocks_buf.push(asm!("call print"));
             },
+            Stmt::If(ifs) => {
+                let exit_tag = self.blocks_buf.len();
+                self.compile_if_stmt(ifs,exit_tag);
+            }
             _ => {
                 todo!();
             }
         }
     }
 
-    fn comile_expr(&mut self, expr: &Expr) {
+    fn compile_expr(&mut self, expr: &Expr) {
         // left = compile expr
         // right = compile expr
         // +
@@ -136,9 +200,16 @@ impl IRGenerator {
                 // push x
                 self.blocks_buf.push(asm!("push {}",x));
             },
+            Expr::Compare(c) => {
+                self.compile_expr(c.left.as_ref());
+                self.compile_expr(c.right.as_ref());
+                self.blocks_buf.push(asm!("pop rax"));
+                self.blocks_buf.push(asm!("pop rbx"));
+                self.blocks_buf.push(asm!("cmp rax, rbx"));
+            },
             Expr::Binary(b) => {
-                self.comile_expr(b.left.as_ref());
-                self.comile_expr(b.right.as_ref());
+                self.compile_expr(b.left.as_ref());
+                self.compile_expr(b.right.as_ref());
                 self.blocks_buf.push(asm!("pop rax"));
                 self.blocks_buf.push(asm!("pop rbx"));
                 match b.op {

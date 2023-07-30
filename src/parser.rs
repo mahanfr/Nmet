@@ -164,6 +164,30 @@ pub enum ElseBlock {
     Else(Block),
     None,
 }
+impl ElseBlock {
+    pub fn is_none(&self) -> bool {
+        match self {
+            Self::None => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_else(&self) -> bool {
+        match self {
+            Self::Else(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_elif(&self) -> bool {
+        match self {
+            Self::Elif(_) => true,
+            _ => false,
+        }
+    }
+
+}
+
 
 #[derive(Debug)]
 pub struct IFStmt {
