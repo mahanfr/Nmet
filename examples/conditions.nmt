@@ -1,0 +1,23 @@
+~ If Conditions and variables example
+fun main() {
+    let a = 0;
+    if a == 1 {
+        print 69; ~ dose not print 69
+    } else {
+        print 420;
+    }
+    a = a + 1;
+    if a == 1 {
+        print 69;
+    } else {
+        print 420; ~ dose not print 420
+    }
+    a = a + 2;
+    if a == 1 {
+        print 69;
+    } else if a == 3 {
+        print 85; ~ only this will be printed
+    } else {
+        print 420;
+    }
+}

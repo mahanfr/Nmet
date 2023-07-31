@@ -42,18 +42,18 @@ impl Display for Op {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct StaticVariable {
     pub ident: String,
     pub value: Expr,
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct FunctionArg {
     pub ident: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct Function {
     pub ident: String,
     pub args: Vec<FunctionArg>,
@@ -146,19 +146,19 @@ impl Expr {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub enum AssginOp {
     Eq,
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct Assgin {
     pub left : Expr,
     pub right: Expr,
     pub op: AssginOp,
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub enum ElseBlock {
     Elif(IFStmt),
     Else(Block),
@@ -189,7 +189,7 @@ impl ElseBlock {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct IFStmt {
     pub condition: Expr,
     pub then_block: Block,
@@ -197,7 +197,7 @@ pub struct IFStmt {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub enum Stmt {
     // expr
     Expr(Expr),
@@ -212,31 +212,31 @@ pub enum Stmt {
     Continue,
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct WhileStmt {
     pub condition: Expr,
     pub block: Block,
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct Block {
     pub stmts: Vec<Stmt>,
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct VariableDeclare {
     pub mutable: bool,
     pub ident: String,
     pub init_value: Option<Expr>,
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub enum ProgramItem {
     Func(Function),
     StaticVar(StaticVariable),
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct ProgramFile {
     pub shebang: String,
     pub file_path: String,

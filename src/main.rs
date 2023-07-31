@@ -1,5 +1,6 @@
+use std::collections::HashMap;
 use std::io::{BufWriter, Write};
-use std::process::Command;
+use std::process::{Command, exit};
 use std::error::Error;
 use std::fs::{self, File};
 use std::env::args;
@@ -7,7 +8,7 @@ use std::env::args;
 mod lexer;
 mod parser;
 use lexer::Lexer;
-use parser::{ProgramFile, ProgramItem, StaticVariable, Expr, Stmt, IFStmt, Block, ElseBlock};
+use parser::{ProgramFile, ProgramItem, StaticVariable, Expr, Stmt, IFStmt, Block, ElseBlock, VariableDeclare, Assgin};
 
 use crate::parser::program;
 
@@ -86,9 +87,21 @@ fn compile_command(path: String) -> Result<(),Box<dyn Error>> {
     Ok(())
 }
 
+#[derive(Debug,Clone)]
+pub struct VariableMap {
+    _ident: String,
+    offset: usize,
+    size: usize,
+    is_mut: bool,
+}
+
 pub struct IRGenerator {
     blocks_buf: Vec<String>,
     static_var_buf: Vec<String>, 
+    scoped_blocks: Vec<usize>,
+    block_id: usize,
+    variables_map: HashMap<String,VariableMap>,
+    mem_offset: usize,
 }
 
 impl IRGenerator {
@@ -97,7 +110,47 @@ impl IRGenerator {
         Self {
             static_var_buf: Vec::new(),
             blocks_buf: Vec::new(),
+            scoped_blocks: Vec::new(),
+            block_id: 0,
+            variables_map: HashMap::new(),
+            mem_offset: 0
         }
+    }
+    
+    fn frame_size(&self) -> usize {
+        return 2 << self.mem_offset.ilog2() as usize;
+    }
+
+    pub fn find_variable(&self,ident: String) -> Option<VariableMap> {
+        for block_id in &self.scoped_blocks {
+            let map_ident = format!("{ident}%{}",block_id);
+            let map = self.variables_map.get(&map_ident);
+            if map.is_some() {
+                return Some(map.unwrap().clone());
+            }
+        }
+        return None;
+    }
+
+    pub fn insert_variable(&mut self, var: &VariableDeclare) {
+        let ident = format!("{}%{}",var.ident,self.block_id);
+        let var_map = VariableMap {
+            _ident: var.ident.clone(),
+            offset: self.mem_offset,
+            // TODO: Change size
+            size: 8,
+            is_mut: var.mutable
+        };
+        self.mem_offset += 8;
+        if var.init_value.is_some() {
+            let init_value = var.init_value.clone().unwrap();
+            // this pushes result in stack
+            self.compile_expr(&init_value);
+            let mem_acss = format!("qword [rbp-{}]",var_map.offset + var_map.size);
+            self.blocks_buf.push(asm!("pop rax"));
+            self.blocks_buf.push(asm!("mov {mem_acss},rax"));
+        }
+        self.variables_map.insert(ident,var_map);
     }
 
     // TODO: Handle Compilation Error
@@ -113,10 +166,23 @@ impl IRGenerator {
                     } else {
                         todo!();
                     }
-                    for stmt in f.block.stmts {
-                        self.compile_stmt(&stmt);
+                    // set rbp to stack pointer for this block
+                    let index_1 = self.blocks_buf.len();
+                    self.blocks_buf.push(String::new());
+                    let index_2 = self.blocks_buf.len();
+                    self.blocks_buf.push(String::new());
+                    let index_3 = self.blocks_buf.len();
+                    self.blocks_buf.push(String::new());
+                    
+                    self.compile_block(&f.block);
+                    // revert rbp
+                    if self.variables_map.len() > 0 {
+                        self.blocks_buf[index_1] = asm!("push rbp");
+                        self.blocks_buf[index_2] = asm!("mov rbp, rsp");
+                        self.blocks_buf[index_3] = asm!("sub rsp, {}",self.frame_size());
+                        self.blocks_buf.push(asm!("pop rbp"));
                     }
-
+                    // Call Exit Syscall
                     if f.ident == "main" {
                         self.blocks_buf.push(asm!("mov rax, 60"));
                         self.blocks_buf.push(asm!("mov rdi, 0"));
@@ -125,6 +191,9 @@ impl IRGenerator {
                 },
             }
         }
+        assert!(self.scoped_blocks.len() == 0, "Somting went wrong: Scope has not been cleared");
+        
+        //println!("{:?}",self.scoped_blocks);
         self.write_to_file()?;
         Ok(()) 
     }
@@ -143,9 +212,12 @@ impl IRGenerator {
     }
     
     fn compile_block(&mut self, block : &Block) {
+        self.block_id += 1;
+        self.scoped_blocks.push(self.block_id);
         for stmt in &block.stmts {
             self.compile_stmt(&stmt);
         }
+        self.scoped_blocks.pop().unwrap();
     }
 
     fn compile_if_stmt(&mut self, ifs: &IFStmt, exit_tag: usize) {
@@ -176,6 +248,9 @@ impl IRGenerator {
 
     fn compile_stmt(&mut self, stmt: &Stmt) {
         match stmt {
+            Stmt::VariableDecl(v) => {
+                self.insert_variable(v);
+            },
             Stmt::Print(e) => {
                 self.compile_expr(&e);
                 self.blocks_buf.push(asm!("pop rdi"));
@@ -184,9 +259,42 @@ impl IRGenerator {
             Stmt::If(ifs) => {
                 let exit_tag = self.blocks_buf.len();
                 self.compile_if_stmt(ifs,exit_tag);
+            },
+            Stmt::Assgin(a) => {
+                self.compile_assgin(a);
             }
             _ => {
                 todo!();
+            }
+        }
+    }
+
+    fn compile_assgin(&mut self, assign : &Assgin) {
+        match &assign.left {
+            Expr::Variable(v) => {
+                let Some(v_map) = self.find_variable(v.clone()) else {
+                    eprintln!("Error: Could not find variable {} in this scope",v.clone());
+                    exit(1);
+                };
+                if !v_map.is_mut {
+                    eprintln!("Error: Variable is not mutable. Did you forgot to define it with '=' insted of ':=' ?");
+                    exit(1);
+                }
+                match assign.op {
+                    parser::AssginOp::Eq => {
+                        self.compile_expr(&assign.right);
+                        let mem_acss = format!("qword [rbp-{}]",v_map.offset + v_map.size);
+                        self.blocks_buf.push(asm!("pop rax"));
+                        self.blocks_buf.push(asm!("mov {mem_acss},rax"));
+                    }
+                }
+            },
+            Expr::ArrayIndex(_) => {
+                todo!();
+            },
+            _ => {
+                eprintln!("Error: Expected a Variable type expression found Value");
+                exit(1);
             }
         }
     }
@@ -196,11 +304,21 @@ impl IRGenerator {
         // right = compile expr
         // +
         match expr {
+            Expr::Variable(v) => {
+                let Some(v_map) = self.find_variable(v.clone()) else {
+                    eprintln!("Error: Trying to access an Undifined variable ({v})");
+                    exit(1);
+                };
+                let mem_acss = format!("qword [rbp-{}]",v_map.offset + v_map.size);
+                self.blocks_buf.push(asm!("mov rax,{mem_acss}"));
+                self.blocks_buf.push(asm!("push rax"));
+            },
             Expr::Int(x) => {
                 // push x
                 self.blocks_buf.push(asm!("push {}",x));
             },
             Expr::Compare(c) => {
+                // TODO: Convert exprs to 0 or 1 and push into stack
                 self.compile_expr(c.left.as_ref());
                 self.compile_expr(c.right.as_ref());
                 self.blocks_buf.push(asm!("pop rax"));
