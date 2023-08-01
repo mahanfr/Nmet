@@ -1,0 +1,10 @@
+fun main() {
+    ~ calculating 2 in the power of 5
+    let a = 2;
+    let x = 5;
+    while x != 0 {
+        a = a * a;
+        x = x - 1;
+    }
+    print a;
+}
