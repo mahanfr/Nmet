@@ -1,14 +1,13 @@
-
 use std::{fmt::Display, process::exit};
 
-use crate::lexer::{TokenType, Lexer};
+use crate::lexer::{Lexer, TokenType};
 // -4 -> 4 neg
 // 4 + 2 -> 4 2 +
 // 4 * 3 + 6 -> 4 3 * 6 +
 // 4 + (3 + 6) -> 3 6 + 4 +
 // -(4 * cos(0) + 2 - 6) -> 4 cos(0) * 2 + 6 - neg
 
-#[derive(Debug,PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Op {
     Plus,
     Sub,
@@ -32,61 +31,60 @@ impl Op {
 }
 impl Display for Op {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-       match self {
-           Op::Plus => write!(f,"+"),
-           Op::Sub => write!(f,"-"),
-           Op::Multi => write!(f,"*"),
-           Op::Devide => write!(f,"/"),
-           Op::Not => write!(f,"!"),
-       } 
+        match self {
+            Op::Plus => write!(f, "+"),
+            Op::Sub => write!(f, "-"),
+            Op::Multi => write!(f, "*"),
+            Op::Devide => write!(f, "/"),
+            Op::Not => write!(f, "!"),
+        }
     }
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct StaticVariable {
     pub ident: String,
     pub value: Expr,
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct FunctionArg {
     pub ident: String,
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Function {
     pub ident: String,
     pub args: Vec<FunctionArg>,
     pub block: Block,
 }
 
-
-#[derive(Debug,PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct UnaryExpr {
     pub op: Op,
-    pub right: Box<Expr>
+    pub right: Box<Expr>,
 }
 
-#[derive(Debug,PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct BinaryExpr {
     pub left: Box<Expr>,
     pub op: Op,
-    pub right: Box<Expr>
+    pub right: Box<Expr>,
 }
 
-#[derive(Debug,PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct FunctionCall {
     pub ident: String,
     pub args: Vec<Expr>,
 }
 
-#[derive(Debug,PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ArrayIndex {
     pub ident: String,
     pub indexer: Box<Expr>,
 }
 
-#[derive(Debug,PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum CompareOp {
     NotEq,
     Eq,
@@ -111,14 +109,14 @@ impl CompareOp {
     }
 }
 
-#[derive(Debug,PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct CompareExpr {
     pub left: Box<Expr>,
     pub op: CompareOp,
     pub right: Box<Expr>,
 }
 
-#[derive(Debug,PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     Unary(UnaryExpr),
     Binary(BinaryExpr),
@@ -138,27 +136,30 @@ impl Expr {
 
     pub fn is_compare_op(t_token: TokenType) -> bool {
         match t_token {
-            TokenType::DoubleEq | TokenType::NotEq | 
-                TokenType::Bigger | TokenType::Smaller |
-                TokenType::BiggerEq | TokenType::SmallerEq => true,
+            TokenType::DoubleEq
+            | TokenType::NotEq
+            | TokenType::Bigger
+            | TokenType::Smaller
+            | TokenType::BiggerEq
+            | TokenType::SmallerEq => true,
             _ => false,
         }
     }
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub enum AssginOp {
     Eq,
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Assgin {
-    pub left : Expr,
+    pub left: Expr,
     pub right: Expr,
     pub op: AssginOp,
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub enum ElseBlock {
     Elif(IFStmt),
     Else(Block),
@@ -185,19 +186,16 @@ impl ElseBlock {
             _ => false,
         }
     }
-
 }
 
-
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct IFStmt {
     pub condition: Expr,
     pub then_block: Block,
     pub else_block: Box<ElseBlock>,
 }
 
-
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub enum Stmt {
     // expr
     Expr(Expr),
@@ -212,31 +210,31 @@ pub enum Stmt {
     Continue,
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct WhileStmt {
     pub condition: Expr,
     pub block: Block,
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Block {
     pub stmts: Vec<Stmt>,
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct VariableDeclare {
     pub mutable: bool,
     pub ident: String,
     pub init_value: Option<Expr>,
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub enum ProgramItem {
     Func(Function),
     StaticVar(StaticVariable),
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct ProgramFile {
     pub shebang: String,
     pub file_path: String,
@@ -252,26 +250,39 @@ pub fn expr(lexer: &mut Lexer) -> Expr {
             let op = Op::from_token_type(t_type);
             lexer.next_token();
             let right = term(lexer);
-            term_expr = Expr::Binary(BinaryExpr {left: Box::new(term_expr), op, right: Box::new(right)});
+            term_expr = Expr::Binary(BinaryExpr {
+                left: Box::new(term_expr),
+                op,
+                right: Box::new(right),
+            });
         } else if Expr::is_compare_op(t_type) {
             let op = CompareOp::from_token_type(lexer.get_token_type());
             lexer.next_token();
             let right = term(lexer);
-            term_expr = Expr::Compare(CompareExpr {left: Box::new(term_expr), op, right: Box::new(right)});
-        } 
-        else {break;}
+            term_expr = Expr::Compare(CompareExpr {
+                left: Box::new(term_expr),
+                op,
+                right: Box::new(right),
+            });
+        } else {
+            break;
+        }
     }
     return term_expr;
-} 
+}
 
 pub fn term(lexer: &mut Lexer) -> Expr {
     let mut left = factor(lexer);
-    while lexer.get_token_type() == TokenType::Multi || 
-        lexer.get_token_type() == TokenType::Devide {
+    while lexer.get_token_type() == TokenType::Multi || lexer.get_token_type() == TokenType::Devide
+    {
         let op = Op::from_token_type(lexer.get_token_type());
         lexer.next_token();
         let right = factor(lexer);
-        left = Expr::Binary(BinaryExpr {left: Box::new(left), op, right: Box::new(right)});
+        left = Expr::Binary(BinaryExpr {
+            left: Box::new(left),
+            op,
+            right: Box::new(right),
+        });
     }
     return left;
 }
@@ -283,17 +294,20 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
             let value = expr(lexer);
             lexer.match_token(TokenType::CParen);
             return value;
-        },
+        }
         TokenType::Plus | TokenType::Minus | TokenType::Not => {
-            let op = Op::from_token_type(lexer.get_token_type()); 
+            let op = Op::from_token_type(lexer.get_token_type());
             lexer.next_token();
             let value = factor(lexer);
-            return Expr::Unary(UnaryExpr{op, right: Box::new(value)});
-        },
+            return Expr::Unary(UnaryExpr {
+                op,
+                right: Box::new(value),
+            });
+        }
         TokenType::Int(val) => {
             lexer.next_token();
             return Expr::Int(val);
-        },
+        }
         TokenType::Identifier => {
             let ident_name = lexer.get_token().unwrap().literal;
             if lexer.next_token().is_none() {
@@ -302,23 +316,29 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
             match lexer.get_token_type() {
                 TokenType::OParen => {
                     let args = function_call_args(lexer);
-                    return Expr::FunctionCall(FunctionCall{ident: ident_name, args});
-                },
+                    return Expr::FunctionCall(FunctionCall {
+                        ident: ident_name,
+                        args,
+                    });
+                }
                 TokenType::OBracket => {
                     let indexer = array_indexer(lexer);
-                    return Expr::ArrayIndex(
-                        ArrayIndex {
-                            ident: ident_name, 
-                            indexer: Box::new(indexer)
-                        });
-                },
+                    return Expr::ArrayIndex(ArrayIndex {
+                        ident: ident_name,
+                        indexer: Box::new(indexer),
+                    });
+                }
                 _ => {
                     return Expr::Variable(ident_name);
                 }
             }
         }
         _ => {
-            eprintln!("Unexpected Token ({:?}) while parsing expr at {}",lexer.get_token_type(),lexer.get_loc_string());
+            eprintln!(
+                "Unexpected Token ({:?}) while parsing expr at {}",
+                lexer.get_token_type(),
+                lexer.get_loc_string()
+            );
             exit(-1);
         }
     }
@@ -335,12 +355,12 @@ pub fn function_call_args(lexer: &mut Lexer) -> Vec<Expr> {
     let mut args = Vec::<Expr>::new();
     lexer.match_token(TokenType::OParen);
     loop {
-         //|| | expr | expr , expr
+        //|| | expr | expr , expr
         match lexer.get_token_type() {
             TokenType::CParen => {
                 lexer.match_token(TokenType::CParen);
                 break;
-            },
+            }
             _ => {
                 args.push(expr(lexer));
                 if lexer.get_token_type() == TokenType::Comma {
@@ -354,10 +374,13 @@ pub fn function_call_args(lexer: &mut Lexer) -> Vec<Expr> {
 
 pub fn function_def(lexer: &mut Lexer) -> Function {
     lexer.match_token(TokenType::Fun);
-    let Some(function_ident_token) = lexer.get_token() else {
-        eprintln!("Function Defenition without Identifier at {}",lexer.get_loc_string());
+    let function_ident_token = lexer.get_token().unwrap_or_else(|| {
+        eprintln!(
+            "Function Defenition without Identifier at {}",
+            lexer.get_loc_string()
+        );
         exit(-1);
-    };
+    });
     lexer.match_token(TokenType::Identifier);
     let args = function_def_args(lexer);
     let block = block(lexer);
@@ -365,7 +388,7 @@ pub fn function_def(lexer: &mut Lexer) -> Function {
         ident: function_ident_token.literal.to_string(),
         args,
         block,
-    }
+    };
 }
 
 /*
@@ -381,13 +404,25 @@ pub fn if_stmt(lexer: &mut Lexer) -> IFStmt {
         lexer.match_token(TokenType::Else);
         if lexer.get_token_type() == TokenType::If {
             let else_block = Box::new(ElseBlock::Elif(if_stmt(lexer)));
-            return IFStmt {condition, then_block, else_block};
+            return IFStmt {
+                condition,
+                then_block,
+                else_block,
+            };
         } else {
             let else_block = Box::new(ElseBlock::Else(block(lexer)));
-            return IFStmt {condition, then_block, else_block};
+            return IFStmt {
+                condition,
+                then_block,
+                else_block,
+            };
         }
     } else {
-        return IFStmt {condition, then_block, else_block: Box::new(ElseBlock::None)};
+        return IFStmt {
+            condition,
+            then_block,
+            else_block: Box::new(ElseBlock::None),
+        };
     }
 }
 
@@ -395,46 +430,48 @@ pub fn while_stmt(lexer: &mut Lexer) -> WhileStmt {
     lexer.match_token(TokenType::While);
     let condition = expr(lexer);
     let block = block(lexer);
-    return WhileStmt{condition,block};
+    return WhileStmt { condition, block };
 }
 
 pub fn block(lexer: &mut Lexer) -> Block {
     lexer.match_token(TokenType::OCurly);
     let mut stmts = Vec::<Stmt>::new();
     loop {
-        if lexer.get_token_type() == TokenType::CCurly { break; }
+        if lexer.get_token_type() == TokenType::CCurly {
+            break;
+        }
         match lexer.get_token_type() {
             TokenType::Let => {
                 stmts.push(variable_declare(lexer));
                 lexer.match_token(TokenType::SemiColon);
-            },
+            }
             TokenType::Print => {
                 lexer.match_token(TokenType::Print);
                 let expr = expr(lexer);
                 stmts.push(Stmt::Print(expr));
                 lexer.match_token(TokenType::SemiColon);
-            },
+            }
             TokenType::Break => {
                 lexer.match_token(TokenType::Break);
                 stmts.push(Stmt::Break);
                 lexer.match_token(TokenType::SemiColon);
-            },
+            }
             TokenType::Continue => {
                 lexer.match_token(TokenType::Continue);
                 stmts.push(Stmt::Continue);
                 lexer.match_token(TokenType::SemiColon);
-            },
+            }
             TokenType::If => {
                 stmts.push(Stmt::If(if_stmt(lexer)));
-            },
+            }
             TokenType::While => {
                 stmts.push(Stmt::While(while_stmt(lexer)));
-            },
+            }
             TokenType::Return => {
                 lexer.match_token(TokenType::Return);
                 stmts.push(Stmt::Return(expr(lexer)));
                 lexer.match_token(TokenType::SemiColon);
-            },
+            }
             _ => {
                 let left_expr = expr(lexer);
                 match lexer.get_token_type() {
@@ -446,12 +483,12 @@ pub fn block(lexer: &mut Lexer) -> Block {
                             right: right_expr,
                             op: AssginOp::Eq,
                         }));
-                    },
+                    }
                     TokenType::SemiColon => {
                         stmts.push(Stmt::Expr(left_expr));
-                    },
+                    }
                     _ => {
-                        eprintln!("Error: Expected Semicolon at {}",lexer.get_loc_string());
+                        eprintln!("Error: Expected Semicolon at {}", lexer.get_loc_string());
                         exit(-1);
                     }
                 }
@@ -460,41 +497,41 @@ pub fn block(lexer: &mut Lexer) -> Block {
         }
     }
     lexer.match_token(TokenType::CCurly);
-    return Block{stmts}
+    return Block { stmts };
 }
 
 pub fn variable_declare(lexer: &mut Lexer) -> Stmt {
-   lexer.match_token(TokenType::Let);
-   let ident_token = lexer.get_token().unwrap();
-   lexer.match_token(TokenType::Identifier);
-   let mut is_mutable: bool = true;
-   let mut init_value: Option<Expr> = None;
-   match lexer.get_token_type() {
+    lexer.match_token(TokenType::Let);
+    let ident_token = lexer.get_token().unwrap();
+    lexer.match_token(TokenType::Identifier);
+    let mut is_mutable: bool = true;
+    let mut init_value: Option<Expr> = None;
+    match lexer.get_token_type() {
         TokenType::ColonEq => {
             is_mutable = false;
             lexer.match_token(TokenType::ColonEq);
             init_value = Some(expr(lexer));
-        },
+        }
         TokenType::Eq => {
             is_mutable = true;
             lexer.match_token(TokenType::Eq);
             init_value = Some(expr(lexer));
-        },
-        TokenType::SemiColon => {},
+        }
+        TokenType::SemiColon => {}
         _ => {
-            eprintln!("Error: Expected \"=\" or \":=\" found ({:?}) at {}",
+            eprintln!(
+                "Error: Expected \"=\" or \":=\" found ({:?}) at {}",
                 lexer.get_token_type(),
                 lexer.get_loc_string()
             );
             exit(-1);
         }
-   }
-   return Stmt::VariableDecl(VariableDeclare {
-       mutable: is_mutable,
-       ident: ident_token.literal,
-       init_value
-   });
-
+    }
+    return Stmt::VariableDecl(VariableDeclare {
+        mutable: is_mutable,
+        ident: ident_token.literal,
+        init_value,
+    });
 }
 
 pub fn function_def_args(lexer: &mut Lexer) -> Vec<FunctionArg> {
@@ -505,17 +542,23 @@ pub fn function_def_args(lexer: &mut Lexer) -> Vec<FunctionArg> {
             TokenType::CParen => {
                 lexer.match_token(TokenType::CParen);
                 break;
-            },
+            }
             TokenType::Identifier => {
                 let ident = lexer.get_token().unwrap().literal;
-                args.push(FunctionArg{ident: ident.to_string()});
+                args.push(FunctionArg {
+                    ident: ident.to_string(),
+                });
                 lexer.match_token(TokenType::Identifier);
                 if lexer.get_token_type() == TokenType::Comma {
                     lexer.match_token(TokenType::Comma);
                 }
-            },
+            }
             _ => {
-                eprintln!("Error: Expected Identifier found ({:?}) at {}",lexer.get_token_type(),lexer.get_loc_string());
+                eprintln!(
+                    "Error: Expected Identifier found ({:?}) at {}",
+                    lexer.get_token_type(),
+                    lexer.get_loc_string()
+                );
                 exit(-1);
             }
         }
@@ -525,31 +568,40 @@ pub fn function_def_args(lexer: &mut Lexer) -> Vec<FunctionArg> {
 
 pub fn static_variable_def(lexer: &mut Lexer) -> StaticVariable {
     lexer.match_token(TokenType::Let);
-    let Some(ident_token) = lexer.get_token() else {
-        eprintln!("Error: Expected Identifier found Eof at {}",lexer.get_loc_string());
+    let ident_token = lexer.get_token().unwrap_or_else(|| {
+        eprintln!(
+            "Error: Expected Identifier found Eof at {}",
+            lexer.get_loc_string()
+        );
         exit(-1);
-    };
+    });
     lexer.match_token(TokenType::Identifier);
     lexer.match_token(TokenType::DoubleColon);
     let expr = expr(lexer);
     lexer.match_token(TokenType::SemiColon);
-    return StaticVariable {ident: ident_token.literal, value: expr};
+    return StaticVariable {
+        ident: ident_token.literal,
+        value: expr,
+    };
 }
 
 pub fn program(lexer: &mut Lexer) -> ProgramFile {
     lexer.next_token();
     let mut items = Vec::<ProgramItem>::new();
     loop {
-        if lexer.get_token().is_none() { break; }
+        if lexer.get_token().is_none() {
+            break;
+        }
         match lexer.get_token_type() {
             TokenType::Fun => {
                 items.push(ProgramItem::Func(function_def(lexer)));
-            },
+            }
             TokenType::Let => {
                 items.push(ProgramItem::StaticVar(static_variable_def(lexer)));
-            },
+            }
             _ => {
-                eprintln!("Error: Unexpected Token ({:?}) for top level program at {}",
+                eprintln!(
+                    "Error: Unexpected Token ({:?}) for top level program at {}",
                     lexer.get_token_type(),
                     lexer.get_loc_string()
                 );
@@ -557,10 +609,9 @@ pub fn program(lexer: &mut Lexer) -> ProgramFile {
             }
         }
     }
-    return ProgramFile{
+    return ProgramFile {
         shebang: String::new(),
         file_path: lexer.file_path.clone(),
         items,
-    }
+    };
 }
-
