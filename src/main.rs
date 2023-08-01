@@ -230,7 +230,10 @@ impl IRGenerator {
             ElseBlock::None => exit_tag,
             _ => self.blocks_buf.len(),
         };
-        self.blocks_buf.push(asm!("jne .L{}", next_tag));
+        self.blocks_buf.push(asm!("pop rax"));
+        self.blocks_buf.push(asm!("test rax, rax"));
+        self.blocks_buf.push(asm!("jz .L{}",next_tag));
+        
         self.compile_block(&ifs.then_block);
         match ifs.else_block.as_ref() {
             ElseBlock::None => {
@@ -283,9 +286,11 @@ impl IRGenerator {
         self.blocks_buf.push(asm!(".L{}:",block_tag));
         self.compile_block(&w_stmt.block);
         self.blocks_buf.push(asm!(".L{}:",cond_tag));
+        // Jump after a compare
         self.compile_expr(&w_stmt.condition);
-        // TODO: Change This
-        self.blocks_buf.push(asm!("jne .L{}",block_tag));
+        self.blocks_buf.push(asm!("pop rax"));
+        self.blocks_buf.push(asm!("test rax, rax"));
+        self.blocks_buf.push(asm!("jnz .L{}",block_tag));
     }
 
     fn compile_assgin(&mut self, assign: &Assgin) {
@@ -340,9 +345,32 @@ impl IRGenerator {
                 // TODO: Convert exprs to 0 or 1 and push into stack
                 self.compile_expr(c.left.as_ref());
                 self.compile_expr(c.right.as_ref());
-                self.blocks_buf.push(asm!("pop rax"));
+                self.blocks_buf.push(asm!("mov rcx, 0"));
+                self.blocks_buf.push(asm!("mov rdx, 1"));
                 self.blocks_buf.push(asm!("pop rbx"));
+                self.blocks_buf.push(asm!("pop rax"));
                 self.blocks_buf.push(asm!("cmp rax, rbx"));
+                match c.op {
+                    parser::CompareOp::Eq => {
+                        self.blocks_buf.push(asm!("cmove rcx, rdx"));
+                    }
+                    parser::CompareOp::NotEq => {
+                        self.blocks_buf.push(asm!("cmovne rcx, rdx"));
+                    }
+                    parser::CompareOp::Bigger => {
+                        self.blocks_buf.push(asm!("cmovg rcx, rdx"));
+                    }
+                    parser::CompareOp::Smaller => {
+                        self.blocks_buf.push(asm!("cmovl rcx, rdx"));
+                    }
+                    parser::CompareOp::BiggerEq => {
+                        self.blocks_buf.push(asm!("cmovge rcx, rdx"));
+                    }
+                    parser::CompareOp::SmallerEq => {
+                        self.blocks_buf.push(asm!("cmovle rcx, rdx"));
+                    }
+                }
+                self.blocks_buf.push(asm!("push rcx"));
             }
             Expr::Binary(b) => {
                 self.compile_expr(b.left.as_ref());
