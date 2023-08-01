@@ -10,7 +10,7 @@ mod parser;
 use lexer::Lexer;
 use parser::{
     Assgin, Block, ElseBlock, Expr, IFStmt, ProgramFile, ProgramItem, StaticVariable, Stmt,
-    VariableDeclare,
+    VariableDeclare, WhileStmt,
 };
 
 use crate::parser::program;
@@ -267,10 +267,25 @@ impl IRGenerator {
             Stmt::Assgin(a) => {
                 self.compile_assgin(a);
             }
+            Stmt::While(w) => {
+                self.compile_while(w);
+            }
             _ => {
                 todo!();
             }
         }
+    }
+
+    fn compile_while(&mut self, w_stmt: &WhileStmt) {
+        let cond_tag = self.blocks_buf.len();
+        self.blocks_buf.push(asm!("jmp .L{}",cond_tag));
+        let block_tag = cond_tag + 1;
+        self.blocks_buf.push(asm!(".L{}:",block_tag));
+        self.compile_block(&w_stmt.block);
+        self.blocks_buf.push(asm!(".L{}:",cond_tag));
+        self.compile_expr(&w_stmt.condition);
+        // TODO: Change This
+        self.blocks_buf.push(asm!("jne .L{}",block_tag));
     }
 
     fn compile_assgin(&mut self, assign: &Assgin) {
@@ -340,8 +355,8 @@ impl IRGenerator {
                         self.blocks_buf.push(asm!("push rax"));
                     }
                     parser::Op::Sub => {
-                        self.blocks_buf.push(asm!("sub rax, rbx"));
-                        self.blocks_buf.push(asm!("push rax"));
+                        self.blocks_buf.push(asm!("sub rbx, rax"));
+                        self.blocks_buf.push(asm!("push rbx"));
                     }
                     parser::Op::Multi => {
                         self.blocks_buf.push(asm!("imul rax, rbx"));
