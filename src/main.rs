@@ -1,41 +1,43 @@
 use std::collections::HashMap;
-use std::io::{BufWriter, Write};
-use std::process::{Command, exit};
+use std::env::args;
 use std::error::Error;
 use std::fs::{self, File};
-use std::env::args;
+use std::io::{BufWriter, Write};
+use std::process::{exit, Command};
 
 mod lexer;
 mod parser;
 use lexer::Lexer;
-use parser::{ProgramFile, ProgramItem, StaticVariable, Expr, Stmt, IFStmt, Block, ElseBlock, VariableDeclare, Assgin};
+use parser::{
+    Assgin, Block, ElseBlock, Expr, IFStmt, ProgramFile, ProgramItem, StaticVariable, Stmt,
+    VariableDeclare,
+};
 
 use crate::parser::program;
 
 // --- Static Compiler Defenition
-static VERSION : &'static str = "v0.0.1-Beta";
-static COPYRIGHT : &'static str = "Mahan Farzaneh 2023-2024";
-static DEBUG : bool = true;
-
+static VERSION: &'static str = "v0.0.1-Beta";
+static COPYRIGHT: &'static str = "Mahan Farzaneh 2023-2024";
+static DEBUG: bool = true;
 
 // struct AsmInBlock {
-//     
+//
 // }
-// 
+//
 // enum AsmOp {
 //     Block(AsmInBlock),
 //     Jump(String),
 //     JumpNotEq(String),
 //     JumpEq(String),
 // }
-// 
+//
 // struct AsmVariable {
 //     // TODO: type
 //     ident: String,
 //     offset: usize,
-//     size: usize, 
+//     size: usize,
 // }
-// 
+//
 // struct FuncAsmBlock {
 //     tag: String,
 //     ops: Vec<AsmOp>,
@@ -45,23 +47,22 @@ static DEBUG : bool = true;
 //     // TODO: frame size
 // }
 
-
 macro_rules! asm {
     ($($arg:tt)+) => (
         format!("    {}\n",format_args!($($arg)+))
     );
 }
 
-fn padding_right(str : &str) -> String {
+fn padding_right(str: &str) -> String {
     let mut text = String::with_capacity(20);
     text.push_str(str);
-    for _ in 0..(20-str.len()) {
-       text.push(' '); 
+    for _ in 0..(20 - str.len()) {
+        text.push(' ');
     }
     text
 }
 
-fn help_command() -> Result<(),Box<dyn Error>> {
+fn help_command() -> Result<(), Box<dyn Error>> {
     println!("Nemet {VERSION}");
     println!("Nemet Programmin Language Copyright: {COPYRIGHT}");
     println!("Project distributed Under MIT License");
@@ -70,24 +71,23 @@ fn help_command() -> Result<(),Box<dyn Error>> {
     }
     println!("\nnemet [Command] <path> (Options)");
     println!("Commands:");
-    println!("\t{} Show help",padding_right("help"));
+    println!("\t{} Show help", padding_right("help"));
     println!("Options:");
-    println!("\t{} Show help",padding_right("--help"));
-    println!("\t{} Show Version",padding_right("--version"));
+    println!("\t{} Show help", padding_right("--help"));
+    println!("\t{} Show Version", padding_right("--version"));
     Ok(())
 }
 
-fn compile_command(path: String) -> Result<(),Box<dyn Error>> {
-    let source = fs::read_to_string(path.clone())
-        .expect("Can not Read the file");
-    let mut lexer = Lexer::new(String::new(),source.to_string());
+fn compile_command(path: String) -> Result<(), Box<dyn Error>> {
+    let source = fs::read_to_string(path.clone()).expect("Can not Read the file");
+    let mut lexer = Lexer::new(String::new(), source.to_string());
     let mut ir_gen = IRGenerator::new();
     ir_gen.compile(program(&mut lexer))?;
     compile_to_exc()?;
     Ok(())
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct VariableMap {
     _ident: String,
     offset: usize,
@@ -97,10 +97,10 @@ pub struct VariableMap {
 
 pub struct IRGenerator {
     blocks_buf: Vec<String>,
-    static_var_buf: Vec<String>, 
+    static_var_buf: Vec<String>,
     scoped_blocks: Vec<usize>,
     block_id: usize,
-    variables_map: HashMap<String,VariableMap>,
+    variables_map: HashMap<String, VariableMap>,
     mem_offset: usize,
 }
 
@@ -113,17 +113,17 @@ impl IRGenerator {
             scoped_blocks: Vec::new(),
             block_id: 0,
             variables_map: HashMap::new(),
-            mem_offset: 0
+            mem_offset: 0,
         }
     }
-    
+
     fn frame_size(&self) -> usize {
         return 2 << self.mem_offset.ilog2() as usize;
     }
 
-    pub fn find_variable(&self,ident: String) -> Option<VariableMap> {
+    pub fn find_variable(&self, ident: String) -> Option<VariableMap> {
         for block_id in &self.scoped_blocks {
-            let map_ident = format!("{ident}%{}",block_id);
+            let map_ident = format!("{ident}%{}", block_id);
             let map = self.variables_map.get(&map_ident);
             if map.is_some() {
                 return Some(map.unwrap().clone());
@@ -133,33 +133,33 @@ impl IRGenerator {
     }
 
     pub fn insert_variable(&mut self, var: &VariableDeclare) {
-        let ident = format!("{}%{}",var.ident,self.block_id);
+        let ident = format!("{}%{}", var.ident, self.block_id);
         let var_map = VariableMap {
             _ident: var.ident.clone(),
             offset: self.mem_offset,
             // TODO: Change size
             size: 8,
-            is_mut: var.mutable
+            is_mut: var.mutable,
         };
         self.mem_offset += 8;
         if var.init_value.is_some() {
             let init_value = var.init_value.clone().unwrap();
             // this pushes result in stack
             self.compile_expr(&init_value);
-            let mem_acss = format!("qword [rbp-{}]",var_map.offset + var_map.size);
+            let mem_acss = format!("qword [rbp-{}]", var_map.offset + var_map.size);
             self.blocks_buf.push(asm!("pop rax"));
             self.blocks_buf.push(asm!("mov {mem_acss},rax"));
         }
-        self.variables_map.insert(ident,var_map);
+        self.variables_map.insert(ident, var_map);
     }
 
     // TODO: Handle Compilation Error
-    pub fn compile(&mut self, program: ProgramFile) -> Result<(),Box<dyn Error>> {
+    pub fn compile(&mut self, program: ProgramFile) -> Result<(), Box<dyn Error>> {
         for item in program.items {
             match item {
                 ProgramItem::StaticVar(s) => {
                     self.compile_static_var(s);
-                },
+                }
                 ProgramItem::Func(f) => {
                     if f.ident == "main" {
                         self.blocks_buf.push("_start:\n".to_string());
@@ -173,13 +173,13 @@ impl IRGenerator {
                     self.blocks_buf.push(String::new());
                     let index_3 = self.blocks_buf.len();
                     self.blocks_buf.push(String::new());
-                    
+
                     self.compile_block(&f.block);
                     // revert rbp
                     if self.variables_map.len() > 0 {
                         self.blocks_buf[index_1] = asm!("push rbp");
                         self.blocks_buf[index_2] = asm!("mov rbp, rsp");
-                        self.blocks_buf[index_3] = asm!("sub rsp, {}",self.frame_size());
+                        self.blocks_buf[index_3] = asm!("sub rsp, {}", self.frame_size());
                         self.blocks_buf.push(asm!("pop rbp"));
                     }
                     // Call Exit Syscall
@@ -188,30 +188,34 @@ impl IRGenerator {
                         self.blocks_buf.push(asm!("mov rdi, 0"));
                         self.blocks_buf.push(asm!("syscall"));
                     }
-                },
+                }
             }
         }
-        assert!(self.scoped_blocks.len() == 0, "Somting went wrong: Scope has not been cleared");
-        
+        assert!(
+            self.scoped_blocks.len() == 0,
+            "Somting went wrong: Scope has not been cleared"
+        );
+
         //println!("{:?}",self.scoped_blocks);
         self.write_to_file()?;
-        Ok(()) 
+        Ok(())
     }
 
-    fn compile_static_var(&mut self,stat_v: StaticVariable) {
+    fn compile_static_var(&mut self, stat_v: StaticVariable) {
         if self.static_var_buf.len() == 0 {
             self.static_var_buf.push("section .data\n".to_string());
         }
-        let value = match stat_v.value{
+        let value = match stat_v.value {
             Expr::Int(x) => x.to_string(),
             _ => {
                 todo!()
             }
         };
-        self.static_var_buf.push(format!("{} db {}\n",stat_v.ident,value));
+        self.static_var_buf
+            .push(format!("{} db {}\n", stat_v.ident, value));
     }
-    
-    fn compile_block(&mut self, block : &Block) {
+
+    fn compile_block(&mut self, block: &Block) {
         self.block_id += 1;
         self.scoped_blocks.push(self.block_id);
         for stmt in &block.stmts {
@@ -224,24 +228,24 @@ impl IRGenerator {
         self.compile_expr(&ifs.condition);
         let next_tag = match ifs.else_block.as_ref() {
             ElseBlock::None => exit_tag,
-            _ => self.blocks_buf.len()
+            _ => self.blocks_buf.len(),
         };
         self.blocks_buf.push(asm!("jne .L{}", next_tag));
         self.compile_block(&ifs.then_block);
         match ifs.else_block.as_ref() {
             ElseBlock::None => {
-                self.blocks_buf.push(asm!(".L{}:",next_tag));
-            },
+                self.blocks_buf.push(asm!(".L{}:", next_tag));
+            }
             ElseBlock::Else(b) => {
-                self.blocks_buf.push(asm!("jmp .L{}",exit_tag));
-                self.blocks_buf.push(asm!(".L{}:",next_tag));
+                self.blocks_buf.push(asm!("jmp .L{}", exit_tag));
+                self.blocks_buf.push(asm!(".L{}:", next_tag));
                 self.compile_block(&b);
-                self.blocks_buf.push(asm!(".L{}:",exit_tag));
-            },
+                self.blocks_buf.push(asm!(".L{}:", exit_tag));
+            }
             ElseBlock::Elif(iff) => {
-                self.blocks_buf.push(asm!("jmp .L{}",exit_tag));
-                self.blocks_buf.push(asm!(".L{}:",next_tag));
-                self.compile_if_stmt(iff,exit_tag);
+                self.blocks_buf.push(asm!("jmp .L{}", exit_tag));
+                self.blocks_buf.push(asm!(".L{}:", next_tag));
+                self.compile_if_stmt(iff, exit_tag);
             }
         }
     }
@@ -250,16 +254,16 @@ impl IRGenerator {
         match stmt {
             Stmt::VariableDecl(v) => {
                 self.insert_variable(v);
-            },
+            }
             Stmt::Print(e) => {
                 self.compile_expr(&e);
                 self.blocks_buf.push(asm!("pop rdi"));
                 self.blocks_buf.push(asm!("call print"));
-            },
+            }
             Stmt::If(ifs) => {
                 let exit_tag = self.blocks_buf.len();
-                self.compile_if_stmt(ifs,exit_tag);
-            },
+                self.compile_if_stmt(ifs, exit_tag);
+            }
             Stmt::Assgin(a) => {
                 self.compile_assgin(a);
             }
@@ -269,13 +273,13 @@ impl IRGenerator {
         }
     }
 
-    fn compile_assgin(&mut self, assign : &Assgin) {
+    fn compile_assgin(&mut self, assign: &Assgin) {
         match &assign.left {
             Expr::Variable(v) => {
-                let Some(v_map) = self.find_variable(v.clone()) else {
-                    eprintln!("Error: Could not find variable {} in this scope",v.clone());
+                let v_map = self.find_variable(v.clone()).unwrap_or_else(|| {
+                    eprintln!("Error: Could not find variable {} in this scope", v.clone());
                     exit(1);
-                };
+                });
                 if !v_map.is_mut {
                     eprintln!("Error: Variable is not mutable. Did you forgot to define it with '=' insted of ':=' ?");
                     exit(1);
@@ -283,15 +287,15 @@ impl IRGenerator {
                 match assign.op {
                     parser::AssginOp::Eq => {
                         self.compile_expr(&assign.right);
-                        let mem_acss = format!("qword [rbp-{}]",v_map.offset + v_map.size);
+                        let mem_acss = format!("qword [rbp-{}]", v_map.offset + v_map.size);
                         self.blocks_buf.push(asm!("pop rax"));
                         self.blocks_buf.push(asm!("mov {mem_acss},rax"));
                     }
                 }
-            },
+            }
             Expr::ArrayIndex(_) => {
                 todo!();
-            },
+            }
             _ => {
                 eprintln!("Error: Expected a Variable type expression found Value");
                 exit(1);
@@ -305,18 +309,18 @@ impl IRGenerator {
         // +
         match expr {
             Expr::Variable(v) => {
-                let Some(v_map) = self.find_variable(v.clone()) else {
+                let v_map = self.find_variable(v.clone()).unwrap_or_else(|| {
                     eprintln!("Error: Trying to access an Undifined variable ({v})");
                     exit(1);
-                };
-                let mem_acss = format!("qword [rbp-{}]",v_map.offset + v_map.size);
+                });
+                let mem_acss = format!("qword [rbp-{}]", v_map.offset + v_map.size);
                 self.blocks_buf.push(asm!("mov rax,{mem_acss}"));
                 self.blocks_buf.push(asm!("push rax"));
-            },
+            }
             Expr::Int(x) => {
                 // push x
-                self.blocks_buf.push(asm!("push {}",x));
-            },
+                self.blocks_buf.push(asm!("push {}", x));
+            }
             Expr::Compare(c) => {
                 // TODO: Convert exprs to 0 or 1 and push into stack
                 self.compile_expr(c.left.as_ref());
@@ -324,7 +328,7 @@ impl IRGenerator {
                 self.blocks_buf.push(asm!("pop rax"));
                 self.blocks_buf.push(asm!("pop rbx"));
                 self.blocks_buf.push(asm!("cmp rax, rbx"));
-            },
+            }
             Expr::Binary(b) => {
                 self.compile_expr(b.left.as_ref());
                 self.compile_expr(b.right.as_ref());
@@ -334,24 +338,24 @@ impl IRGenerator {
                     parser::Op::Plus => {
                         self.blocks_buf.push(asm!("add rax, rbx"));
                         self.blocks_buf.push(asm!("push rax"));
-                    },
+                    }
                     parser::Op::Sub => {
                         self.blocks_buf.push(asm!("sub rax, rbx"));
                         self.blocks_buf.push(asm!("push rax"));
-                    },
+                    }
                     parser::Op::Multi => {
                         self.blocks_buf.push(asm!("imul rax, rbx"));
                         self.blocks_buf.push(asm!("push rax"));
-                    },
+                    }
                     parser::Op::Devide => {
                         todo!();
-                    },
+                    }
                     _ => unreachable!(),
                 }
-            },
+            }
             Expr::Unary(_) => {
                 todo!();
-            },
+            }
             _ => {
                 todo!();
             }
@@ -367,7 +371,7 @@ impl IRGenerator {
         file.write(b";; This File is Automatically Created Useing Nemet Parser\n")?;
         file.write(b";; Under MIT License Copyright MahanFarzaneh 2023-2024\n\n")?;
         for line in &self.static_var_buf {
-             file.write(line.as_bytes())?;
+            file.write(line.as_bytes())?;
         }
         file.write(b"\n")?;
         // TODO: Add this to the section related
@@ -429,10 +433,9 @@ impl IRGenerator {
         file.flush().unwrap();
         Ok(())
     }
-
 }
 
-pub fn compile_to_exc() -> Result<(),Box<dyn Error>> {
+pub fn compile_to_exc() -> Result<(), Box<dyn Error>> {
     println!("[info] Assembling for elf64 - generaiting output.o");
     let nasm_output = Command::new("nasm")
         .arg("-felf64")
@@ -443,7 +446,7 @@ pub fn compile_to_exc() -> Result<(),Box<dyn Error>> {
         .expect("Can not run nasm command! do you have nasm installed?");
     if !nasm_output.status.success() {
         println!("[error] Failed to Assemble: Status code non zero");
-        println!("{}",String::from_utf8(nasm_output.stderr)?);
+        println!("{}", String::from_utf8(nasm_output.stderr)?);
     }
     println!("[info] Linking object file...");
     let linker_output = Command::new("ld")
@@ -454,7 +457,7 @@ pub fn compile_to_exc() -> Result<(),Box<dyn Error>> {
         .expect("Can not link using ld command!");
     if !linker_output.status.success() {
         println!("[error] Failed to Assemble: Status code non zero");
-        println!("{}",String::from_utf8(linker_output.stderr)?);
+        println!("{}", String::from_utf8(linker_output.stderr)?);
     }
     println!("[sucsees] Executable File Has been Generated!");
     // println!("+ Running The Generated Executable");
@@ -465,30 +468,31 @@ pub fn compile_to_exc() -> Result<(),Box<dyn Error>> {
     Ok(())
 }
 
-fn main() -> Result<(),Box<dyn Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
     let mut arg = args();
     arg.next();
     loop {
-        let Some(command) = arg.next() else {
+        if let Some(command) = arg.next() {
+            match command.as_str() {
+                "help" => {
+                    help_command()?;
+                    return Ok(());
+                }
+                "--help" => {
+                    help_command()?;
+                    return Ok(());
+                }
+                "--version" => {
+                    println!("{VERSION}");
+                    return Ok(());
+                }
+                _ => {
+                    compile_command(command.clone())?;
+                    return Ok(());
+                }
+            }
+        }else {
             break;
-        };
-        match command.as_str() {
-            "help" => {
-                help_command()?;
-                return Ok(());
-            },
-            "--help" => {
-                help_command()?;
-                return Ok(());
-            },
-            "--version" => {
-                println!("{VERSION}");
-                return Ok(());
-            },
-            _ => {
-                compile_command(command.clone())?;
-                return Ok(());
-            },
         }
     }
     Ok(())
