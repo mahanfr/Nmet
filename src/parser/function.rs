@@ -11,4 +11,3 @@ pub struct Function {
     pub args: Vec<FunctionArg>,
     pub block: Block,
 }
-

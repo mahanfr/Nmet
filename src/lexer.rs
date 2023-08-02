@@ -362,10 +362,10 @@ impl Lexer {
                     if let Some(dtt) = Self::is_double_char_token(first, next) {
                         self.drop();
                         return Some(Token::new(
-                                dtt,
-                                String::from_iter(vec![first, next]),
-                                self.get_loc(),
-                                ));
+                            dtt,
+                            String::from_iter(vec![first, next]),
+                            self.get_loc(),
+                        ));
                     }
                 }
             }

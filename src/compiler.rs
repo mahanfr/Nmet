@@ -5,9 +5,9 @@ use std::io::{BufWriter, Write};
 use std::process::exit;
 
 use crate::parser::block::Block;
-use crate::parser::expr::{Expr, CompareOp, Op};
+use crate::parser::expr::{CompareOp, Expr, Op};
 use crate::parser::program::{ProgramFile, ProgramItem, StaticVariable};
-use crate::parser::stmt::{VariableDeclare, IFStmt, ElseBlock, Stmt, WhileStmt, Assgin, AssginOp};
+use crate::parser::stmt::{Assgin, AssginOp, ElseBlock, IFStmt, Stmt, VariableDeclare, WhileStmt};
 
 macro_rules! asm {
     ($($arg:tt)+) => (
@@ -54,7 +54,7 @@ impl IRGenerator {
             let map_ident = format!("{ident}%{}", block_id);
             let map = self.variables_map.get(&map_ident);
             if let Some(map) = map {
-                return Some(map.clone())
+                return Some(map.clone());
             }
         }
         None
@@ -160,8 +160,8 @@ impl IRGenerator {
         };
         self.blocks_buf.push(asm!("pop rax"));
         self.blocks_buf.push(asm!("test rax, rax"));
-        self.blocks_buf.push(asm!("jz .L{}",next_tag));
-        
+        self.blocks_buf.push(asm!("jz .L{}", next_tag));
+
         self.compile_block(&ifs.then_block);
         match ifs.else_block.as_ref() {
             ElseBlock::None => {
@@ -209,16 +209,16 @@ impl IRGenerator {
 
     fn compile_while(&mut self, w_stmt: &WhileStmt) {
         let cond_tag = self.blocks_buf.len();
-        self.blocks_buf.push(asm!("jmp .L{}",cond_tag));
+        self.blocks_buf.push(asm!("jmp .L{}", cond_tag));
         let block_tag = cond_tag + 1;
-        self.blocks_buf.push(asm!(".L{}:",block_tag));
+        self.blocks_buf.push(asm!(".L{}:", block_tag));
         self.compile_block(&w_stmt.block);
-        self.blocks_buf.push(asm!(".L{}:",cond_tag));
+        self.blocks_buf.push(asm!(".L{}:", cond_tag));
         // Jump after a compare
         self.compile_expr(&w_stmt.condition);
         self.blocks_buf.push(asm!("pop rax"));
         self.blocks_buf.push(asm!("test rax, rax"));
-        self.blocks_buf.push(asm!("jnz .L{}",block_tag));
+        self.blocks_buf.push(asm!("jnz .L{}", block_tag));
     }
 
     fn compile_assgin(&mut self, assign: &Assgin) {
@@ -405,4 +405,3 @@ impl IRGenerator {
         Ok(())
     }
 }
-

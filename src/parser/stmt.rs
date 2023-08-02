@@ -1,5 +1,5 @@
-use crate::parser::expr::Expr;
 use crate::parser::block::Block;
+use crate::parser::expr::Expr;
 
 #[derive(Debug, Clone)]
 pub enum Stmt {
@@ -54,4 +54,3 @@ pub struct VariableDeclare {
     pub ident: String,
     pub init_value: Option<Expr>,
 }
-

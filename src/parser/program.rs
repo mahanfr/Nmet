@@ -20,4 +20,3 @@ pub enum ProgramItem {
     Func(Function),
     StaticVar(StaticVariable),
 }
-

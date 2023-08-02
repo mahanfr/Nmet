@@ -13,17 +13,19 @@ pub enum Expr {
 }
 impl Expr {
     pub fn is_binary_op(t_token: TokenType) -> bool {
-        matches!( t_token , TokenType::Plus | TokenType::Minus)
+        matches!(t_token, TokenType::Plus | TokenType::Minus)
     }
 
     pub fn is_compare_op(t_token: TokenType) -> bool {
-        matches!( t_token ,
+        matches!(
+            t_token,
             TokenType::DoubleEq
-            | TokenType::NotEq
-            | TokenType::Bigger
-            | TokenType::Smaller
-            | TokenType::BiggerEq
-            | TokenType::SmallerEq)
+                | TokenType::NotEq
+                | TokenType::Bigger
+                | TokenType::Smaller
+                | TokenType::BiggerEq
+                | TokenType::SmallerEq
+        )
     }
 }
 
@@ -117,4 +119,3 @@ impl CompareOp {
         }
     }
 }
-

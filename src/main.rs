@@ -1,13 +1,13 @@
-use crate::parser::program;
 use crate::compiler::IRGenerator;
+use crate::parser::program;
 use std::env::args;
 use std::error::Error;
 use std::fs;
-use std::process::{Command, exit};
+use std::process::{exit, Command};
 
+mod compiler;
 mod lexer;
 mod parser;
-mod compiler;
 use lexer::Lexer;
 
 // --- Static Compiler Defenition
@@ -43,7 +43,9 @@ fn compile_command(arg: &mut CliArgs) {
     let source = fs::read_to_string(arg.get()).expect("Can not Read the file");
     let mut lexer = Lexer::new(String::new(), source);
     let mut ir_gen = IRGenerator::new();
-    ir_gen.compile(program(&mut lexer)).expect("Can not Compile Program");
+    ir_gen
+        .compile(program(&mut lexer))
+        .expect("Can not Compile Program");
     compile_to_exc();
 }
 
@@ -79,7 +81,7 @@ pub fn compile_to_exc() {
     // println!("{}",String::from_utf8(output.stdout)?);
 }
 
-// nemet [commands] <options> [path] 
+// nemet [commands] <options> [path]
 
 fn commands(arg: &mut CliArgs) {
     match arg.get().as_str() {
@@ -106,12 +108,9 @@ struct CliArgs {
 
 impl CliArgs {
     pub fn new(args: Vec<String>) -> Self {
-        Self {
-            args,
-            index: 1,
-        }
+        Self { args, index: 1 }
     }
-   
+
     pub fn get(&self) -> String {
         self.args[self.index].clone()
     }
@@ -120,8 +119,8 @@ impl CliArgs {
         if self.index < self.args.len() {
             self.index += 1;
         } else {
-             help_command();
-             exit(-1);
+            help_command();
+            exit(-1);
         }
     }
 }

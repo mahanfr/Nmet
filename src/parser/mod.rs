@@ -7,11 +7,13 @@ use std::process::exit;
 
 use crate::lexer::{Lexer, TokenType};
 
-use crate::parser::expr::{Expr, Op, CompareOp, BinaryExpr, UnaryExpr, CompareExpr, FunctionCall, ArrayIndex};
 use crate::parser::block::*;
-use crate::parser::stmt::*;
+use crate::parser::expr::{
+    ArrayIndex, BinaryExpr, CompareExpr, CompareOp, Expr, FunctionCall, Op, UnaryExpr,
+};
 use crate::parser::function::*;
 use crate::parser::program::*;
+use crate::parser::stmt::*;
 // -4 -> 4 neg
 // 4 + 2 -> 4 2 +
 // 4 * 3 + 6 -> 4 3 * 6 +
@@ -104,9 +106,7 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
                         indexer: Box::new(indexer),
                     })
                 }
-                _ => {
-                    Expr::Variable(ident_name)
-                }
+                _ => Expr::Variable(ident_name),
             }
         }
         _ => {
@@ -206,7 +206,7 @@ pub fn while_stmt(lexer: &mut Lexer) -> WhileStmt {
     lexer.match_token(TokenType::While);
     let condition = expr(lexer);
     let block = block(lexer);
-     WhileStmt { condition, block }
+    WhileStmt { condition, block }
 }
 
 pub fn block(lexer: &mut Lexer) -> Block {
