@@ -149,7 +149,7 @@ impl Lexer {
             eprintln!("Expected a Token, found Eof at {}", self.get_loc_string());
             exit(-1);
         });
-        return tk.t_type.clone();
+        tk.t_type
     }
 
     pub fn match_token(&mut self, t_type: TokenType) {
@@ -175,13 +175,13 @@ impl Lexer {
     }
 
     pub fn get_token(&self) -> Option<Token> {
-        return self.token.clone();
+        self.token.clone()
     }
 
     pub fn next_token(&mut self) -> Option<Token> {
         let token = self._next_token();
         self.token = token.clone();
-        return token;
+        token
     }
 
     fn _next_token(&mut self) -> Option<Token> {
@@ -354,46 +354,39 @@ impl Lexer {
             }
         }
 
-        // TODO: Seperate single and double tokens
-        match Self::is_single_char_token(first) {
-            Some(tt) => {
-                self.drop();
-                if !self.is_empty() {
-                    let next = self.source[self.cur];
-                    if Self::is_single_char_token(next).is_some() {
-                        match Self::is_double_char_token(first, next) {
-                            Some(dtt) => {
-                                self.drop();
-                                return Some(Token::new(
-                                    dtt,
-                                    String::from_iter(vec![first, next]),
-                                    self.get_loc(),
+        if let Some(tt) = Self::is_single_char_token(first) {
+            self.drop();
+            if !self.is_empty() {
+                let next = self.source[self.cur];
+                if Self::is_single_char_token(next).is_some() {
+                    if let Some(dtt) = Self::is_double_char_token(first, next) {
+                        self.drop();
+                        return Some(Token::new(
+                                dtt,
+                                String::from_iter(vec![first, next]),
+                                self.get_loc(),
                                 ));
-                            }
-                            None => (),
-                        }
                     }
                 }
-                return Some(Token::new(tt, first.to_string(), self.get_loc()));
             }
-            None => (),
+            return Some(Token::new(tt, first.to_string(), self.get_loc()));
         }
 
         eprintln!("Unexpected Character at {}", self.get_loc_string());
         exit(1);
     }
 
-    fn is_keyword(literal: &String) -> Option<TokenType> {
-        match literal.as_str() {
-            "if" => return Some(TokenType::If),
-            "else" => return Some(TokenType::Else),
-            "fun" => return Some(TokenType::Fun),
-            "let" => return Some(TokenType::Let),
-            "return" => return Some(TokenType::Return),
-            "while" => return Some(TokenType::While),
-            "break" => return Some(TokenType::Break),
-            "continue" => return Some(TokenType::Continue),
-            "print" => return Some(TokenType::Print),
+    fn is_keyword(literal: &str) -> Option<TokenType> {
+        match literal {
+            "if" => Some(TokenType::If),
+            "else" => Some(TokenType::Else),
+            "fun" => Some(TokenType::Fun),
+            "let" => Some(TokenType::Let),
+            "return" => Some(TokenType::Return),
+            "while" => Some(TokenType::While),
+            "break" => Some(TokenType::Break),
+            "continue" => Some(TokenType::Continue),
+            "print" => Some(TokenType::Print),
             _ => None,
         }
     }
@@ -444,40 +437,32 @@ impl Lexer {
             Self::expect_char(&lit_chars.next(), vec!['0']);
             Self::expect_char(&lit_chars.next(), vec!['x']);
             let mut value: i32 = 0;
-            loop {
-                if let Some(ch) = lit_chars.next() {
-                    let digit = ch.to_digit(16).unwrap_or_else(|| {
-                        println!("Error: Unknown character in parsing: {}", literal);
-                        exit(-1);
-                    });
-                    value = (value * 16i32) + digit as i32;
-                } else {
-                    break;
-                }
+            for ch in lit_chars {
+                let digit = ch.to_digit(16).unwrap_or_else(|| {
+                    println!("Error: Unknown character in parsing: {}", literal);
+                    exit(-1);
+                });
+                value = (value * 16i32) + digit as i32;
             }
-            return TokenType::Int(value);
+            TokenType::Int(value)
         } else if literal.contains('b') {
             Self::expect_char(&lit_chars.next(), vec!['0']);
             Self::expect_char(&lit_chars.next(), vec!['b']);
             let mut value: i32 = 0;
-            loop {
-                if let Some(ch) = lit_chars.next() {
-                    let digit = ch.to_digit(2).unwrap_or_else(|| {
-                        println!("Error: Unknown character in parsing: {}", literal);
-                        exit(-1);
-                    });
-                    value = (value * 2i32) + digit as i32;
-                } else {
-                    break;
-                }
+            for ch in lit_chars {
+                let digit = ch.to_digit(2).unwrap_or_else(|| {
+                    println!("Error: Unknown character in parsing: {}", literal);
+                    exit(-1);
+                });
+                value = (value * 2i32) + digit as i32;
             }
-            return TokenType::Int(value);
+            TokenType::Int(value)
         } else if literal.contains('.') {
             let value: f32 = literal.parse::<f32>().unwrap();
-            return TokenType::Float(value);
+            TokenType::Float(value)
         } else {
             let value: i32 = literal.parse::<i32>().unwrap();
-            return TokenType::Int(value);
+            TokenType::Int(value)
         }
     }
 
@@ -487,8 +472,8 @@ impl Lexer {
             exit(-1);
         });
         if chars.contains(&char) {
-            return char.clone();
+            return char;
         }
-        return char.clone();
+        char
     }
 }
