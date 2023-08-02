@@ -1,11 +1,6 @@
-use crate::parser::expr::Expr;
 use crate::parser::function::Function;
 
-#[derive(Debug, Clone)]
-pub struct StaticVariable {
-    pub ident: String,
-    pub value: Expr,
-}
+use super::stmt::VariableDeclare;
 
 #[derive(Debug, Clone)]
 pub struct ProgramFile {
@@ -18,5 +13,5 @@ pub struct ProgramFile {
 #[derive(Debug, Clone)]
 pub enum ProgramItem {
     Func(Function),
-    StaticVar(StaticVariable),
+    StaticVar(VariableDeclare),
 }

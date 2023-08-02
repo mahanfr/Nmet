@@ -6,7 +6,7 @@ use std::process::exit;
 
 use crate::parser::block::Block;
 use crate::parser::expr::{CompareOp, Expr, Op};
-use crate::parser::program::{ProgramFile, ProgramItem, StaticVariable};
+use crate::parser::program::{ProgramFile, ProgramItem};
 use crate::parser::stmt::{Assgin, AssginOp, ElseBlock, IFStmt, Stmt, VariableDeclare, WhileStmt};
 
 macro_rules! asm {
@@ -24,24 +24,24 @@ pub struct VariableMap {
 }
 
 pub struct IRGenerator {
-    blocks_buf: Vec<String>,
-    static_var_buf: Vec<String>,
+    instruct_buf: Vec<String>,
     scoped_blocks: Vec<usize>,
     block_id: usize,
     variables_map: HashMap<String, VariableMap>,
     mem_offset: usize,
+    g_mem_offset: usize,
 }
 
 impl IRGenerator {
     // TODO: handle Error for Parsing
     pub fn new() -> Self {
         Self {
-            static_var_buf: Vec::new(),
-            blocks_buf: Vec::new(),
+            instruct_buf: Vec::new(),
             scoped_blocks: Vec::new(),
-            block_id: 0,
+            block_id: 1,
             variables_map: HashMap::new(),
             mem_offset: 0,
+            g_mem_offset: 0,
         }
     }
 
@@ -61,22 +61,35 @@ impl IRGenerator {
     }
 
     pub fn insert_variable(&mut self, var: &VariableDeclare) {
-        let ident = format!("{}%{}", var.ident, self.block_id);
-        let var_map = VariableMap {
-            _ident: var.ident.clone(),
-            offset: self.mem_offset,
-            // TODO: Change size
-            size: 8,
-            is_mut: var.mutable,
-        };
+        let ident: String;
+        let var_map: VariableMap;
+        if var.is_static {
+            ident = format!("{}%{}", var.ident, 0);
+            var_map = VariableMap {
+                _ident: var.ident.clone(),
+                offset: self.g_mem_offset,
+                // TODO: Change size
+                size: 8,
+                is_mut: false,
+            };
+        } else {
+            ident = format!("{}%{}", var.ident, self.block_id);
+            var_map = VariableMap {
+                _ident: var.ident.clone(),
+                offset: self.mem_offset,
+                // TODO: Change size
+                size: 8,
+                is_mut: var.mutable,
+            };
+        }
         self.mem_offset += 8;
         if var.init_value.is_some() {
             let init_value = var.init_value.clone().unwrap();
             // this pushes result in stack
             self.compile_expr(&init_value);
             let mem_acss = format!("qword [rbp-{}]", var_map.offset + var_map.size);
-            self.blocks_buf.push(asm!("pop rax"));
-            self.blocks_buf.push(asm!("mov {mem_acss},rax"));
+            self.instruct_buf.push(asm!("pop rax"));
+            self.instruct_buf.push(asm!("mov {mem_acss},rax"));
         }
         self.variables_map.insert(ident, var_map);
     }
@@ -85,36 +98,37 @@ impl IRGenerator {
     pub fn compile(&mut self, program: ProgramFile) -> Result<(), Box<dyn Error>> {
         for item in program.items {
             match item {
-                ProgramItem::StaticVar(s) => {
-                    self.compile_static_var(s);
+                ProgramItem::StaticVar(_s) => {
+                    todo!();
+                    // self.insert_variable(&s);
                 }
                 ProgramItem::Func(f) => {
                     if f.ident == "main" {
-                        self.blocks_buf.push("_start:\n".to_string());
+                        self.instruct_buf.push("_start:\n".to_string());
                     } else {
                         todo!();
                     }
                     // set rbp to stack pointer for this block
-                    let index_1 = self.blocks_buf.len();
-                    self.blocks_buf.push(String::new());
-                    let index_2 = self.blocks_buf.len();
-                    self.blocks_buf.push(String::new());
-                    let index_3 = self.blocks_buf.len();
-                    self.blocks_buf.push(String::new());
+                    let index_1 = self.instruct_buf.len();
+                    self.instruct_buf.push(String::new());
+                    let index_2 = self.instruct_buf.len();
+                    self.instruct_buf.push(String::new());
+                    let index_3 = self.instruct_buf.len();
+                    self.instruct_buf.push(String::new());
 
                     self.compile_block(&f.block);
                     // revert rbp
                     if !self.variables_map.is_empty() {
-                        self.blocks_buf[index_1] = asm!("push rbp");
-                        self.blocks_buf[index_2] = asm!("mov rbp, rsp");
-                        self.blocks_buf[index_3] = asm!("sub rsp, {}", self.frame_size());
-                        self.blocks_buf.push(asm!("pop rbp"));
+                        self.instruct_buf[index_1] = asm!("push rbp");
+                        self.instruct_buf[index_2] = asm!("mov rbp, rsp");
+                        self.instruct_buf[index_3] = asm!("sub rsp, {}", self.frame_size());
+                        self.instruct_buf.push(asm!("pop rbp"));
                     }
                     // Call Exit Syscall
                     if f.ident == "main" {
-                        self.blocks_buf.push(asm!("mov rax, 60"));
-                        self.blocks_buf.push(asm!("mov rdi, 0"));
-                        self.blocks_buf.push(asm!("syscall"));
+                        self.instruct_buf.push(asm!("mov rax, 60"));
+                        self.instruct_buf.push(asm!("mov rdi, 0"));
+                        self.instruct_buf.push(asm!("syscall"));
                     }
                 }
             }
@@ -127,20 +141,6 @@ impl IRGenerator {
         //println!("{:?}",self.scoped_blocks);
         self.write_to_file()?;
         Ok(())
-    }
-
-    fn compile_static_var(&mut self, stat_v: StaticVariable) {
-        if !self.static_var_buf.is_empty() {
-            self.static_var_buf.push("section .data\n".to_string());
-        }
-        let value = match stat_v.value {
-            Expr::Int(x) => x.to_string(),
-            _ => {
-                todo!()
-            }
-        };
-        self.static_var_buf
-            .push(format!("{} db {}\n", stat_v.ident, value));
     }
 
     fn compile_block(&mut self, block: &Block) {
@@ -156,26 +156,26 @@ impl IRGenerator {
         self.compile_expr(&ifs.condition);
         let next_tag = match ifs.else_block.as_ref() {
             ElseBlock::None => exit_tag,
-            _ => self.blocks_buf.len(),
+            _ => self.instruct_buf.len(),
         };
-        self.blocks_buf.push(asm!("pop rax"));
-        self.blocks_buf.push(asm!("test rax, rax"));
-        self.blocks_buf.push(asm!("jz .L{}", next_tag));
+        self.instruct_buf.push(asm!("pop rax"));
+        self.instruct_buf.push(asm!("test rax, rax"));
+        self.instruct_buf.push(asm!("jz .L{}", next_tag));
 
         self.compile_block(&ifs.then_block);
         match ifs.else_block.as_ref() {
             ElseBlock::None => {
-                self.blocks_buf.push(asm!(".L{}:", next_tag));
+                self.instruct_buf.push(asm!(".L{}:", next_tag));
             }
             ElseBlock::Else(b) => {
-                self.blocks_buf.push(asm!("jmp .L{}", exit_tag));
-                self.blocks_buf.push(asm!(".L{}:", next_tag));
+                self.instruct_buf.push(asm!("jmp .L{}", exit_tag));
+                self.instruct_buf.push(asm!(".L{}:", next_tag));
                 self.compile_block(b);
-                self.blocks_buf.push(asm!(".L{}:", exit_tag));
+                self.instruct_buf.push(asm!(".L{}:", exit_tag));
             }
             ElseBlock::Elif(iff) => {
-                self.blocks_buf.push(asm!("jmp .L{}", exit_tag));
-                self.blocks_buf.push(asm!(".L{}:", next_tag));
+                self.instruct_buf.push(asm!("jmp .L{}", exit_tag));
+                self.instruct_buf.push(asm!(".L{}:", next_tag));
                 self.compile_if_stmt(iff, exit_tag);
             }
         }
@@ -188,11 +188,11 @@ impl IRGenerator {
             }
             Stmt::Print(e) => {
                 self.compile_expr(e);
-                self.blocks_buf.push(asm!("pop rdi"));
-                self.blocks_buf.push(asm!("call print"));
+                self.instruct_buf.push(asm!("pop rdi"));
+                self.instruct_buf.push(asm!("call print"));
             }
             Stmt::If(ifs) => {
-                let exit_tag = self.blocks_buf.len();
+                let exit_tag = self.instruct_buf.len();
                 self.compile_if_stmt(ifs, exit_tag);
             }
             Stmt::Assgin(a) => {
@@ -208,17 +208,17 @@ impl IRGenerator {
     }
 
     fn compile_while(&mut self, w_stmt: &WhileStmt) {
-        let cond_tag = self.blocks_buf.len();
-        self.blocks_buf.push(asm!("jmp .L{}", cond_tag));
+        let cond_tag = self.instruct_buf.len();
+        self.instruct_buf.push(asm!("jmp .L{}", cond_tag));
         let block_tag = cond_tag + 1;
-        self.blocks_buf.push(asm!(".L{}:", block_tag));
+        self.instruct_buf.push(asm!(".L{}:", block_tag));
         self.compile_block(&w_stmt.block);
-        self.blocks_buf.push(asm!(".L{}:", cond_tag));
+        self.instruct_buf.push(asm!(".L{}:", cond_tag));
         // Jump after a compare
         self.compile_expr(&w_stmt.condition);
-        self.blocks_buf.push(asm!("pop rax"));
-        self.blocks_buf.push(asm!("test rax, rax"));
-        self.blocks_buf.push(asm!("jnz .L{}", block_tag));
+        self.instruct_buf.push(asm!("pop rax"));
+        self.instruct_buf.push(asm!("test rax, rax"));
+        self.instruct_buf.push(asm!("jnz .L{}", block_tag));
     }
 
     fn compile_assgin(&mut self, assign: &Assgin) {
@@ -236,8 +236,8 @@ impl IRGenerator {
                     AssginOp::Eq => {
                         self.compile_expr(&assign.right);
                         let mem_acss = format!("qword [rbp-{}]", v_map.offset + v_map.size);
-                        self.blocks_buf.push(asm!("pop rax"));
-                        self.blocks_buf.push(asm!("mov {mem_acss},rax"));
+                        self.instruct_buf.push(asm!("pop rax"));
+                        self.instruct_buf.push(asm!("mov {mem_acss},rax"));
                     }
                 }
             }
@@ -262,61 +262,61 @@ impl IRGenerator {
                     exit(1);
                 });
                 let mem_acss = format!("qword [rbp-{}]", v_map.offset + v_map.size);
-                self.blocks_buf.push(asm!("mov rax,{mem_acss}"));
-                self.blocks_buf.push(asm!("push rax"));
+                self.instruct_buf.push(asm!("mov rax,{mem_acss}"));
+                self.instruct_buf.push(asm!("push rax"));
             }
             Expr::Int(x) => {
                 // push x
-                self.blocks_buf.push(asm!("push {}", x));
+                self.instruct_buf.push(asm!("push {}", x));
             }
             Expr::Compare(c) => {
                 // TODO: Convert exprs to 0 or 1 and push into stack
                 self.compile_expr(c.left.as_ref());
                 self.compile_expr(c.right.as_ref());
-                self.blocks_buf.push(asm!("mov rcx, 0"));
-                self.blocks_buf.push(asm!("mov rdx, 1"));
-                self.blocks_buf.push(asm!("pop rbx"));
-                self.blocks_buf.push(asm!("pop rax"));
-                self.blocks_buf.push(asm!("cmp rax, rbx"));
+                self.instruct_buf.push(asm!("mov rcx, 0"));
+                self.instruct_buf.push(asm!("mov rdx, 1"));
+                self.instruct_buf.push(asm!("pop rbx"));
+                self.instruct_buf.push(asm!("pop rax"));
+                self.instruct_buf.push(asm!("cmp rax, rbx"));
                 match c.op {
                     CompareOp::Eq => {
-                        self.blocks_buf.push(asm!("cmove rcx, rdx"));
+                        self.instruct_buf.push(asm!("cmove rcx, rdx"));
                     }
                     CompareOp::NotEq => {
-                        self.blocks_buf.push(asm!("cmovne rcx, rdx"));
+                        self.instruct_buf.push(asm!("cmovne rcx, rdx"));
                     }
                     CompareOp::Bigger => {
-                        self.blocks_buf.push(asm!("cmovg rcx, rdx"));
+                        self.instruct_buf.push(asm!("cmovg rcx, rdx"));
                     }
                     CompareOp::Smaller => {
-                        self.blocks_buf.push(asm!("cmovl rcx, rdx"));
+                        self.instruct_buf.push(asm!("cmovl rcx, rdx"));
                     }
                     CompareOp::BiggerEq => {
-                        self.blocks_buf.push(asm!("cmovge rcx, rdx"));
+                        self.instruct_buf.push(asm!("cmovge rcx, rdx"));
                     }
                     CompareOp::SmallerEq => {
-                        self.blocks_buf.push(asm!("cmovle rcx, rdx"));
+                        self.instruct_buf.push(asm!("cmovle rcx, rdx"));
                     }
                 }
-                self.blocks_buf.push(asm!("push rcx"));
+                self.instruct_buf.push(asm!("push rcx"));
             }
             Expr::Binary(b) => {
                 self.compile_expr(b.left.as_ref());
                 self.compile_expr(b.right.as_ref());
-                self.blocks_buf.push(asm!("pop rax"));
-                self.blocks_buf.push(asm!("pop rbx"));
+                self.instruct_buf.push(asm!("pop rax"));
+                self.instruct_buf.push(asm!("pop rbx"));
                 match b.op {
                     Op::Plus => {
-                        self.blocks_buf.push(asm!("add rax, rbx"));
-                        self.blocks_buf.push(asm!("push rax"));
+                        self.instruct_buf.push(asm!("add rax, rbx"));
+                        self.instruct_buf.push(asm!("push rax"));
                     }
                     Op::Sub => {
-                        self.blocks_buf.push(asm!("sub rbx, rax"));
-                        self.blocks_buf.push(asm!("push rbx"));
+                        self.instruct_buf.push(asm!("sub rbx, rax"));
+                        self.instruct_buf.push(asm!("push rbx"));
                     }
                     Op::Multi => {
-                        self.blocks_buf.push(asm!("imul rax, rbx"));
-                        self.blocks_buf.push(asm!("push rax"));
+                        self.instruct_buf.push(asm!("imul rax, rbx"));
+                        self.instruct_buf.push(asm!("push rax"));
                     }
                     Op::Devide => {
                         todo!();
@@ -341,9 +341,7 @@ impl IRGenerator {
         println!("[info] Generating asm files...");
         file.write_all(b";; This File is Automatically Created Useing Nemet Parser\n")?;
         file.write_all(b";; Under MIT License Copyright MahanFarzaneh 2023-2024\n\n")?;
-        for line in &self.static_var_buf {
-            file.write_all(line.as_bytes())?;
-        }
+
         file.write_all(b"\n")?;
         // TODO: Add this to the section related
         file.write_all(b"section .text\n")?;
@@ -397,7 +395,7 @@ impl IRGenerator {
         file.write_all(b"    leave\n")?;
         file.write_all(b"    ret\n")?;
 
-        for instruct in &self.blocks_buf {
+        for instruct in &self.instruct_buf {
             file.write_all(instruct.as_bytes())?;
         }
 

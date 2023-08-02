@@ -51,6 +51,7 @@ pub struct WhileStmt {
 #[derive(Debug, Clone)]
 pub struct VariableDeclare {
     pub mutable: bool,
+    pub is_static: bool,
     pub ident: String,
     pub init_value: Option<Expr>,
 }

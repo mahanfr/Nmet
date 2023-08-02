@@ -218,7 +218,7 @@ pub fn block(lexer: &mut Lexer) -> Block {
         }
         match lexer.get_token_type() {
             TokenType::Let => {
-                stmts.push(variable_declare(lexer));
+                stmts.push(Stmt::VariableDecl(variable_declare(lexer)));
                 lexer.match_token(TokenType::SemiColon);
             }
             TokenType::Print => {
@@ -276,13 +276,20 @@ pub fn block(lexer: &mut Lexer) -> Block {
     Block { stmts }
 }
 
-pub fn variable_declare(lexer: &mut Lexer) -> Stmt {
+pub fn variable_declare(lexer: &mut Lexer) -> VariableDeclare {
     lexer.match_token(TokenType::Let);
     let ident_token = lexer.get_token().unwrap();
     lexer.match_token(TokenType::Identifier);
     let mut is_mutable: bool = true;
+    let mut is_static: bool = false;
     let mut init_value: Option<Expr> = None;
     match lexer.get_token_type() {
+        TokenType::DoubleColon => {
+            is_static = true;
+            is_mutable = false;
+            lexer.match_token(TokenType::ColonEq);
+            init_value = Some(expr(lexer));
+        }
         TokenType::ColonEq => {
             is_mutable = false;
             lexer.match_token(TokenType::ColonEq);
@@ -303,11 +310,12 @@ pub fn variable_declare(lexer: &mut Lexer) -> Stmt {
             exit(-1);
         }
     }
-    Stmt::VariableDecl(VariableDeclare {
+    VariableDeclare {
         mutable: is_mutable,
+        is_static,
         ident: ident_token.literal,
         init_value,
-    })
+    }
 }
 
 pub fn function_def_args(lexer: &mut Lexer) -> Vec<FunctionArg> {
@@ -342,25 +350,6 @@ pub fn function_def_args(lexer: &mut Lexer) -> Vec<FunctionArg> {
     args
 }
 
-pub fn static_variable_def(lexer: &mut Lexer) -> StaticVariable {
-    lexer.match_token(TokenType::Let);
-    let ident_token = lexer.get_token().unwrap_or_else(|| {
-        eprintln!(
-            "Error: Expected Identifier found Eof at {}",
-            lexer.get_loc_string()
-        );
-        exit(-1);
-    });
-    lexer.match_token(TokenType::Identifier);
-    lexer.match_token(TokenType::DoubleColon);
-    let expr = expr(lexer);
-    lexer.match_token(TokenType::SemiColon);
-    StaticVariable {
-        ident: ident_token.literal,
-        value: expr,
-    }
-}
-
 pub fn program(lexer: &mut Lexer) -> ProgramFile {
     lexer.next_token();
     let mut items = Vec::<ProgramItem>::new();
@@ -373,7 +362,7 @@ pub fn program(lexer: &mut Lexer) -> ProgramFile {
                 items.push(ProgramItem::Func(function_def(lexer)));
             }
             TokenType::Let => {
-                items.push(ProgramItem::StaticVar(static_variable_def(lexer)));
+                items.push(ProgramItem::StaticVar(variable_declare(lexer)));
             }
             _ => {
                 eprintln!(
