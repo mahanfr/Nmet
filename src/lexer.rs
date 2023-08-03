@@ -4,6 +4,7 @@ type Loc = (String, usize, usize);
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {
     Identifier,
+    ATSign,
     Int(i32),
     Float(f32),
     Char(char),
@@ -198,6 +199,7 @@ impl Lexer {
             return None;
         }
         let first = self.source[self.cur];
+
         if first.is_ascii_alphabetic() || first == '_' {
             let index = self.cur;
             while !self.is_empty()
@@ -411,6 +413,7 @@ impl Lexer {
             '!' => Some(TokenType::Not),
             '>' => Some(TokenType::Bigger),
             '<' => Some(TokenType::Smaller),
+            '@' => Some(TokenType::ATSign),
             _ => None,
         }
     }

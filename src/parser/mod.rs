@@ -19,7 +19,6 @@ use crate::parser::stmt::*;
 // 4 * 3 + 6 -> 4 3 * 6 +
 // 4 + (3 + 6) -> 3 6 + 4 +
 // -(4 * cos(0) + 2 - 6) -> 4 cos(0) * 2 + 6 - neg
-//
 pub fn expr(lexer: &mut Lexer) -> Expr {
     let mut term_expr = term(lexer);
     loop {
@@ -276,13 +275,67 @@ pub fn block(lexer: &mut Lexer) -> Block {
     Block { stmts }
 }
 
+pub fn type_n(lexer: &mut Lexer) -> VariableType {
+    lexer.match_token(TokenType::ATSign);
+    match lexer.get_token_type() {
+        TokenType::Identifier => {
+            return VariableType::from_string(lexer.get_token().unwrap().literal)
+        },
+        TokenType::OBracket => {
+            let var_type : VariableType;
+            let size: usize;
+            lexer.match_token(TokenType::OBracket);
+            let token = lexer.get_token().unwrap_or_else(|| {
+               eprintln!("Error: Expected an Identifier found EOF at {}",lexer.get_loc_string());
+               exit(1);
+            });
+            if token.t_type == TokenType::Identifier {
+                var_type = VariableType::from_string(lexer.get_token().unwrap().literal);
+                lexer.match_token(TokenType::Identifier);
+            } else {
+                eprintln!("Error: Expected Identifier found {:?}, at {}",
+                          lexer.get_token_type(), 
+                          lexer.get_loc_string());
+                exit(1);
+            }
+            lexer.match_token(TokenType::Comma);
+            let token = lexer.get_token().unwrap_or_else(|| {
+               eprintln!("Error: Expected a Number found EOF at {}",lexer.get_loc_string());
+               exit(1);
+            });
+            match token.t_type{ 
+                TokenType::Int(s) => {
+                    size = s as usize;
+                    lexer.match_token(TokenType::Identifier);
+                } 
+                _ => {
+                    eprintln!("Error: Expected Integer Number found {:?}, at {}",
+                              lexer.get_token_type(),
+                              lexer.get_loc_string());
+                    exit(1);
+                }
+            }
+            lexer.match_token(TokenType::CBracket);
+            return VariableType::Array(Box::new(var_type),size);
+        },
+        _ => {
+            eprintln!("Syntax Error: Unknown Token at {}",lexer.get_loc_string());
+            exit(1);
+        }
+    }
+}
+
 pub fn variable_declare(lexer: &mut Lexer) -> VariableDeclare {
     lexer.match_token(TokenType::Let);
     let ident_token = lexer.get_token().unwrap();
     lexer.match_token(TokenType::Identifier);
     let mut is_mutable: bool = true;
     let mut is_static: bool = false;
+    let mut v_type: Option<VariableType> = None;
     let mut init_value: Option<Expr> = None;
+    if lexer.get_token_type() == TokenType::ATSign {
+        v_type = Some(type_n(lexer));
+    }
     match lexer.get_token_type() {
         TokenType::DoubleColon => {
             is_static = true;
@@ -314,6 +367,7 @@ pub fn variable_declare(lexer: &mut Lexer) -> VariableDeclare {
         mutable: is_mutable,
         is_static,
         ident: ident_token.literal,
+        v_type,
         init_value,
     }
 }

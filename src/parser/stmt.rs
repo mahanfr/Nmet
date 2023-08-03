@@ -2,6 +2,29 @@ use crate::parser::block::Block;
 use crate::parser::expr::Expr;
 
 #[derive(Debug, Clone)]
+pub enum VariableType {
+    Custom (String),
+    Array (Box<VariableType>, usize),
+    String,
+    Int,
+    UInt,
+    Bool,
+    Char,
+}
+impl VariableType {
+    pub fn from_string(literal: String) -> Self {
+        match literal.as_str() {
+            "int" | "i32" => Self::Int,
+            "uint" | "u32" => Self::UInt,
+            "char" | "u8" => Self::Char,
+            "bool" => Self::Bool,
+            "str" => Self::String,
+            _ => Self::Custom(literal),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum Stmt {
     // expr
     Expr(Expr),
@@ -53,5 +76,6 @@ pub struct VariableDeclare {
     pub mutable: bool,
     pub is_static: bool,
     pub ident: String,
+    pub v_type: Option<VariableType>,
     pub init_value: Option<Expr>,
 }
