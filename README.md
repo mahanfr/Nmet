@@ -35,9 +35,18 @@ For getting started clone the repository and build the project using Rust toolch
 <br />
 Install [Nasm](https://www.nasm.org/) using your package manager or by downloading it from it's official website
 <br />
-Create a file like ```hello.nmt``` extention and write a simple program insde it. then you can run the following commands
+Create a file like ```hello.nmt``` extention and write a simple program insde it:
+
+lets start with a classic application that prints hello world to the standard output
+``` nmt
+fun main() {
+    print "Hello World!\n";
+}
+```
+now you can run the following commands:
+
 ``` shell
-$ nemet ./hello.nmt
+$ cargo run ./hello.nmt
 $ ./build/output
 ```
 
