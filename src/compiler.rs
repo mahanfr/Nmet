@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs::{self, File};
-use std::io::{BufWriter, Write};
+use std::io::{BufWriter, Write, BufRead};
 use std::process::exit;
 
 use crate::parser::block::Block;
@@ -25,6 +25,7 @@ pub struct VariableMap {
 
 pub struct IRGenerator {
     instruct_buf: Vec<String>,
+    data_buf: Vec<String>,
     scoped_blocks: Vec<usize>,
     block_id: usize,
     variables_map: HashMap<String, VariableMap>,
@@ -37,6 +38,7 @@ impl IRGenerator {
     pub fn new() -> Self {
         Self {
             instruct_buf: Vec::new(),
+            data_buf: Vec::new(),
             scoped_blocks: Vec::new(),
             block_id: 1,
             variables_map: HashMap::new(),
@@ -188,8 +190,19 @@ impl IRGenerator {
             }
             Stmt::Print(e) => {
                 self.compile_expr(e);
-                self.instruct_buf.push(asm!("pop rdi"));
-                self.instruct_buf.push(asm!("call print"));
+                match e {
+                    Expr::String(_) => {
+                        self.instruct_buf.push(asm!("mov rax, 1"));
+                        self.instruct_buf.push(asm!("mov rdi, 1"));
+                        self.instruct_buf.push(asm!("mov rsi, data{}",self.data_buf.len() - 2));
+                        self.instruct_buf.push(asm!("mov rdx, len{}", self.data_buf.len() - 2));
+                        self.instruct_buf.push(asm!("syscall"));
+                    }
+                    _ => {
+                        self.instruct_buf.push(asm!("pop rdi"));
+                        self.instruct_buf.push(asm!("call print"));
+                    }
+                }
             }
             Stmt::If(ifs) => {
                 let exit_tag = self.instruct_buf.len();
@@ -303,16 +316,16 @@ impl IRGenerator {
             Expr::Binary(b) => {
                 self.compile_expr(b.left.as_ref());
                 self.compile_expr(b.right.as_ref());
-                self.instruct_buf.push(asm!("pop rax"));
                 self.instruct_buf.push(asm!("pop rbx"));
+                self.instruct_buf.push(asm!("pop rax"));
                 match b.op {
                     Op::Plus => {
                         self.instruct_buf.push(asm!("add rax, rbx"));
                         self.instruct_buf.push(asm!("push rax"));
                     }
                     Op::Sub => {
-                        self.instruct_buf.push(asm!("sub rbx, rax"));
-                        self.instruct_buf.push(asm!("push rbx"));
+                        self.instruct_buf.push(asm!("sub rax, rbx"));
+                        self.instruct_buf.push(asm!("push rax"));
                     }
                     Op::Multi => {
                         self.instruct_buf.push(asm!("imul rax, rbx"));
@@ -324,6 +337,17 @@ impl IRGenerator {
                     _ => unreachable!(),
                 }
             }
+            Expr::String(str) => {
+                let id = self.data_buf.len();
+                let data_array = Self::asmfy_string(&str);
+                self.data_buf.push(asm!("data{id} db {}",data_array));
+                self.data_buf.push(asm!("len{id} equ $ - data{id}"));
+                // data6524 db "<str>"
+                // len6524     data6524
+                // push len6524jkjk
+                // push data6524
+                // self.instruct_buf.push(asm!("push 13"));
+            }
             Expr::Unary(_) => {
                 todo!();
             }
@@ -331,6 +355,60 @@ impl IRGenerator {
                 todo!();
             }
         }
+    }
+
+    fn asmfy_string(str: &String) -> String {
+        let mut res = String::new();
+        let source : Vec<char> = str.chars().collect();
+        let mut i = 0;
+        while i < source.len() {
+            match source[i] {
+                '\n' => {
+                    if !res.is_empty() {
+                        res.push(',');
+                    }
+                    res.push_str(" 10");
+                    i += 1;
+                }
+                '\t' => {
+                    if !res.is_empty() {
+                        res.push(',');
+                    }
+                    res.push_str(" 9");
+                    i += 1;
+                }
+                '\r' => {
+                    if !res.is_empty() {
+                        res.push(',');
+                    }
+                    res.push_str(" 13");
+                    i += 1;
+                }
+                '\"' => {
+                    if !res.is_empty() {
+                        res.push(',');
+                    }
+                    res.push_str(" 34");
+                    i += 1;
+                }
+                _ => {
+                    if !res.is_empty() {
+                        res.push(',');
+                    }
+                    res.push('\"');
+                    while i < source.len() {
+                        if source[i] == '\n' || source[i] == '\"' ||
+                            source[i] == '\t' || source[i] == '\r' {
+                            break;
+                        }
+                        res.push(source[i]);
+                        i += 1;
+                    }
+                    res.push('\"');
+                }
+            }
+        }
+        res
     }
 
     // TODO: Error Handleing Error Type FILE
@@ -343,7 +421,14 @@ impl IRGenerator {
         file.write_all(b";; Under MIT License Copyright MahanFarzaneh 2023-2024\n\n")?;
 
         file.write_all(b"\n")?;
-        // TODO: Add this to the section related
+        if !self.data_buf.is_empty() {
+            file.write_all(b"section .data\n")?;
+            for data in &self.data_buf {
+                file.write_all(data.as_bytes())?;
+            }
+        }
+        file.write_all(b"\n")?;
+
         file.write_all(b"section .text\n")?;
         file.write_all(b"global _start\n")?;
 

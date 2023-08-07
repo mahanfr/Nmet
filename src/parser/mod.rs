@@ -81,6 +81,11 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
                 right: Box::new(value),
             })
         }
+        TokenType::String => {
+            let str_token = lexer.get_token().unwrap();
+            lexer.next_token();
+            Expr::String(str_token.literal)
+        }
         TokenType::Int(val) => {
             lexer.next_token();
             Expr::Int(val)
@@ -279,6 +284,8 @@ pub fn type_n(lexer: &mut Lexer) -> VariableType {
     lexer.match_token(TokenType::ATSign);
     match lexer.get_token_type() {
         TokenType::Identifier => {
+            let ident = lexer.get_token().unwrap().literal;
+            lexer.match_token(TokenType::Identifier);
             return VariableType::from_string(lexer.get_token().unwrap().literal)
         },
         TokenType::OBracket => {
@@ -306,7 +313,7 @@ pub fn type_n(lexer: &mut Lexer) -> VariableType {
             match token.t_type{ 
                 TokenType::Int(s) => {
                     size = s as usize;
-                    lexer.match_token(TokenType::Identifier);
+                    lexer.match_token(TokenType::Int(s));
                 } 
                 _ => {
                     eprintln!("Error: Expected Integer Number found {:?}, at {}",

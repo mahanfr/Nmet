@@ -295,7 +295,7 @@ impl Lexer {
             let mut literal = String::new();
             while !self.is_empty() {
                 let char = self.source[self.cur];
-                if char == '"' {
+                if char == '\"' {
                     break;
                 }
                 if char == '\n' {
@@ -346,9 +346,10 @@ impl Lexer {
                             exit(1);
                         }
                     }
+                } else {
+                    literal.push(char);
+                    self.drop();
                 }
-                literal.push(char);
-                self.drop();
             }
             if !self.is_empty() {
                 self.drop();
