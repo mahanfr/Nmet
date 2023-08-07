@@ -286,47 +286,57 @@ pub fn type_n(lexer: &mut Lexer) -> VariableType {
         TokenType::Identifier => {
             let ident = lexer.get_token().unwrap().literal;
             lexer.match_token(TokenType::Identifier);
-            return VariableType::from_string(lexer.get_token().unwrap().literal)
-        },
+            VariableType::from_string(ident)
+        }
         TokenType::OBracket => {
-            let var_type : VariableType;
+            let var_type: VariableType;
             let size: usize;
             lexer.match_token(TokenType::OBracket);
             let token = lexer.get_token().unwrap_or_else(|| {
-               eprintln!("Error: Expected an Identifier found EOF at {}",lexer.get_loc_string());
-               exit(1);
+                eprintln!(
+                    "Error: Expected an Identifier found EOF at {}",
+                    lexer.get_loc_string()
+                );
+                exit(1);
             });
             if token.t_type == TokenType::Identifier {
                 var_type = VariableType::from_string(lexer.get_token().unwrap().literal);
                 lexer.match_token(TokenType::Identifier);
             } else {
-                eprintln!("Error: Expected Identifier found {:?}, at {}",
-                          lexer.get_token_type(), 
-                          lexer.get_loc_string());
+                eprintln!(
+                    "Error: Expected Identifier found {:?}, at {}",
+                    lexer.get_token_type(),
+                    lexer.get_loc_string()
+                );
                 exit(1);
             }
             lexer.match_token(TokenType::Comma);
             let token = lexer.get_token().unwrap_or_else(|| {
-               eprintln!("Error: Expected a Number found EOF at {}",lexer.get_loc_string());
-               exit(1);
+                eprintln!(
+                    "Error: Expected a Number found EOF at {}",
+                    lexer.get_loc_string()
+                );
+                exit(1);
             });
-            match token.t_type{ 
+            match token.t_type {
                 TokenType::Int(s) => {
                     size = s as usize;
                     lexer.match_token(TokenType::Int(s));
-                } 
+                }
                 _ => {
-                    eprintln!("Error: Expected Integer Number found {:?}, at {}",
-                              lexer.get_token_type(),
-                              lexer.get_loc_string());
+                    eprintln!(
+                        "Error: Expected Integer Number found {:?}, at {}",
+                        lexer.get_token_type(),
+                        lexer.get_loc_string()
+                    );
                     exit(1);
                 }
             }
             lexer.match_token(TokenType::CBracket);
-            return VariableType::Array(Box::new(var_type),size);
-        },
+            VariableType::Array(Box::new(var_type), size)
+        }
         _ => {
-            eprintln!("Syntax Error: Unknown Token at {}",lexer.get_loc_string());
+            eprintln!("Syntax Error: Unknown Token at {}", lexer.get_loc_string());
             exit(1);
         }
     }

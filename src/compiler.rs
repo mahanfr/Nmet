@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs::{self, File};
-use std::io::{BufWriter, Write, BufRead};
+use std::io::{BufWriter, Write};
 use std::process::exit;
 
 use crate::parser::block::Block;
@@ -194,8 +194,10 @@ impl IRGenerator {
                     Expr::String(_) => {
                         self.instruct_buf.push(asm!("mov rax, 1"));
                         self.instruct_buf.push(asm!("mov rdi, 1"));
-                        self.instruct_buf.push(asm!("mov rsi, data{}",self.data_buf.len() - 2));
-                        self.instruct_buf.push(asm!("mov rdx, len{}", self.data_buf.len() - 2));
+                        self.instruct_buf
+                            .push(asm!("mov rsi, data{}", self.data_buf.len() - 2));
+                        self.instruct_buf
+                            .push(asm!("mov rdx, len{}", self.data_buf.len() - 2));
                         self.instruct_buf.push(asm!("syscall"));
                     }
                     _ => {
@@ -339,8 +341,8 @@ impl IRGenerator {
             }
             Expr::String(str) => {
                 let id = self.data_buf.len();
-                let data_array = Self::asmfy_string(&str);
-                self.data_buf.push(asm!("data{id} db {}",data_array));
+                let data_array = Self::asmfy_string(str);
+                self.data_buf.push(asm!("data{id} db {}", data_array));
                 self.data_buf.push(asm!("len{id} equ $ - data{id}"));
                 // data6524 db "<str>"
                 // len6524     data6524
@@ -357,9 +359,9 @@ impl IRGenerator {
         }
     }
 
-    fn asmfy_string(str: &String) -> String {
+    fn asmfy_string(str: &str) -> String {
         let mut res = String::new();
-        let source : Vec<char> = str.chars().collect();
+        let source: Vec<char> = str.chars().collect();
         let mut i = 0;
         while i < source.len() {
             match source[i] {
@@ -397,8 +399,11 @@ impl IRGenerator {
                     }
                     res.push('\"');
                     while i < source.len() {
-                        if source[i] == '\n' || source[i] == '\"' ||
-                            source[i] == '\t' || source[i] == '\r' {
+                        if source[i] == '\n'
+                            || source[i] == '\"'
+                            || source[i] == '\t'
+                            || source[i] == '\r'
+                        {
                             break;
                         }
                         res.push(source[i]);

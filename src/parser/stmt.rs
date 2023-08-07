@@ -3,8 +3,8 @@ use crate::parser::expr::Expr;
 
 #[derive(Debug, Clone)]
 pub enum VariableType {
-    Custom (String),
-    Array (Box<VariableType>, usize),
+    Custom(String),
+    Array(Box<VariableType>, usize),
     String,
     Int,
     UInt,
