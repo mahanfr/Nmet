@@ -82,7 +82,7 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
             })
         }
         TokenType::String => {
-            let str_token = lexer.get_token().unwrap();
+            let str_token = lexer.get_token();
             lexer.next_token();
             Expr::String(str_token.literal)
         }
@@ -91,8 +91,8 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
             Expr::Int(val)
         }
         TokenType::Identifier => {
-            let ident_name = lexer.get_token().unwrap().literal;
-            if lexer.next_token().is_none() {
+            let ident_name = lexer.get_token().literal;
+            if lexer.next_token().is_empty() {
                 return Expr::Variable(ident_name);
             }
             match lexer.get_token_type() {
@@ -154,13 +154,14 @@ pub fn function_call_args(lexer: &mut Lexer) -> Vec<Expr> {
 
 pub fn function_def(lexer: &mut Lexer) -> Function {
     lexer.match_token(TokenType::Fun);
-    let function_ident_token = lexer.get_token().unwrap_or_else(|| {
+    let function_ident_token = lexer.get_token();
+    if function_ident_token.is_empty() {
         eprintln!(
             "Function Defenition without Identifier at {}",
             lexer.get_loc_string()
         );
         exit(-1);
-    });
+    }
     lexer.match_token(TokenType::Identifier);
     let args = function_def_args(lexer);
     let block = block(lexer);
@@ -284,7 +285,7 @@ pub fn type_n(lexer: &mut Lexer) -> VariableType {
     lexer.match_token(TokenType::ATSign);
     match lexer.get_token_type() {
         TokenType::Identifier => {
-            let ident = lexer.get_token().unwrap().literal;
+            let ident = lexer.get_token().literal;
             lexer.match_token(TokenType::Identifier);
             VariableType::from_string(ident)
         }
@@ -292,15 +293,16 @@ pub fn type_n(lexer: &mut Lexer) -> VariableType {
             let var_type: VariableType;
             let size: usize;
             lexer.match_token(TokenType::OBracket);
-            let token = lexer.get_token().unwrap_or_else(|| {
+            let token = lexer.get_token();
+            if token.is_empty() {
                 eprintln!(
                     "Error: Expected an Identifier found EOF at {}",
                     lexer.get_loc_string()
                 );
                 exit(1);
-            });
+            }
             if token.t_type == TokenType::Identifier {
-                var_type = VariableType::from_string(lexer.get_token().unwrap().literal);
+                var_type = VariableType::from_string(lexer.get_token().literal);
                 lexer.match_token(TokenType::Identifier);
             } else {
                 eprintln!(
@@ -311,13 +313,14 @@ pub fn type_n(lexer: &mut Lexer) -> VariableType {
                 exit(1);
             }
             lexer.match_token(TokenType::Comma);
-            let token = lexer.get_token().unwrap_or_else(|| {
+            let token = lexer.get_token();
+            if token.is_empty() {
                 eprintln!(
                     "Error: Expected a Number found EOF at {}",
                     lexer.get_loc_string()
                 );
                 exit(1);
-            });
+            }
             match token.t_type {
                 TokenType::Int(s) => {
                     size = s as usize;
@@ -344,7 +347,7 @@ pub fn type_n(lexer: &mut Lexer) -> VariableType {
 
 pub fn variable_declare(lexer: &mut Lexer) -> VariableDeclare {
     lexer.match_token(TokenType::Let);
-    let ident_token = lexer.get_token().unwrap();
+    let ident_token = lexer.get_token();
     lexer.match_token(TokenType::Identifier);
     let mut is_mutable: bool = true;
     let mut is_static: bool = false;
@@ -399,7 +402,7 @@ pub fn function_def_args(lexer: &mut Lexer) -> Vec<FunctionArg> {
                 break;
             }
             TokenType::Identifier => {
-                let ident = lexer.get_token().unwrap().literal;
+                let ident = lexer.get_token().literal;
                 args.push(FunctionArg {
                     ident: ident.to_string(),
                 });
@@ -425,7 +428,7 @@ pub fn program(lexer: &mut Lexer) -> ProgramFile {
     lexer.next_token();
     let mut items = Vec::<ProgramItem>::new();
     loop {
-        if lexer.get_token().is_none() {
+        if lexer.get_token().is_empty() {
             break;
         }
         match lexer.get_token_type() {

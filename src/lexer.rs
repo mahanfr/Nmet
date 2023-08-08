@@ -47,6 +47,8 @@ pub enum TokenType {
     CBracket,
     OCurly,
     CCurly,
+    EOF,
+    SOF,
 }
 
 #[derive(Debug, Clone)]
@@ -69,6 +71,20 @@ impl Token {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        matches!(self.t_type,TokenType::EOF | TokenType::SOF)
+    }
+
+    pub fn empty() -> Token{
+        Self {
+            literal: String::new(),
+            t_type: TokenType::SOF,
+            file_path: String::new(),
+            line: 0,
+            col: 0,
+        }
+    }
+
     // pub fn get_loc_string(&self) -> String {
     //     format!("{}:{}:{}",self.file_path,self.line,self.col)
     // }
@@ -78,7 +94,7 @@ impl Token {
 pub struct Lexer {
     pub file_path: String,
     source: Vec<char>,
-    pub token: Option<Token>,
+    pub token: Token,
     cur: usize,
     bol: usize,
     row: usize,
@@ -89,7 +105,7 @@ impl Lexer {
         Self {
             file_path,
             source: source.chars().collect::<Vec<char>>(),
-            token: None,
+            token: Token::empty(),
             cur: 0,
             bol: 0,
             row: 0,
@@ -146,22 +162,16 @@ impl Lexer {
     }
 
     pub fn get_token_type(&self) -> TokenType {
-        let tk = self.token.clone().unwrap_or_else(|| {
+        let tk = self.token.clone();
+        if tk.t_type == TokenType::EOF {
             eprintln!("Expected a Token, found Eof at {}", self.get_loc_string());
             exit(-1);
-        });
+        };
         tk.t_type
     }
 
     pub fn match_token(&mut self, t_type: TokenType) {
-        let tk = self.token.clone().unwrap_or_else(|| {
-            eprintln!(
-                "Expected {:?}, found Eof at {}",
-                t_type,
-                self.get_loc_string()
-            );
-            exit(-1);
-        });
+        let tk = self.token.clone();
         if tk.t_type == t_type {
             self.next_token();
         } else {
@@ -175,17 +185,17 @@ impl Lexer {
         }
     }
 
-    pub fn get_token(&self) -> Option<Token> {
+    pub fn get_token(&self) -> Token {
         self.token.clone()
     }
 
-    pub fn next_token(&mut self) -> Option<Token> {
+    pub fn next_token(&mut self) -> Token {
         let token = self._next_token();
         self.token = token.clone();
         token
     }
 
-    fn _next_token(&mut self) -> Option<Token> {
+    fn _next_token(&mut self) -> Token {
         self.trim_left();
         while !self.is_empty() {
             if self.source[self.cur] == '~' {
@@ -196,7 +206,7 @@ impl Lexer {
             }
         }
         if self.is_empty() {
-            return None;
+            return Token::empty();
         }
         let first = self.source[self.cur];
 
@@ -210,9 +220,9 @@ impl Lexer {
             let literal = String::from_iter(self.source[index..self.cur].to_vec());
             match Self::is_keyword(&literal) {
                 Some(keyword_token) => {
-                    return Some(Token::new(keyword_token, literal, self.get_loc()))
+                    return Token::new(keyword_token, literal, self.get_loc())
                 }
-                None => return Some(Token::new(TokenType::Identifier, literal, self.get_loc())),
+                None => return Token::new(TokenType::Identifier, literal, self.get_loc()),
             }
         }
         if first.is_ascii_digit() {
@@ -225,7 +235,7 @@ impl Lexer {
             }
             let literal = String::from_iter(self.source[index..self.cur].to_vec());
             let ttype_and_val = Self::parse_numeric_literal(&literal);
-            return Some(Token::new(ttype_and_val, literal, self.get_loc()));
+            return Token::new(ttype_and_val, literal, self.get_loc());
         }
         if first == '\'' {
             self.drop();
@@ -286,7 +296,7 @@ impl Lexer {
                     exit(1);
                 }
                 self.drop();
-                return Some(Token::new(TokenType::Char(first), literal, self.get_loc()));
+                return Token::new(TokenType::Char(first), literal, self.get_loc());
             }
         }
 
@@ -353,7 +363,7 @@ impl Lexer {
             }
             if !self.is_empty() {
                 self.drop();
-                return Some(Token::new(TokenType::String, literal, self.get_loc()));
+                return Token::new(TokenType::String, literal, self.get_loc());
             }
         }
 
@@ -364,15 +374,15 @@ impl Lexer {
                 if Self::is_single_char_token(next).is_some() {
                     if let Some(dtt) = Self::is_double_char_token(first, next) {
                         self.drop();
-                        return Some(Token::new(
+                        return Token::new(
                             dtt,
                             String::from_iter(vec![first, next]),
                             self.get_loc(),
-                        ));
+                        );
                     }
                 }
             }
-            return Some(Token::new(tt, first.to_string(), self.get_loc()));
+            return Token::new(tt, first.to_string(), self.get_loc());
         }
 
         eprintln!("Unexpected Character at {}", self.get_loc_string());
@@ -479,5 +489,20 @@ impl Lexer {
             return char;
         }
         char
+    }
+}
+
+#[cfg(test)]
+mod lexer_tests {
+    use crate::lexer::TokenType;
+
+    use super::Lexer;
+
+    #[test]
+    fn expr_tokens() {
+        let mut lexer = Lexer::new(String::new(),"1 + 1".to_string());
+        assert_eq!(lexer.next_token().t_type,TokenType::Int(1));
+        assert_eq!(lexer.next_token().t_type,TokenType::Plus);
+        assert_eq!(lexer.next_token().t_type,TokenType::Int(1));
     }
 }
