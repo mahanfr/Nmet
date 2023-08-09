@@ -1,54 +1,108 @@
+/*  Copywrite Under MIT License by mahan farzaneh
+ *
+ *  TokenType: Has the type of every token supported py programming language
+ *  Token: Turns Source code into An Iteration of tokens
+ *
+ * */
 use std::process::exit;
 type Loc = (String, usize, usize);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {
+    /// Identifies a variable or functuin e.g: a, main, print
     Identifier,
-    ATSign,
+    /// Numeric value e.g: 12 ,0xf3, 0b110
     Int(i32),
+    /// Floating value e.g: 0.5
     Float(f32),
+    /// Character Literal e.g: 'A', '9', '\n'
     Char(char),
+    /// String Literal e.g: "Hello world", "hi\nhello"
     String,
-
-    Plus,    // +
-    Minus,   // -
-    Multi,   // *
-    Devide,  // /
-    Not,     // !
-    Bigger,  // >
-    Smaller, // <
-
-    Fun,      // fun
-    If,       // if
-    Let,      // let
-    Else,     // else
-    Return,   // return
-    While,    // while
-    Break,    // break
-    Continue, // continue
-    Print,    // continue
-
-    Eq,        // =
-    DoubleEq,  // ==
-    ColonEq,   // :=
-    NotEq,     // !=
-    BiggerEq,  // >=
-    SmallerEq, // <=
-
-    Log,         // #
-    SemiColon,   // ;
-    Colon,       // :
-    DoubleColon, // ::
-    Comma,       // ,
-
+    /// "+" Plus And Pos
+    Plus,
+    /// "-" Sub and Neg
+    Minus,
+    /// "*" Multiply
+    Multi,
+    /// "/" Devide
+    Devide,
+    /// "%" Modulo
+    Mod,
+    /// "!" Binary Not Operation
+    Not,
+    /// ">" Bigger Compare Oparation
+    Bigger,
+    /// "<" Smaller Compare Operation
+    Smaller,
+    /// Keyword fun
+    Fun,
+    /// Keyword if
+    If,
+    /// Keyword let
+    Let,
+    /// Keyword else
+    Else,
+    /// Keyword return
+    Return,
+    /// Keyword while
+    While,
+    /// Keyword break
+    Break,
+    /// Keyword continue
+    Continue,
+    /// Keyword print
+    Print,
+    /// "@" Type defenition indicator
+    ATSign,
+    /// "=" Assgin a value to a variable
+    Eq,
+    /// ":=" Const indication for variable defenition
+    ColonEq,
+    /// "==" Compare Operation Eq
+    DoubleEq,
+    /// "!=" Compare Operation Not Eq
+    NotEq,
+    /// ">=" Compare Operation Bigger Eq
+    BiggerEq,
+    /// "<=" Compare Operatiom Smaller Eq
+    SmallerEq,
+    /// "+=" Assgin and add to itself
+    PlusEq,
+    /// "-=" Assgin and sub to itself
+    SubEq,
+    /// "*=" Assgin and multiply to itself
+    MultiEq,
+    /// "/=" Assgin and Devide to itself
+    DivEq,
+    /// "%=" Assgin and mod to itself
+    ModEq,
+    /// "#" NOT DEFINED YET
+    Log,
+    /// ";" End of stmt
+    SemiColon,
+    /// ":" NOT DEFINED YET
+    Colon,
+    /// "::" Const variable definition
+    DoubleColon,
+    /// "," Seperating Arguments
+    Comma,
+    /// "("
     OParen,
+    /// ")"
     CParen,
+    /// "["
     OBracket,
+    /// "]"
     CBracket,
+    /// "{"
     OCurly,
+    /// "}"
     CCurly,
-    EOF,
-    SOF,
+    /// END OF FILE
+    Eof,
+    /// START OF FILE
+    Sof,
 }
 
 #[derive(Debug, Clone)]
@@ -61,6 +115,22 @@ pub struct Token {
 }
 
 impl Token {
+    /// Returns a Token Structure
+    ///
+    /// # Arguments
+    ///  
+    /// * `t_type` - TokenType extracted by lexer
+    /// * `literal` - The String Literal related to the token
+    /// * `loc` - The location of the token
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// Token::new(TokenType::Int(0),
+    ///     "0".to_string(),
+    ///     ("./path.nmt".to_string(),1,1)
+    ///     );
+    /// ```
     pub fn new(t_type: TokenType, literal: String, loc: Loc) -> Self {
         Self {
             literal,
@@ -71,23 +141,22 @@ impl Token {
         }
     }
 
+    /// Check if The Type of token is indicating the start
+    /// or the end of a file
     pub fn is_empty(&self) -> bool {
-        matches!(self.t_type, TokenType::EOF | TokenType::SOF)
+        matches!(self.t_type, TokenType::Eof | TokenType::Sof)
     }
 
+    /// Creates an empty token wich acts as None in Option<T>
     pub fn empty() -> Token {
         Self {
             literal: String::new(),
-            t_type: TokenType::SOF,
+            t_type: TokenType::Sof,
             file_path: String::new(),
             line: 0,
             col: 0,
         }
     }
-
-    // pub fn get_loc_string(&self) -> String {
-    //     format!("{}:{}:{}",self.file_path,self.line,self.col)
-    // }
 }
 
 #[derive(Debug, Clone)]
@@ -101,6 +170,12 @@ pub struct Lexer {
 }
 
 impl Lexer {
+    /// Returns an instance of lexer
+    ///
+    /// # Argments
+    ///
+    /// * `file_path` - Path of code file mostly for error reporting
+    /// * `source` - Code source String extracted from code file
     pub fn new(file_path: String, source: String) -> Self {
         Self {
             file_path,
@@ -112,10 +187,12 @@ impl Lexer {
         }
     }
 
+    /// Chacks if self.cur is referencing outside of the code file
     fn is_empty(&self) -> bool {
         self.cur >= self.source.len()
     }
 
+    /// Ignores Every character until a newline reached
     fn drop_line(&mut self) {
         while !self.is_empty() {
             if self.source[self.cur] == '\n' {
@@ -127,6 +204,7 @@ impl Lexer {
         }
     }
 
+    /// Increments cur and adjusts bol and row if char under cur is a newline
     fn drop(&mut self) {
         if !self.is_empty() {
             let char = self.source[self.cur];
@@ -138,12 +216,14 @@ impl Lexer {
         }
     }
 
+    /// Drops all the whitespaces until reaching a non-WS char
     fn trim_left(&mut self) {
         while !self.is_empty() && self.source[self.cur].is_whitespace() {
             self.drop();
         }
     }
 
+    /// Returned the current location of cur
     fn get_loc(&self) -> Loc {
         (
             self.file_path.clone(),
@@ -152,6 +232,7 @@ impl Lexer {
         )
     }
 
+    /// Formats the current token location to string
     pub fn get_loc_string(&self) -> String {
         let loc: Loc = (
             self.file_path.clone(),
@@ -161,15 +242,23 @@ impl Lexer {
         format!("{}:{}:{}", loc.0, loc.1, loc.2)
     }
 
+    /// Returns type of the current token
+    /// Can exit the program if token is EOF
     pub fn get_token_type(&self) -> TokenType {
         let tk = self.token.clone();
-        if tk.t_type == TokenType::EOF {
+        if tk.t_type == TokenType::Eof {
             eprintln!("Expected a Token, found Eof at {}", self.get_loc_string());
             exit(-1);
         };
         tk.t_type
     }
 
+    /// Checks if the current token type matches the giver token type
+    /// Will exit the program if token is not matching
+    ///
+    /// # Arguments
+    ///
+    /// * `t_type` - TokenType for matching
     pub fn match_token(&mut self, t_type: TokenType) {
         let tk = self.token.clone();
         if tk.t_type == t_type {
@@ -185,16 +274,19 @@ impl Lexer {
         }
     }
 
+    /// Returns the current token
     pub fn get_token(&self) -> Token {
         self.token.clone()
     }
 
+    /// Scans the next token and sets the current token to the new token
     pub fn next_token(&mut self) -> Token {
         let token = self._next_token();
         self.token = token.clone();
         token
     }
 
+    /// Scans the next token
     fn _next_token(&mut self) -> Token {
         self.trim_left();
         while !self.is_empty() {
@@ -265,6 +357,8 @@ impl Lexer {
         exit(1);
     }
 
+    /// Tokenses the char literal
+    /// ONLY call when current char is (')
     fn tokenize_char_literal(&mut self) -> Token {
         let first = self.source[self.cur];
         self.drop();
@@ -325,7 +419,7 @@ impl Lexer {
                 exit(1);
             }
             self.drop();
-            return Token::new(TokenType::Char(first), literal, self.get_loc());
+            Token::new(TokenType::Char(first), literal, self.get_loc())
         } else {
             eprintln!(
                 "Error: Char literal is not closed properly at {}",
@@ -335,6 +429,8 @@ impl Lexer {
         }
     }
 
+    /// Tokenses the string literal
+    /// ONLY call when current char is (")
     fn tokenize_string_literal(&mut self) -> Token {
         self.drop();
         let mut literal = String::new();
@@ -398,7 +494,7 @@ impl Lexer {
         }
         if !self.is_empty() {
             self.drop();
-            return Token::new(TokenType::String, literal, self.get_loc());
+            Token::new(TokenType::String, literal, self.get_loc())
         } else {
             eprintln!(
                 "Error: String literal is not closed properly at {}",
@@ -408,6 +504,12 @@ impl Lexer {
         }
     }
 
+    /// Checks if literal is a keyword
+    /// Returns Some(Token) if matches and None if not
+    ///
+    /// # Arguments
+    ///
+    /// * `literal` - token literal that we whant to check
     fn is_keyword(literal: &str) -> Option<TokenType> {
         match literal {
             "if" => Some(TokenType::If),
@@ -423,6 +525,12 @@ impl Lexer {
         }
     }
 
+    /// Checks if a char in literal is a token
+    /// Returns Some(Token) if matches and None if not
+    ///
+    /// # Arguments
+    ///
+    /// * `literal` - token literal that we whant to check
     fn is_single_char_token(char: char) -> Option<TokenType> {
         match char {
             '{' => Some(TokenType::OCurly),
@@ -444,15 +552,27 @@ impl Lexer {
             '>' => Some(TokenType::Bigger),
             '<' => Some(TokenType::Smaller),
             '@' => Some(TokenType::ATSign),
+            '%' => Some(TokenType::Mod),
             _ => None,
         }
     }
 
+    /// Checks if a string in literal is a token
+    /// Returns Some(Token) if matches and None if not
+    ///
+    /// # Arguments
+    ///
+    /// * `literal` - token literal that we whant to check
     fn is_double_char_token(first: char, next: char) -> Option<TokenType> {
         let mut double_char = String::new();
         double_char.push(first);
         double_char.push(next);
         match double_char.as_str() {
+            "+=" => Some(TokenType::PlusEq),
+            "-=" => Some(TokenType::SubEq),
+            "*=" => Some(TokenType::MultiEq),
+            "/=" => Some(TokenType::DivEq),
+            "%=" => Some(TokenType::ModEq),
             "==" => Some(TokenType::DoubleEq),
             ":=" => Some(TokenType::ColonEq),
             "::" => Some(TokenType::DoubleColon),
@@ -463,6 +583,12 @@ impl Lexer {
         }
     }
 
+    /// Parse numeric literal to a numeric TokenType
+    /// Can Exit the program if can not parse the lietal
+    ///
+    /// # Arguments
+    ///
+    /// * `literal` - token literal that we whant to check
     fn parse_numeric_literal(literal: &String) -> TokenType {
         // 0x001 0xff 0b0010
         let mut lit_chars = literal.chars();
@@ -499,6 +625,8 @@ impl Lexer {
         }
     }
 
+    /// Returns char if exits in a list
+    /// Will Exit the program if no match
     fn expect_char(copt: &Option<char>, chars: Vec<char>) -> char {
         let char = copt.unwrap_or_else(|| {
             eprintln!("Error: Undifined character set for numbers");
