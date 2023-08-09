@@ -72,10 +72,10 @@ impl Token {
     }
 
     pub fn is_empty(&self) -> bool {
-        matches!(self.t_type,TokenType::EOF | TokenType::SOF)
+        matches!(self.t_type, TokenType::EOF | TokenType::SOF)
     }
 
-    pub fn empty() -> Token{
+    pub fn empty() -> Token {
         Self {
             literal: String::new(),
             t_type: TokenType::SOF,
@@ -219,9 +219,7 @@ impl Lexer {
             }
             let literal = String::from_iter(self.source[index..self.cur].to_vec());
             match Self::is_keyword(&literal) {
-                Some(keyword_token) => {
-                    return Token::new(keyword_token, literal, self.get_loc())
-                }
+                Some(keyword_token) => return Token::new(keyword_token, literal, self.get_loc()),
                 None => return Token::new(TokenType::Identifier, literal, self.get_loc()),
             }
         }
@@ -238,133 +236,11 @@ impl Lexer {
             return Token::new(ttype_and_val, literal, self.get_loc());
         }
         if first == '\'' {
-            self.drop();
-            let mut literal = String::new();
-            let char = self.source[self.cur];
-            if char == '\'' {
-                println!("char literal can not be empty {}", self.get_loc_string());
-                exit(1);
-            }
-            if char == '\\' {
-                self.drop();
-                if self.is_empty() {
-                    println!(
-                        "char literal unfinished escape sequence {}",
-                        self.get_loc_string()
-                    );
-                    exit(1);
-                }
-                let escape = self.source[self.cur];
-                match escape {
-                    'n' => {
-                        literal.push('\n');
-                        self.drop();
-                    }
-                    '\'' => {
-                        literal.push('\'');
-                        self.drop();
-                    }
-                    't' => {
-                        literal.push('\t');
-                        self.drop();
-                    }
-                    'r' => {
-                        literal.push('\r');
-                        self.drop();
-                    }
-                    '\\' => {
-                        literal.push('\\');
-                        self.drop();
-                    }
-                    _ => {
-                        println!(
-                            "unsupported escape sequence (\\{}) {}",
-                            escape,
-                            self.get_loc_string()
-                        );
-                        exit(1);
-                    }
-                }
-            } else {
-                literal.push(char);
-                self.drop();
-            }
-
-            if !self.is_empty() {
-                if self.source[self.cur] != '\'' {
-                    println!("unsupported char {}", self.get_loc_string());
-                    exit(1);
-                }
-                self.drop();
-                return Token::new(TokenType::Char(first), literal, self.get_loc());
-            }
+            return self.tokenize_char_literal();
         }
 
         if first == '"' {
-            self.drop();
-            let mut literal = String::new();
-            while !self.is_empty() {
-                let char = self.source[self.cur];
-                if char == '\"' {
-                    break;
-                }
-                if char == '\n' {
-                    println!(
-                        "string literal not closed before end of line {}",
-                        self.get_loc_string()
-                    );
-                    exit(1);
-                }
-                if char == '\\' {
-                    self.drop();
-                    if self.is_empty() {
-                        println!(
-                            "string literal unfinished escape sequence {}",
-                            self.get_loc_string()
-                        );
-                        exit(1);
-                    }
-
-                    let escape = self.source[self.cur];
-                    match escape {
-                        'n' => {
-                            literal.push('\n');
-                            self.drop();
-                        }
-                        '"' => {
-                            literal.push('"');
-                            self.drop();
-                        }
-                        't' => {
-                            literal.push('\t');
-                            self.drop();
-                        }
-                        'r' => {
-                            literal.push('\r');
-                            self.drop();
-                        }
-                        '\\' => {
-                            literal.push('\\');
-                            self.drop();
-                        }
-                        _ => {
-                            println!(
-                                "unsupported escape sequence (\\{}) {}",
-                                escape,
-                                self.get_loc_string()
-                            );
-                            exit(1);
-                        }
-                    }
-                } else {
-                    literal.push(char);
-                    self.drop();
-                }
-            }
-            if !self.is_empty() {
-                self.drop();
-                return Token::new(TokenType::String, literal, self.get_loc());
-            }
+            return self.tokenize_string_literal();
         }
 
         if let Some(tt) = Self::is_single_char_token(first) {
@@ -387,6 +263,149 @@ impl Lexer {
 
         eprintln!("Unexpected Character at {}", self.get_loc_string());
         exit(1);
+    }
+
+    fn tokenize_char_literal(&mut self) -> Token {
+        let first = self.source[self.cur];
+        self.drop();
+        let mut literal = String::new();
+        let char = self.source[self.cur];
+        if char == '\'' {
+            eprintln!("char literal can not be empty {}", self.get_loc_string());
+            exit(1);
+        }
+        if char == '\\' {
+            self.drop();
+            if self.is_empty() {
+                eprintln!(
+                    "char literal unfinished escape sequence {}",
+                    self.get_loc_string()
+                );
+                exit(1);
+            }
+            let escape = self.source[self.cur];
+            match escape {
+                'n' => {
+                    literal.push('\n');
+                    self.drop();
+                }
+                '\'' => {
+                    literal.push('\'');
+                    self.drop();
+                }
+                't' => {
+                    literal.push('\t');
+                    self.drop();
+                }
+                'r' => {
+                    literal.push('\r');
+                    self.drop();
+                }
+                '\\' => {
+                    literal.push('\\');
+                    self.drop();
+                }
+                _ => {
+                    eprintln!(
+                        "unsupported escape sequence (\\{}) {}",
+                        escape,
+                        self.get_loc_string()
+                    );
+                    exit(1);
+                }
+            }
+        } else {
+            literal.push(char);
+            self.drop();
+        }
+
+        if !self.is_empty() {
+            if self.source[self.cur] != '\'' {
+                eprintln!("unsupported char {}", self.get_loc_string());
+                exit(1);
+            }
+            self.drop();
+            return Token::new(TokenType::Char(first), literal, self.get_loc());
+        } else {
+            eprintln!(
+                "Error: Char literal is not closed properly at {}",
+                self.get_loc_string()
+            );
+            exit(1);
+        }
+    }
+
+    fn tokenize_string_literal(&mut self) -> Token {
+        self.drop();
+        let mut literal = String::new();
+        while !self.is_empty() {
+            let char = self.source[self.cur];
+            if char == '\"' {
+                break;
+            }
+            if char == '\n' {
+                eprintln!(
+                    "string literal not closed before end of line {}",
+                    self.get_loc_string()
+                );
+                exit(1);
+            }
+            if char == '\\' {
+                self.drop();
+                if self.is_empty() {
+                    eprintln!(
+                        "string literal unfinished escape sequence {}",
+                        self.get_loc_string()
+                    );
+                    exit(1);
+                }
+
+                let escape = self.source[self.cur];
+                match escape {
+                    'n' => {
+                        literal.push('\n');
+                        self.drop();
+                    }
+                    '"' => {
+                        literal.push('"');
+                        self.drop();
+                    }
+                    't' => {
+                        literal.push('\t');
+                        self.drop();
+                    }
+                    'r' => {
+                        literal.push('\r');
+                        self.drop();
+                    }
+                    '\\' => {
+                        literal.push('\\');
+                        self.drop();
+                    }
+                    _ => {
+                        eprintln!(
+                            "unsupported escape sequence (\\{}) {}",
+                            escape,
+                            self.get_loc_string()
+                        );
+                        exit(1);
+                    }
+                }
+            } else {
+                literal.push(char);
+                self.drop();
+            }
+        }
+        if !self.is_empty() {
+            self.drop();
+            return Token::new(TokenType::String, literal, self.get_loc());
+        } else {
+            eprintln!(
+                "Error: String literal is not closed properly at {}",
+                self.get_loc_string()
+            );
+            exit(1);
+        }
     }
 
     fn is_keyword(literal: &str) -> Option<TokenType> {
@@ -453,7 +472,7 @@ impl Lexer {
             let mut value: i32 = 0;
             for ch in lit_chars {
                 let digit = ch.to_digit(16).unwrap_or_else(|| {
-                    println!("Error: Unknown character in parsing: {}", literal);
+                    eprintln!("Error: Unknown character in parsing: {}", literal);
                     exit(-1);
                 });
                 value = (value * 16i32) + digit as i32;
@@ -465,7 +484,7 @@ impl Lexer {
             let mut value: i32 = 0;
             for ch in lit_chars {
                 let digit = ch.to_digit(2).unwrap_or_else(|| {
-                    println!("Error: Unknown character in parsing: {}", literal);
+                    eprintln!("Error: Unknown character in parsing: {}", literal);
                     exit(-1);
                 });
                 value = (value * 2i32) + digit as i32;
@@ -482,7 +501,7 @@ impl Lexer {
 
     fn expect_char(copt: &Option<char>, chars: Vec<char>) -> char {
         let char = copt.unwrap_or_else(|| {
-            println!("Error: Undifined character set for numbers");
+            eprintln!("Error: Undifined character set for numbers");
             exit(-1);
         });
         if chars.contains(&char) {
@@ -500,9 +519,29 @@ mod lexer_tests {
 
     #[test]
     fn expr_tokens() {
-        let mut lexer = Lexer::new(String::new(),"1 + 1".to_string());
-        assert_eq!(lexer.next_token().t_type,TokenType::Int(1));
-        assert_eq!(lexer.next_token().t_type,TokenType::Plus);
-        assert_eq!(lexer.next_token().t_type,TokenType::Int(1));
+        let mut lexer = Lexer::new(String::new(), "a + (3 * 4) - 2".to_string());
+        assert_eq!(lexer.next_token().t_type, TokenType::Identifier);
+        assert_eq!(lexer.next_token().t_type, TokenType::Plus);
+        assert_eq!(lexer.next_token().t_type, TokenType::OParen);
+        assert_eq!(lexer.next_token().t_type, TokenType::Int(3));
+        assert_eq!(lexer.next_token().t_type, TokenType::Multi);
+        assert_eq!(lexer.next_token().t_type, TokenType::Int(4));
+        assert_eq!(lexer.next_token().t_type, TokenType::CParen);
+        assert_eq!(lexer.next_token().t_type, TokenType::Minus);
+        assert_eq!(lexer.next_token().t_type, TokenType::Int(2));
+    }
+
+    #[test]
+    fn string_literal() {
+        let mut lexer = Lexer::new(String::new(), "\"test\"".to_string());
+        assert_eq!(lexer.tokenize_string_literal().t_type, TokenType::String);
+    }
+
+    #[test]
+    fn string_literal_escape_seq() {
+        let mut lexer = Lexer::new(String::new(), "\"test\\ntest\"".to_string());
+        assert_eq!(lexer.tokenize_string_literal().t_type, TokenType::String);
+        let mut lexer = Lexer::new(String::new(), "\"\\\"test\\\"\"".to_string());
+        assert_eq!(lexer.tokenize_string_literal().t_type, TokenType::String);
     }
 }
