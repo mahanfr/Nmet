@@ -53,6 +53,10 @@ pub enum TokenType {
     Continue,
     /// Keyword print
     Print,
+    /// Keyword true
+    True,
+    /// Keyword false
+    False,
     /// "@" Type defenition indicator
     ATSign,
     /// "=" Assgin a value to a variable
@@ -521,6 +525,8 @@ impl Lexer {
             "break" => Some(TokenType::Break),
             "continue" => Some(TokenType::Continue),
             "print" => Some(TokenType::Print),
+            "true" => Some(TokenType::True),
+            "false" => Some(TokenType::False),
             _ => None,
         }
     }

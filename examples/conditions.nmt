@@ -1,7 +1,7 @@
 ~ If Conditions and variables example
 fun main() {
     let a = 0;
-    if a == 1 {
+    if a == true {
         print 69; ~ dose not print 69
     } else {
         print 420;
