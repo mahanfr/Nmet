@@ -50,6 +50,7 @@ pub enum Op {
     Multi,
     Devide,
     Not,
+    Mod,
 }
 impl Op {
     pub fn from_token_type(token_type: TokenType) -> Self {
@@ -59,6 +60,7 @@ impl Op {
             TokenType::Multi => Self::Multi,
             TokenType::Devide => Self::Devide,
             TokenType::Not => Self::Not,
+            TokenType::Mod => Self::Mod,
             _ => {
                 todo!("return Error");
             }
@@ -73,6 +75,7 @@ impl Display for Op {
             Op::Multi => write!(f, "*"),
             Op::Devide => write!(f, "/"),
             Op::Not => write!(f, "!"),
+            Op::Mod => write!(f, "%"),
         }
     }
 }

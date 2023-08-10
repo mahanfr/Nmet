@@ -1,0 +1,17 @@
+
+fun is_odd(x @int) @bool {
+    if x % 2 == 0 {
+        return false;
+    }
+    else {
+        return true;
+    }
+}
+
+fun main() {
+    if is_odd(10) {
+        print "is odd!\n";
+    } else {
+        print "is even!\n";
+    }
+}

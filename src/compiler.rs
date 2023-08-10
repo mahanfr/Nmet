@@ -5,7 +5,8 @@ use std::io::{BufWriter, Write};
 use std::process::exit;
 
 use crate::parser::block::Block;
-use crate::parser::expr::{CompareOp, Expr, Op};
+use crate::parser::expr::{CompareOp, Expr, Op, FunctionCall};
+use crate::parser::function::{Function, FunctionArg};
 use crate::parser::program::{ProgramFile, ProgramItem};
 use crate::parser::stmt::{Assgin, AssginOp, ElseBlock, IFStmt, Stmt, VariableDeclare, WhileStmt};
 
@@ -13,6 +14,70 @@ macro_rules! asm {
     ($($arg:tt)+) => (
         format!("    {}\n",format_args!($($arg)+))
     );
+}
+
+pub fn rbs(register: &str,size: usize) -> String {
+    match register {
+        "a" | "b" | "c" | "d" => {
+            match size {
+                1 => format!("{register}l"),
+                2 => format!("{register}x"),
+                4 => format!("e{register}x"),
+                8 => format!("r{register}x"),
+                _ => {
+                    unreachable!("Incurrect Size")
+                }
+            }
+        },
+        "sp" | "bp"  => {
+            match size {
+                1 => format!("{register}l"),
+                2 => format!("{register}"),
+                4 => format!("e{register}"),
+                8 => format!("r{register}"),
+                _ => {
+                    unreachable!("Incurrect Size")
+                }
+            }
+        },
+        "si" | "di"  => {
+            match size {
+                1 => format!("{register}l"),
+                2 => format!("{register}"),
+                4 => format!("e{register}"),
+                8 => format!("r{register}"),
+                _ => {
+                    unreachable!("Incurrect Size")
+                }
+            }
+        },
+        "r8" | "r9" | "r10" | "r11" => {
+            match size {
+                1 => format!("{register}b"),
+                2 => format!("{register}w"),
+                4 => format!("{register}d"),
+                8 => format!("{register}"),
+                _ => {
+                    unreachable!("Incurrect Size")
+                }
+            }
+        },
+        _ => {
+            panic!("Wrong register identifier!");
+        }
+    }
+}
+
+pub fn function_args_register(arg_numer: usize,size: usize) -> String {
+    match arg_numer {
+        0 => rbs("di",size),
+        1 => rbs("si",size),
+        2 => rbs("d", size),
+        3 => rbs("c", size),
+        4 => rbs("r8",size),
+        5 => rbs("r9",size),
+        _ => unreachable!(),
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -40,7 +105,7 @@ impl IRGenerator {
             instruct_buf: Vec::new(),
             data_buf: Vec::new(),
             scoped_blocks: Vec::new(),
-            block_id: 1,
+            block_id: 0,
             variables_map: HashMap::new(),
             mem_offset: 0,
             g_mem_offset: 0,
@@ -96,6 +161,68 @@ impl IRGenerator {
         self.variables_map.insert(ident, var_map);
     }
 
+    pub fn function_args(&mut self,args: &Vec<FunctionArg>) {
+        let mut args_count = 0;
+        for arg in args {
+            let ident = format!("{}%{}", arg.ident, self.block_id);
+            let map = VariableMap{
+                _ident: arg.ident.clone(),
+                offset: self.mem_offset,
+                is_mut: false,
+                size: 8,
+            };
+            if args_count < 6 {
+                let mem_acss = format!("qword [rbp-{}]", map.offset + map.size);
+                let reg = function_args_register(args_count,8);
+                self.instruct_buf.push(asm!("mov {},{}",mem_acss,reg));
+            } else {
+                let mem_overload = format!("qword [rbp+{}]", 16 + (args_count-6)*8);
+                let mem_acss = format!("qword [rbp-{}]", map.offset + map.size);
+                self.instruct_buf.push(asm!("mov {},{}",mem_acss,mem_overload));
+            }
+            self.variables_map.insert(ident, map);
+            self.mem_offset += 8;
+            args_count += 1;
+        }
+
+    }
+
+    pub fn function(&mut self, f: Function) {
+        self.scoped_blocks = Vec::new();
+        self.block_id = 0;
+        self.scoped_blocks.push(0);
+        if f.ident == "main" {
+            self.instruct_buf.push("_start:\n".to_string());
+        } else {
+            self.instruct_buf.push(format!("{}:\n",f.ident));
+        }
+
+        // set rbp to stack pointer for this block
+        let index_1 = self.instruct_buf.len();
+        self.instruct_buf.push(String::new());
+        let index_2 = self.instruct_buf.len();
+        self.instruct_buf.push(String::new());
+        let index_3 = self.instruct_buf.len();
+        self.instruct_buf.push(String::new());
+
+        self.function_args(&f.args);
+        self.compile_block(&f.block);
+        self.scoped_blocks.pop();
+        // revert rbp
+        if !self.variables_map.is_empty() {
+            self.instruct_buf[index_1] = asm!("push rbp");
+            self.instruct_buf[index_2] = asm!("mov rbp, rsp");
+            self.instruct_buf[index_3] = asm!("sub rsp, {}", self.frame_size());
+            self.instruct_buf.push(asm!("pop rbp"));
+        }
+        // Call Exit Syscall
+        if f.ident == "main" {
+            self.instruct_buf.push(asm!("mov rax, 60"));
+            self.instruct_buf.push(asm!("mov rdi, 0"));
+            self.instruct_buf.push(asm!("syscall"));
+        }
+    }
+
     // TODO: Handle Compilation Error
     pub fn compile(&mut self, program: ProgramFile) -> Result<(), Box<dyn Error>> {
         for item in program.items {
@@ -105,33 +232,7 @@ impl IRGenerator {
                     // self.insert_variable(&s);
                 }
                 ProgramItem::Func(f) => {
-                    if f.ident == "main" {
-                        self.instruct_buf.push("_start:\n".to_string());
-                    } else {
-                        todo!();
-                    }
-                    // set rbp to stack pointer for this block
-                    let index_1 = self.instruct_buf.len();
-                    self.instruct_buf.push(String::new());
-                    let index_2 = self.instruct_buf.len();
-                    self.instruct_buf.push(String::new());
-                    let index_3 = self.instruct_buf.len();
-                    self.instruct_buf.push(String::new());
-
-                    self.compile_block(&f.block);
-                    // revert rbp
-                    if !self.variables_map.is_empty() {
-                        self.instruct_buf[index_1] = asm!("push rbp");
-                        self.instruct_buf[index_2] = asm!("mov rbp, rsp");
-                        self.instruct_buf[index_3] = asm!("sub rsp, {}", self.frame_size());
-                        self.instruct_buf.push(asm!("pop rbp"));
-                    }
-                    // Call Exit Syscall
-                    if f.ident == "main" {
-                        self.instruct_buf.push(asm!("mov rax, 60"));
-                        self.instruct_buf.push(asm!("mov rdi, 0"));
-                        self.instruct_buf.push(asm!("syscall"));
-                    }
+                    self.function(f);
                 }
             }
         }
@@ -215,6 +316,13 @@ impl IRGenerator {
             }
             Stmt::While(w) => {
                 self.compile_while(w);
+            }
+            Stmt::Return(e) => {
+                self.compile_expr(e);
+                self.instruct_buf.push(asm!("pop rax"));
+                self.instruct_buf.push(asm!("pop rbp"));
+                self.instruct_buf.push(asm!("ret"));
+                println!("Warning: might segfault add leave or fix dataframe");
             }
             _ => {
                 todo!();
@@ -334,7 +442,14 @@ impl IRGenerator {
                         self.instruct_buf.push(asm!("push rax"));
                     }
                     Op::Devide => {
-                        todo!();
+                        self.instruct_buf.push(asm!("cdq"));
+                        self.instruct_buf.push(asm!("idiv rbx"));
+                        self.instruct_buf.push(asm!("push rax"));
+                    }
+                    Op::Mod => {
+                        self.instruct_buf.push(asm!("cdq"));
+                        self.instruct_buf.push(asm!("idiv rbx"));
+                        self.instruct_buf.push(asm!("push rdx"));
                     }
                     _ => unreachable!(),
                 }
@@ -353,10 +468,17 @@ impl IRGenerator {
             Expr::Unary(_) => {
                 todo!();
             }
+            Expr::FunctionCall(fc) => {
+                self.compile_function_call(fc);
+            }
             _ => {
                 todo!();
             }
         }
+    }
+
+    fn compile_function_call(&mut self,fc: &FunctionCall) {
+        todo!();
     }
 
     fn asmfy_string(str: &str) -> String {
