@@ -50,9 +50,9 @@ pub fn expr(lexer: &mut Lexer) -> Expr {
 
 pub fn term(lexer: &mut Lexer) -> Expr {
     let mut left = factor(lexer);
-    while lexer.get_token_type() == TokenType::Multi || 
-        lexer.get_token_type() == TokenType::Devide ||
-        lexer.get_token_type() == TokenType::Mod
+    while lexer.get_token_type() == TokenType::Multi
+        || lexer.get_token_type() == TokenType::Devide
+        || lexer.get_token_type() == TokenType::Mod
     {
         let op = Op::from_token_type(lexer.get_token_type());
         lexer.next_token();
@@ -165,7 +165,7 @@ pub fn function_call_args(lexer: &mut Lexer) -> Vec<Expr> {
 pub fn function_def(lexer: &mut Lexer) -> Function {
     lexer.match_token(TokenType::Fun);
     let function_ident_token = lexer.get_token();
-    let mut ret_type : Option<VariableType> = None;
+    let mut ret_type: Option<VariableType> = None;
     if function_ident_token.is_empty() {
         eprintln!(
             "Function Defenition without Identifier at {}",
@@ -417,16 +417,15 @@ pub fn function_def_args(lexer: &mut Lexer) -> Vec<FunctionArg> {
                 break;
             }
             TokenType::Identifier => {
-                let typedef : VariableType;
                 let ident = lexer.get_token().literal;
                 lexer.match_token(TokenType::Identifier);
-                typedef = type_def(lexer);
+                let typedef = type_def(lexer);
                 if lexer.get_token_type() == TokenType::Comma {
                     lexer.match_token(TokenType::Comma);
                 }
                 args.push(FunctionArg {
                     ident: ident.to_string(),
-                    typedef
+                    typedef,
                 });
             }
             _ => {

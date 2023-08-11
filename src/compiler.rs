@@ -5,7 +5,7 @@ use std::io::{BufWriter, Write};
 use std::process::exit;
 
 use crate::parser::block::Block;
-use crate::parser::expr::{CompareOp, Expr, Op, FunctionCall};
+use crate::parser::expr::{CompareOp, Expr, FunctionCall, Op};
 use crate::parser::function::{Function, FunctionArg};
 use crate::parser::program::{ProgramFile, ProgramItem};
 use crate::parser::stmt::{Assgin, AssginOp, ElseBlock, IFStmt, Stmt, VariableDeclare, WhileStmt};
@@ -16,50 +16,42 @@ macro_rules! asm {
     );
 }
 
-pub fn rbs(register: &str,size: usize) -> String {
+pub fn rbs(register: &str, size: usize) -> String {
     match register {
-        "a" | "b" | "c" | "d" => {
-            match size {
-                1 => format!("{register}l"),
-                2 => format!("{register}x"),
-                4 => format!("e{register}x"),
-                8 => format!("r{register}x"),
-                _ => {
-                    unreachable!("Incurrect Size")
-                }
+        "a" | "b" | "c" | "d" => match size {
+            1 => format!("{register}l"),
+            2 => format!("{register}x"),
+            4 => format!("e{register}x"),
+            8 => format!("r{register}x"),
+            _ => {
+                unreachable!("Incurrect Size")
             }
         },
-        "sp" | "bp"  => {
-            match size {
-                1 => format!("{register}l"),
-                2 => format!("{register}"),
-                4 => format!("e{register}"),
-                8 => format!("r{register}"),
-                _ => {
-                    unreachable!("Incurrect Size")
-                }
+        "sp" | "bp" => match size {
+            1 => format!("{register}l"),
+            2 => register.to_string(),
+            4 => format!("e{register}"),
+            8 => format!("r{register}"),
+            _ => {
+                unreachable!("Incurrect Size")
             }
         },
-        "si" | "di"  => {
-            match size {
-                1 => format!("{register}l"),
-                2 => format!("{register}"),
-                4 => format!("e{register}"),
-                8 => format!("r{register}"),
-                _ => {
-                    unreachable!("Incurrect Size")
-                }
+        "si" | "di" => match size {
+            1 => format!("{register}l"),
+            2 => register.to_string(),
+            4 => format!("e{register}"),
+            8 => format!("r{register}"),
+            _ => {
+                unreachable!("Incurrect Size")
             }
         },
-        "r8" | "r9" | "r10" | "r11" => {
-            match size {
-                1 => format!("{register}b"),
-                2 => format!("{register}w"),
-                4 => format!("{register}d"),
-                8 => format!("{register}"),
-                _ => {
-                    unreachable!("Incurrect Size")
-                }
+        "r8" | "r9" | "r10" | "r11" => match size {
+            1 => format!("{register}b"),
+            2 => format!("{register}w"),
+            4 => format!("{register}d"),
+            8 => register.to_string(),
+            _ => {
+                unreachable!("Incurrect Size")
             }
         },
         _ => {
@@ -68,14 +60,14 @@ pub fn rbs(register: &str,size: usize) -> String {
     }
 }
 
-pub fn function_args_register(arg_numer: usize,size: usize) -> String {
+pub fn function_args_register(arg_numer: usize, size: usize) -> String {
     match arg_numer {
-        0 => rbs("di",size),
-        1 => rbs("si",size),
+        0 => rbs("di", size),
+        1 => rbs("si", size),
         2 => rbs("d", size),
         3 => rbs("c", size),
-        4 => rbs("r8",size),
-        5 => rbs("r9",size),
+        4 => rbs("r8", size),
+        5 => rbs("r9", size),
         _ => unreachable!(),
     }
 }
@@ -163,11 +155,10 @@ impl IRGenerator {
         self.variables_map.insert(ident, var_map);
     }
 
-    pub fn function_args(&mut self,args: &Vec<FunctionArg>) {
-        let mut args_count = 0;
-        for arg in args {
+    pub fn function_args(&mut self, args: &[FunctionArg]) {
+        for (args_count, arg) in args.iter().enumerate() {
             let ident = format!("{}%{}", arg.ident, self.block_id);
-            let map = VariableMap{
+            let map = VariableMap {
                 _ident: arg.ident.clone(),
                 offset: self.mem_offset,
                 is_mut: false,
@@ -175,18 +166,17 @@ impl IRGenerator {
             };
             if args_count < 6 {
                 let mem_acss = format!("qword [rbp-{}]", map.offset + map.size);
-                let reg = function_args_register(args_count,8);
-                self.instruct_buf.push(asm!("mov {},{}",mem_acss,reg));
+                let reg = function_args_register(args_count, 8);
+                self.instruct_buf.push(asm!("mov {},{}", mem_acss, reg));
             } else {
-                let mem_overload = format!("qword [rbp+{}]", 16 + (args_count-6)*8);
+                let mem_overload = format!("qword [rbp+{}]", 16 + (args_count - 6) * 8);
                 let mem_acss = format!("qword [rbp-{}]", map.offset + map.size);
-                self.instruct_buf.push(asm!("mov {},{}",mem_acss,mem_overload));
+                self.instruct_buf
+                    .push(asm!("mov {},{}", mem_acss, mem_overload));
             }
             self.variables_map.insert(ident, map);
             self.mem_offset += 8;
-            args_count += 1;
         }
-
     }
 
     pub fn function(&mut self, f: Function) {
@@ -196,7 +186,7 @@ impl IRGenerator {
         if f.ident == "main" {
             self.instruct_buf.push("_start:\n".to_string());
         } else {
-            self.instruct_buf.push(format!("{}:\n",f.ident));
+            self.instruct_buf.push(format!("{}:\n", f.ident));
         }
 
         // set rbp to stack pointer for this block
@@ -210,18 +200,23 @@ impl IRGenerator {
         self.function_args(&f.args);
         self.compile_block(&f.block);
         self.scoped_blocks.pop();
-        // revert rbp
-        if !self.variables_map.is_empty() {
-            self.instruct_buf[index_1] = asm!("push rbp");
-            self.instruct_buf[index_2] = asm!("mov rbp, rsp");
-            self.instruct_buf[index_3] = asm!("sub rsp, {}", self.frame_size());
-            self.instruct_buf.push(asm!("pop rbp"));
-        }
         // Call Exit Syscall
         if f.ident == "main" {
             self.instruct_buf.push(asm!("mov rax, 60"));
             self.instruct_buf.push(asm!("mov rdi, 0"));
             self.instruct_buf.push(asm!("syscall"));
+            return;
+        }
+        // revert rbp
+        if !self.variables_map.is_empty() {
+            self.instruct_buf[index_1] = asm!("push rbp");
+            self.instruct_buf[index_2] = asm!("mov rbp, rsp");
+            self.instruct_buf[index_3] = asm!("sub rsp, {}", self.frame_size());
+            //self.instruct_buf.push(asm!("pop rbp"));
+            self.instruct_buf.push(asm!("leave"));
+            self.instruct_buf.push(asm!("ret"));
+        } else {
+            self.instruct_buf.push(asm!("ret"));
         }
     }
 
@@ -234,7 +229,7 @@ impl IRGenerator {
                     // self.insert_variable(&s);
                 }
                 ProgramItem::Func(f) => {
-                    self.functions_map.insert(f.ident.clone(),f.clone());
+                    self.functions_map.insert(f.ident.clone(), f.clone());
                     self.function(f);
                 }
             }
@@ -320,6 +315,14 @@ impl IRGenerator {
             Stmt::While(w) => {
                 self.compile_while(w);
             }
+            Stmt::Expr(e) => match e {
+                Expr::FunctionCall(_) => {
+                    self.compile_expr(e);
+                }
+                _ => {
+                    println!("Warning: Expretion with no effect ignored!");
+                }
+            },
             Stmt::Return(e) => {
                 self.compile_expr(e);
                 self.instruct_buf.push(asm!("pop rax"));
@@ -480,17 +483,16 @@ impl IRGenerator {
         }
     }
 
-    fn compile_function_call(&mut self,fc: &FunctionCall) {
-        let mut index = 0;
-        for arg in &fc.args {
+    fn compile_function_call(&mut self, fc: &FunctionCall) {
+        for (index, arg) in fc.args.iter().enumerate() {
             self.compile_expr(arg);
-            self.instruct_buf.push(asm!("pop {}",function_args_register(index,8)));
-            index += 1;
+            self.instruct_buf
+                .push(asm!("pop {}", function_args_register(index, 8)));
         }
         // TODO: Setup a unresolved function table
         let fun = self.functions_map.get(&fc.ident).unwrap();
         self.instruct_buf.push(asm!("mov rax, 0"));
-        self.instruct_buf.push(asm!("call {}",fc.ident));
+        self.instruct_buf.push(asm!("call {}", fc.ident));
         if fun.ret_type.is_some() {
             self.instruct_buf.push(asm!("push rax"));
         }
