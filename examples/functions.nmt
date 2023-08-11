@@ -1,6 +1,8 @@
 
 fun is_odd(x @int) @bool {
+    print "reached 2\n";
     if x % 2 == 0 {
+        print "reached 3\n";
         return false;
     }
     else {
@@ -9,6 +11,7 @@ fun is_odd(x @int) @bool {
 }
 
 fun main() {
+    print "reached 1\n";
     if is_odd(10) {
         print "is odd!\n";
     } else {

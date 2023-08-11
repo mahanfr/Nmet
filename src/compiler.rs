@@ -94,6 +94,7 @@ pub struct IRGenerator {
     scoped_blocks: Vec<usize>,
     block_id: usize,
     variables_map: HashMap<String, VariableMap>,
+    functions_map: HashMap<String, Function>,
     mem_offset: usize,
     g_mem_offset: usize,
 }
@@ -107,6 +108,7 @@ impl IRGenerator {
             scoped_blocks: Vec::new(),
             block_id: 0,
             variables_map: HashMap::new(),
+            functions_map: HashMap::new(),
             mem_offset: 0,
             g_mem_offset: 0,
         }
@@ -232,6 +234,7 @@ impl IRGenerator {
                     // self.insert_variable(&s);
                 }
                 ProgramItem::Func(f) => {
+                    self.functions_map.insert(f.ident.clone(),f.clone());
                     self.function(f);
                 }
             }
@@ -320,7 +323,7 @@ impl IRGenerator {
             Stmt::Return(e) => {
                 self.compile_expr(e);
                 self.instruct_buf.push(asm!("pop rax"));
-                self.instruct_buf.push(asm!("pop rbp"));
+                self.instruct_buf.push(asm!("leave"));
                 self.instruct_buf.push(asm!("ret"));
                 println!("Warning: might segfault add leave or fix dataframe");
             }
@@ -478,7 +481,19 @@ impl IRGenerator {
     }
 
     fn compile_function_call(&mut self,fc: &FunctionCall) {
-        todo!();
+        let mut index = 0;
+        for arg in &fc.args {
+            self.compile_expr(arg);
+            self.instruct_buf.push(asm!("pop {}",function_args_register(index,8)));
+            index += 1;
+        }
+        // TODO: Setup a unresolved function table
+        let fun = self.functions_map.get(&fc.ident).unwrap();
+        self.instruct_buf.push(asm!("mov rax, 0"));
+        self.instruct_buf.push(asm!("call {}",fc.ident));
+        if fun.ret_type.is_some() {
+            self.instruct_buf.push(asm!("push rax"));
+        }
     }
 
     fn asmfy_string(str: &str) -> String {
