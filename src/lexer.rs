@@ -110,13 +110,11 @@ pub enum TokenType {
 }
 
 impl TokenType {
-
     pub fn is_assgin_token(&self) -> bool {
-        matches!(self, 
-                 Self::Eq | Self::PlusEq | 
-                 Self::SubEq | Self::MultiEq | 
-                 Self::DivEq | Self::ModEq
-                 )
+        matches!(
+            self,
+            Self::Eq | Self::PlusEq | Self::SubEq | Self::MultiEq | Self::DivEq | Self::ModEq
+        )
     }
 }
 

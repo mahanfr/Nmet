@@ -288,7 +288,7 @@ pub fn block(lexer: &mut Lexer) -> Block {
                     exit(-1);
                 }
                 lexer.match_token(TokenType::SemiColon);
-            },
+            }
             _ => {
                 todo!();
             }
