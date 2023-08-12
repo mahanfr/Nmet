@@ -1,0 +1,14 @@
+
+fun main() {
+    let a @[int,32];
+    let index = 0;
+    while index < 32 {
+        a[index] = index;
+        index += 1;
+    }
+    index = 0;
+    while index < 32 {
+        print a[index];
+        index += 1;
+    }
+}

@@ -109,6 +109,17 @@ pub enum TokenType {
     Sof,
 }
 
+impl TokenType {
+
+    pub fn is_assgin_token(&self) -> bool {
+        matches!(self, 
+                 Self::Eq | Self::PlusEq | 
+                 Self::SubEq | Self::MultiEq | 
+                 Self::DivEq | Self::ModEq
+                 )
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Token {
     pub file_path: String,

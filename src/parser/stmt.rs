@@ -1,7 +1,8 @@
+use crate::lexer::TokenType;
 use crate::parser::block::Block;
 use crate::parser::expr::Expr;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum VariableType {
     Custom(String),
     Array(Box<VariableType>, usize),
@@ -49,7 +50,28 @@ pub struct Assgin {
 #[derive(Debug, Clone)]
 pub enum AssginOp {
     Eq,
+    PlusEq,
+    SubEq,
+    MultiEq,
+    DevideEq,
+    ModEq,
 }
+impl AssginOp {
+    pub fn from_token_type(ttype: &TokenType) -> Self {
+        match ttype {
+            TokenType::Eq => Self::Eq,
+            TokenType::PlusEq => Self::PlusEq,
+            TokenType::SubEq => Self::SubEq,
+            TokenType::MultiEq => Self::MultiEq,
+            TokenType::DivEq => Self::DevideEq,
+            TokenType::ModEq => Self::ModEq,
+            _ => {
+                unreachable!();
+            }
+        }
+    }
+}
+
 
 #[derive(Debug, Clone)]
 pub struct IFStmt {

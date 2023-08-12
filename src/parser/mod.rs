@@ -268,27 +268,29 @@ pub fn block(lexer: &mut Lexer) -> Block {
                 stmts.push(Stmt::Return(expr(lexer)));
                 lexer.match_token(TokenType::SemiColon);
             }
-            _ => {
+            TokenType::Identifier => {
+                //Assgin Op
                 let left_expr = expr(lexer);
-                match lexer.get_token_type() {
-                    TokenType::Eq => {
-                        lexer.match_token(TokenType::Eq);
-                        let right_expr = expr(lexer);
-                        stmts.push(Stmt::Assgin(Assgin {
-                            left: left_expr,
-                            right: right_expr,
-                            op: AssginOp::Eq,
-                        }));
-                    }
-                    TokenType::SemiColon => {
-                        stmts.push(Stmt::Expr(left_expr));
-                    }
-                    _ => {
-                        eprintln!("Error: Expected Semicolon at {}", lexer.get_loc_string());
-                        exit(-1);
-                    }
+                let token_type = lexer.get_token_type();
+                if token_type == TokenType::SemiColon {
+                    stmts.push(Stmt::Expr(left_expr));
+                } else if token_type.is_assgin_token() {
+                    let op_type = AssginOp::from_token_type(&token_type);
+                    lexer.match_token(token_type);
+                    let right_expr = expr(lexer);
+                    stmts.push(Stmt::Assgin(Assgin {
+                        left: left_expr,
+                        right: right_expr,
+                        op: op_type,
+                    }));
+                } else {
+                    eprintln!("Error: Expected Semicolon at {}", lexer.get_loc_string());
+                    exit(-1);
                 }
                 lexer.match_token(TokenType::SemiColon);
+            },
+            _ => {
+                todo!();
             }
         }
     }
