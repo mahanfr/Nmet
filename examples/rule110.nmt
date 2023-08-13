@@ -3,7 +3,6 @@ fun main() {
     let board @[int,30];
     board[28] = 1;
     let i = 0;
-    let pattern = 1;
     while i < 28 {
         let j = 0;
         while j < 30 {
@@ -16,7 +15,7 @@ fun main() {
         }
         print "\n";
         j = 1;
-        pattern = (board[0] << 1) | board[1];
+        let pattern = (board[0] << 1) | board[1];
         while j < 29 {
             pattern = ((pattern << 1) & 7) | board[j + 1];
             board[j] = (110 >> pattern) & 1;

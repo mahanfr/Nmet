@@ -14,7 +14,10 @@ pub enum Expr {
 }
 impl Expr {
     pub fn is_binary_op(t_token: TokenType) -> bool {
-        matches!(t_token, TokenType::Plus | TokenType::Minus | TokenType::And | TokenType::Or)
+        matches!(
+            t_token,
+            TokenType::Plus | TokenType::Minus | TokenType::And | TokenType::Or
+        )
     }
 
     pub fn is_compare_op(t_token: TokenType) -> bool {
@@ -54,7 +57,7 @@ pub enum Op {
     And,
     Or,
     Lsh,
-    Rsh
+    Rsh,
 }
 impl Op {
     pub fn from_token_type(token_type: TokenType) -> Self {
