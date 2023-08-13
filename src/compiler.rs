@@ -18,6 +18,18 @@ macro_rules! asm {
     );
 }
 
+pub fn mem_word(size: usize) -> String {
+    match size {
+        1 => "byte".to_string(),
+        2 => "word".to_string(),
+        4 => "dword".to_string(),
+        8 => "qword".to_string(),
+        _ => {
+            unreachable!("Incurrect Size")
+        }
+    }
+}
+
 pub fn rbs(register: &str, size: usize) -> String {
     match register {
         "a" | "b" | "c" | "d" => match size {
@@ -152,7 +164,7 @@ impl IRGenerator {
             let init_value = var.init_value.clone().unwrap();
             // this pushes result in stack
             self.compile_expr(&init_value);
-            let mem_acss = format!("qword [rbp-{}]", var_map.offset + var_map.size);
+            let mem_acss = format!("{} [rbp-{}]",mem_word(8), var_map.offset + var_map.size);
             self.instruct_buf.push(asm!("pop rax"));
             self.instruct_buf.push(asm!("mov {mem_acss},rax"));
         }
@@ -169,12 +181,12 @@ impl IRGenerator {
                 size: 8,
             };
             if args_count < 6 {
-                let mem_acss = format!("qword [rbp-{}]", map.offset + map.size);
+                let mem_acss = format!("{} [rbp-{}]",mem_word(8), map.offset + map.size);
                 let reg = function_args_register(args_count, 8);
                 self.instruct_buf.push(asm!("mov {},{}", mem_acss, reg));
             } else {
-                let mem_overload = format!("qword [rbp+{}]", 16 + (args_count - 6) * 8);
-                let mem_acss = format!("qword [rbp-{}]", map.offset + map.size);
+                let mem_overload = format!("{} [rbp+{}]",mem_word(8), 16 + (args_count - 6) * 8);
+                let mem_acss = format!("{} [rbp-{}]",mem_word(8), map.offset + map.size);
                 self.instruct_buf
                     .push(asm!("mov {},{}", mem_acss, mem_overload));
             }
@@ -396,7 +408,7 @@ impl IRGenerator {
                     exit(1);
                 }
                 self.compile_expr(&assign.right);
-                let mem_acss = format!("qword [rbp-{}]", v_map.offset + v_map.size);
+                let mem_acss = format!("{} [rbp-{}]",mem_word(8) ,v_map.offset + v_map.size);
                 self.assgin_op(&assign.op, mem_acss);
             }
             Expr::ArrayIndex(ai) => {
@@ -415,7 +427,7 @@ impl IRGenerator {
                 self.compile_expr(&ai.indexer);
                 self.instruct_buf.push(asm!("pop rbx"));
                 // TODO: Add Item size to v_map
-                let mem_acss = format!("qword [rbp-{}+rbx*{}]", v_map.offset + v_map.size, 8);
+                let mem_acss = format!("{} [rbp-{}+rbx*{}]",mem_word(8), v_map.offset + v_map.size, 8);
                 self.assgin_op(&assign.op, mem_acss);
             }
             _ => {
@@ -435,7 +447,7 @@ impl IRGenerator {
                     eprintln!("Error: Trying to access an Undifined variable ({v})");
                     exit(1);
                 });
-                let mem_acss = format!("qword [rbp-{}]", v_map.offset + v_map.size);
+                let mem_acss = format!("{} [rbp-{}]",mem_word(8), v_map.offset + v_map.size);
                 self.instruct_buf.push(asm!("mov rax,{mem_acss}"));
                 self.instruct_buf.push(asm!("push rax"));
             }
@@ -502,7 +514,27 @@ impl IRGenerator {
                         self.instruct_buf.push(asm!("idiv rbx"));
                         self.instruct_buf.push(asm!("push rdx"));
                     }
-                    _ => unreachable!(),
+                    Op::Or => {
+                        self.instruct_buf.push(asm!("or rax, rbx"));
+                        self.instruct_buf.push(asm!("push rax"));
+                    }
+                    Op::And => {
+                        self.instruct_buf.push(asm!("and rax, rbx"));
+                        self.instruct_buf.push(asm!("push rax"));
+                    }
+                    Op::Lsh => {
+                        self.instruct_buf.push(asm!("mov rcx, rbx"));
+                        self.instruct_buf.push(asm!("sal rax, cl"));
+                        self.instruct_buf.push(asm!("push rax"));
+                    }
+                    Op::Rsh => {
+                        self.instruct_buf.push(asm!("mov rcx, rbx"));
+                        self.instruct_buf.push(asm!("sar rax, cl"));
+                        self.instruct_buf.push(asm!("push rax"));
+                    }
+                    Op::Not => {
+                        panic!("Unvalid binary operation");
+                    }
                 }
             }
             Expr::String(str) => {
@@ -533,7 +565,7 @@ impl IRGenerator {
                 self.compile_expr(&ai.indexer);
                 self.instruct_buf.push(asm!("pop rbx"));
                 // TODO: Add Item size to v_map
-                let mem_acss = format!("qword [rbp-{}+rbx*{}]", v_map.offset + v_map.size, 8);
+                let mem_acss = format!("{} [rbp-{}+rbx*{}]",mem_word(8), v_map.offset + v_map.size, 8);
                 self.instruct_buf.push(asm!("mov rax,{mem_acss}"));
                 self.instruct_buf.push(asm!("push rax"));
             }

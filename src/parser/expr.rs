@@ -14,7 +14,7 @@ pub enum Expr {
 }
 impl Expr {
     pub fn is_binary_op(t_token: TokenType) -> bool {
-        matches!(t_token, TokenType::Plus | TokenType::Minus)
+        matches!(t_token, TokenType::Plus | TokenType::Minus | TokenType::And | TokenType::Or)
     }
 
     pub fn is_compare_op(t_token: TokenType) -> bool {
@@ -51,6 +51,10 @@ pub enum Op {
     Devide,
     Not,
     Mod,
+    And,
+    Or,
+    Lsh,
+    Rsh
 }
 impl Op {
     pub fn from_token_type(token_type: TokenType) -> Self {
@@ -61,6 +65,10 @@ impl Op {
             TokenType::Devide => Self::Devide,
             TokenType::Not => Self::Not,
             TokenType::Mod => Self::Mod,
+            TokenType::And => Self::And,
+            TokenType::Or => Self::Or,
+            TokenType::Lsh => Self::Lsh,
+            TokenType::Rsh => Self::Rsh,
             _ => {
                 todo!("return Error");
             }
@@ -76,6 +84,10 @@ impl Display for Op {
             Op::Devide => write!(f, "/"),
             Op::Not => write!(f, "!"),
             Op::Mod => write!(f, "%"),
+            Op::And => write!(f, "&"),
+            Op::Or => write!(f, "|"),
+            Op::Lsh => write!(f, "<<"),
+            Op::Rsh => write!(f, ">>"),
         }
     }
 }

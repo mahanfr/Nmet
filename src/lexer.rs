@@ -81,6 +81,14 @@ pub enum TokenType {
     DivEq,
     /// "%=" Assgin and mod to itself
     ModEq,
+    /// "<<" Shift Left
+    Lsh,
+    /// ">>" Shift Right
+    Rsh,
+    /// "&" logical And
+    And,
+    /// "|" logical or
+    Or,
     /// "#" NOT DEFINED YET
     Log,
     /// ";" End of stmt
@@ -568,6 +576,8 @@ impl Lexer {
             '<' => Some(TokenType::Smaller),
             '@' => Some(TokenType::ATSign),
             '%' => Some(TokenType::Mod),
+            '&' => Some(TokenType::And),
+            '|' => Some(TokenType::Or),
             _ => None,
         }
     }
@@ -594,6 +604,8 @@ impl Lexer {
             "!=" => Some(TokenType::NotEq),
             ">=" => Some(TokenType::BiggerEq),
             "<=" => Some(TokenType::SmallerEq),
+            "<<" => Some(TokenType::Lsh),
+            ">>" => Some(TokenType::Rsh),
             _ => None,
         }
     }

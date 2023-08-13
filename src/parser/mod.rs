@@ -41,7 +41,8 @@ pub fn expr(lexer: &mut Lexer) -> Expr {
                 op,
                 right: Box::new(right),
             });
-        } else {
+        }
+        else {
             break;
         }
     }
@@ -50,9 +51,11 @@ pub fn expr(lexer: &mut Lexer) -> Expr {
 
 pub fn term(lexer: &mut Lexer) -> Expr {
     let mut left = factor(lexer);
-    while lexer.get_token_type() == TokenType::Multi
+    while  lexer.get_token_type() == TokenType::Multi
         || lexer.get_token_type() == TokenType::Devide
         || lexer.get_token_type() == TokenType::Mod
+        || lexer.get_token_type() == TokenType::Lsh
+        || lexer.get_token_type() == TokenType::Rsh
     {
         let op = Op::from_token_type(lexer.get_token_type());
         lexer.next_token();
