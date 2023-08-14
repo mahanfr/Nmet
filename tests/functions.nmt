@@ -1,9 +1,9 @@
 
-fun test() {
+func test() {
     print 1;
 }
 
-fun is_odd(x @int) @bool {
+func is_odd(x @int) @bool {
     if x % 2 == 0 {
         return false;
     }
@@ -12,7 +12,7 @@ fun is_odd(x @int) @bool {
     }
 }
 
-fun main() {
+func main() {
     test();
     if is_odd(11) {
         print 2;

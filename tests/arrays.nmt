@@ -1,7 +1,7 @@
 
-fun main() {
-    let a @[int,3];
-    let index = 0;
+func main() {
+    var a @[int,3];
+    var index = 0;
     while index < 3 {
         a[index] = index;
         index += 1;

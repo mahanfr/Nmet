@@ -1,4 +1,4 @@
 
-fun main() {
+func main() {
     print "hello from nemet!\n";
 }

@@ -1,8 +1,8 @@
 
-fun main() {
+func main() {
     ~ calculating 2 in the power of 5
-    let a = 2;
-    let x = 1;
+    var a = 2;
+    var x = 1;
     while x < 5 {
         a = a * 2;
         x = x + 1;

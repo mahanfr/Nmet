@@ -1,10 +1,9 @@
-
-fun main() {
-    let board @[int,30];
+func main() {
+    var board @[int,30];
     board[28] = 1;
-    let i = 0;
+    var i @int = 0;
     while i < 28 {
-        let j = 0;
+        var j = 0;
         while j < 30 {
             if board[j] {
                 print "*";
@@ -15,7 +14,7 @@ fun main() {
         }
         print "\n";
         j = 1;
-        let pattern = (board[0] << 1) | board[1];
+        var pattern = (board[0] << 1) | board[1];
         while j < 29 {
             pattern = ((pattern << 1) & 7) | board[j + 1];
             board[j] = (110 >> pattern) & 1;

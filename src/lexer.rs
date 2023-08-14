@@ -35,12 +35,12 @@ pub enum TokenType {
     Bigger,
     /// "<" Smaller Compare Operation
     Smaller,
-    /// Keyword fun
-    Fun,
+    /// Keyword func
+    Func,
     /// Keyword if
     If,
-    /// Keyword let
-    Let,
+    /// Keyword var
+    Var,
     /// Keyword else
     Else,
     /// Keyword return
@@ -57,6 +57,8 @@ pub enum TokenType {
     True,
     /// Keyword false
     False,
+    /// Keyword include 
+    Include,
     /// "@" Type defenition indicator
     ATSign,
     /// "=" Assgin a value to a variable
@@ -111,6 +113,8 @@ pub enum TokenType {
     OCurly,
     /// "}"
     CCurly,
+    /// "." Refrence
+    Dot,
     /// END OF FILE
     Eof,
     /// START OF FILE
@@ -535,8 +539,8 @@ impl Lexer {
         match literal {
             "if" => Some(TokenType::If),
             "else" => Some(TokenType::Else),
-            "fun" => Some(TokenType::Fun),
-            "let" => Some(TokenType::Let),
+            "func" => Some(TokenType::Func),
+            "var" => Some(TokenType::Var),
             "return" => Some(TokenType::Return),
             "while" => Some(TokenType::While),
             "break" => Some(TokenType::Break),
@@ -544,6 +548,7 @@ impl Lexer {
             "print" => Some(TokenType::Print),
             "true" => Some(TokenType::True),
             "false" => Some(TokenType::False),
+            "include" => Some(TokenType::Include),
             _ => None,
         }
     }
@@ -569,6 +574,7 @@ impl Lexer {
             '#' => Some(TokenType::Log),
             ':' => Some(TokenType::Colon),
             ';' => Some(TokenType::SemiColon),
+            '.' => Some(TokenType::Dot),
             ',' => Some(TokenType::Comma),
             '=' => Some(TokenType::Eq),
             '!' => Some(TokenType::Not),

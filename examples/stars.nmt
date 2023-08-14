@@ -1,0 +1,10 @@
+func main() {
+    var line @str = "*";
+    var index = 0;
+    while index < 10 {
+        write(1,line,line.len());
+        write(1,"\n",1);
+        line.push("*");
+        index += 1;
+    }
+}

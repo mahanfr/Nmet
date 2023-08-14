@@ -126,8 +126,6 @@ impl IRGenerator {
     pub fn find_variable(&self, ident: String) -> Option<VariableMap> {
         for block_id in &self.scoped_blocks {
             let map_ident = format!("{ident}%{}", block_id);
-            println!("scoped: {:?}", self.scoped_blocks);
-            println!("map_ident: {map_ident}");
             let map = self.variables_map.get(&map_ident);
             if let Some(map) = map {
                 return Some(map.clone());
@@ -271,7 +269,6 @@ impl IRGenerator {
      */
     fn compile_block(&mut self, block: &Block) {
         self.block_id += 1;
-        println!("blockid: {}", self.block_id);
         self.scoped_blocks.push(self.block_id);
         for stmt in &block.stmts {
             self.compile_stmt(stmt);
@@ -408,7 +405,6 @@ impl IRGenerator {
     fn compile_assgin(&mut self, assign: &Assgin) {
         match &assign.left {
             Expr::Variable(v) => {
-                println!("{:#?}", self.variables_map);
                 let v_map = self.find_variable(v.clone()).unwrap_or_else(|| {
                     eprintln!("Error: Could not find variable {} in this scope", v.clone());
                     exit(1);

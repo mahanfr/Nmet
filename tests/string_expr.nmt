@@ -1,5 +1,5 @@
 
-fun main() {
+func main() {
     print "Hello\n";
     print "World\t";
     print "\n";

@@ -1,0 +1,42 @@
+
+func read(fd @int, buf @[char], size @u64) @[char] {
+    asm {
+        mov rax, 0
+        mov rdi, %fd
+        mov rsi, %buf
+        mov rdx, %size
+        syscall
+    }
+    retutn buf;
+}
+
+func write(fd @int, buf @[char,?], size @u64) {
+    asm {
+        mov rax, 1
+        mov rdi, %fd
+        mov rsi, %buf
+        mov rdx, %size
+        syscall
+    }
+}
+
+func open(filename @str, flags @int, mode @int) @u32 {
+    let fd @u32 = 0;
+    asm {
+        mov rax, 2
+        mov rdi, %filename
+        mov rsi, %flags
+        mov rdx, %mode
+        syscall
+        mov %fd, rax
+    }
+    retutn fd;
+}
+
+func close(fd @int) {
+    asm {
+        mov rax, 3
+        mov rdi, %fd
+        syscall
+    }
+}

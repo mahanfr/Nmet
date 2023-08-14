@@ -165,7 +165,7 @@ pub fn function_call_args(lexer: &mut Lexer) -> Vec<Expr> {
 }
 
 pub fn function_def(lexer: &mut Lexer) -> Function {
-    lexer.match_token(TokenType::Fun);
+    lexer.match_token(TokenType::Func);
     let function_ident_token = lexer.get_token();
     let mut ret_type: Option<VariableType> = None;
     if function_ident_token.is_empty() {
@@ -239,7 +239,7 @@ pub fn block(lexer: &mut Lexer) -> Block {
             break;
         }
         match lexer.get_token_type() {
-            TokenType::Let => {
+            TokenType::Var => {
                 stmts.push(Stmt::VariableDecl(variable_declare(lexer)));
                 lexer.match_token(TokenType::SemiColon);
             }
@@ -365,7 +365,7 @@ pub fn type_def(lexer: &mut Lexer) -> VariableType {
 }
 
 pub fn variable_declare(lexer: &mut Lexer) -> VariableDeclare {
-    lexer.match_token(TokenType::Let);
+    lexer.match_token(TokenType::Var);
     let ident_token = lexer.get_token();
     lexer.match_token(TokenType::Identifier);
     let mut is_mutable: bool = true;
@@ -453,10 +453,10 @@ pub fn program(lexer: &mut Lexer) -> ProgramFile {
             break;
         }
         match lexer.get_token_type() {
-            TokenType::Fun => {
+            TokenType::Func => {
                 items.push(ProgramItem::Func(function_def(lexer)));
             }
-            TokenType::Let => {
+            TokenType::Var => {
                 items.push(ProgramItem::StaticVar(variable_declare(lexer)));
             }
             _ => {
