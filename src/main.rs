@@ -1,5 +1,5 @@
-use crate::compiler::IRGenerator;
 use crate::parser::program;
+use crate::{compiler::IRGenerator, utils::get_program_name};
 use std::env::args;
 use std::error::Error;
 use std::fs;
@@ -9,6 +9,7 @@ mod command_line;
 mod compiler;
 mod lexer;
 mod parser;
+mod utils;
 use command_line::{help_command, CliArgs};
 use lexer::Lexer;
 
@@ -20,22 +21,23 @@ pub static DEBUG: bool = true;
 /// Compiles the given file into an executable
 fn compile_command(arg: &mut CliArgs) {
     let source = fs::read_to_string(arg.get()).expect("Can not Read the file");
-    let mut lexer = Lexer::new(String::new(), source);
+    let mut lexer = Lexer::new(arg.get(), source);
     let mut ir_gen = IRGenerator::new();
     ir_gen
         .compile(program(&mut lexer))
         .expect("Can not Compile Program");
-    compile_to_exc();
+    compile_to_exc(arg.get());
 }
 
 /// Runs External commands for generating the executable
-pub fn compile_to_exc() {
+pub fn compile_to_exc(path: String) {
+    let program_name = get_program_name(path);
     println!("[info] Assembling for elf64 - generaiting output.o");
     let nasm_output = Command::new("nasm")
         .arg("-felf64")
         .arg("-o")
-        .arg("./build/output.o")
-        .arg("./build/output.asm")
+        .arg(format!("./build/{}.o", program_name))
+        .arg(format!("./build/{}.asm", program_name))
         .output()
         .expect("Can not run nasm command! do you have nasm installed?");
     if !nasm_output.status.success() {
@@ -45,8 +47,8 @@ pub fn compile_to_exc() {
     println!("[info] Linking object file...");
     let linker_output = Command::new("ld")
         .arg("-o")
-        .arg("./build/output")
-        .arg("./build/output.o")
+        .arg(format!("./build/{}", program_name))
+        .arg(format!("./build/{}.o", program_name))
         .output()
         .expect("Can not link using ld command!");
     if !linker_output.status.success() {
@@ -90,4 +92,134 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut args = CliArgs::new(args().collect());
     commands(&mut args);
     Ok(())
+}
+
+#[cfg(test)]
+mod functional {
+    use crate::{
+        compile_to_exc, compiler::IRGenerator, lexer::Lexer, parser::program,
+        utils::get_program_name,
+    };
+    use std::{
+        fs::{self, remove_file},
+        process::Command,
+    };
+
+    fn generate_asm(path: impl ToString) {
+        let source = fs::read_to_string(path.to_string()).expect("Can not Read the file");
+        let mut lexer = Lexer::new(path.to_string(), source);
+        let mut ir_gen = IRGenerator::new();
+        ir_gen
+            .compile(program(&mut lexer))
+            .expect("Can not Compile Program");
+        compile_to_exc(path.to_string());
+        let program_name = get_program_name(path);
+        remove_file(format!("./build/{}.o", program_name)).unwrap_or_else(|_| ());
+        remove_file(format!("./build/{}.asm", program_name)).unwrap_or_else(|_| ());
+    }
+
+    #[test]
+    fn binary_expr_test() {
+        generate_asm("./tests/binary_expr.nmt");
+        let output = Command::new("./build/binary_expr")
+            .output()
+            .expect("Error Executing the program!");
+        assert!(output.status.success());
+        let expectation = "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n";
+        assert_eq!(
+            String::from_utf8(output.stdout).unwrap(),
+            expectation.to_string()
+        );
+        remove_file("./build/binary_expr").unwrap_or_else(|_| ());
+    }
+
+    #[test]
+    fn compare_expr_test() {
+        generate_asm("./tests/compare_expr.nmt");
+        let output = Command::new("./build/compare_expr")
+            .output()
+            .expect("Error Executing the program!");
+        assert!(output.status.success());
+        let expectation = "1\n1\n1\n1\n0\n";
+        assert_eq!(
+            String::from_utf8(output.stdout).unwrap(),
+            expectation.to_string()
+        );
+        remove_file("./build/compare_expr").unwrap_or_else(|_| ());
+    }
+
+    #[test]
+    fn string_expr_test() {
+        generate_asm("./tests/string_expr.nmt");
+        let output = Command::new("./build/string_expr")
+            .output()
+            .expect("Error Executing the program!");
+        assert!(output.status.success());
+        let expectation = "Hello\nWorld\t\n";
+        assert_eq!(
+            String::from_utf8(output.stdout).unwrap(),
+            expectation.to_string()
+        );
+        remove_file("./build/string_expr").unwrap_or_else(|_| ());
+    }
+
+    #[test]
+    fn loops_test() {
+        generate_asm("./tests/loops.nmt");
+        let output = Command::new("./build/loops")
+            .output()
+            .expect("Error Executing the program!");
+        assert!(output.status.success());
+        let expectation = "32\n";
+        assert_eq!(
+            String::from_utf8(output.stdout).unwrap(),
+            expectation.to_string()
+        );
+        remove_file("./build/loops").unwrap_or_else(|_| ());
+    }
+
+    #[test]
+    fn conditions_test() {
+        generate_asm("./tests/conditions.nmt");
+        let output = Command::new("./build/conditions")
+            .output()
+            .expect("Error Executing the program!");
+        assert!(output.status.success());
+        let expectation = "420\n69\n85\n";
+        assert_eq!(
+            String::from_utf8(output.stdout).unwrap(),
+            expectation.to_string()
+        );
+        remove_file("./build/conditions").unwrap_or_else(|_| ());
+    }
+
+    #[test]
+    fn functions_test() {
+        generate_asm("./tests/functions.nmt");
+        let output = Command::new("./build/functions")
+            .output()
+            .expect("Error Executing the program!");
+        assert!(output.status.success());
+        let expectation = "1\n2\n";
+        assert_eq!(
+            String::from_utf8(output.stdout).unwrap(),
+            expectation.to_string()
+        );
+        remove_file("./build/functions").unwrap_or_else(|_| ());
+    }
+
+    #[test]
+    fn arrays_test() {
+        generate_asm("./tests/arrays.nmt");
+        let output = Command::new("./build/arrays")
+            .output()
+            .expect("Error Executing the program!");
+        assert!(output.status.success());
+        let expectation = "0\n1\n2\n";
+        assert_eq!(
+            String::from_utf8(output.stdout).unwrap(),
+            expectation.to_string()
+        );
+        remove_file("./build/arrays").unwrap_or_else(|_| ());
+    }
 }

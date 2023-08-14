@@ -1,8 +1,0 @@
-
-fun main() {
-    let a @int = 0;
-    while a < 5 {
-        print "hello from nemet!\n";
-        a = a + 1; 
-    }
-}

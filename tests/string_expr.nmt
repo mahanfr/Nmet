@@ -1,0 +1,6 @@
+
+fun main() {
+    print "Hello\n";
+    print "World\t";
+    print "\n";
+}

@@ -1,6 +1,6 @@
 
 fun test() {
-    print "This printed from a procedure\n";
+    print 1;
 }
 
 fun is_odd(x @int) @bool {
@@ -15,8 +15,8 @@ fun is_odd(x @int) @bool {
 fun main() {
     test();
     if is_odd(11) {
-        print "is odd!\n";
+        print 2;
     } else {
-        print "is even!\n";
+        print 3;
     }
 }

@@ -11,6 +11,7 @@ use crate::parser::program::{ProgramFile, ProgramItem};
 use crate::parser::stmt::{
     Assgin, AssginOp, ElseBlock, IFStmt, Stmt, VariableDeclare, VariableType, WhileStmt,
 };
+use crate::utils::get_program_name;
 
 macro_rules! asm {
     ($($arg:tt)+) => (
@@ -260,10 +261,14 @@ impl IRGenerator {
         );
 
         //println!("{:?}",self.scoped_blocks);
-        self.write_to_file()?;
+        self.write_to_file(program.file_path)?;
         Ok(())
     }
 
+    /*
+     *  keep in mind there could be a problem when a variable wants to access
+     *  somthing that added after in code but it could be a feature too :)
+     */
     fn compile_block(&mut self, block: &Block) {
         self.block_id += 1;
         println!("blockid: {}", self.block_id);
@@ -660,9 +665,10 @@ impl IRGenerator {
     }
 
     // TODO: Error Handleing Error Type FILE
-    fn write_to_file(&self) -> Result<(), Box<dyn Error>> {
+    fn write_to_file(&self, path: impl ToString) -> Result<(), Box<dyn Error>> {
         fs::create_dir_all("./build").unwrap();
-        let stream = File::create("./build/output.asm").unwrap();
+        let out_name = get_program_name(path);
+        let stream = File::create(format!("./build/{}.asm", out_name)).unwrap();
         let mut file = BufWriter::new(stream);
         println!("[info] Generating asm files...");
         file.write_all(b";; This File is Automatically Created Useing Nemet Parser\n")?;
