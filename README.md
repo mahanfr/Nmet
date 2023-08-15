@@ -28,6 +28,16 @@
   </p>
 </div>
 
+## Installing
+For installing in Gnu/Linux system make this projectl.
+```shell
+$ make
+```
+or
+```shell
+$ make install
+```
+
 ## Quick Start
 The Project is in development state and dose not come with a package yet and **It is Only available fot linux** but you can use wsl in windows!
 <br />
@@ -49,7 +59,17 @@ now you can run the following commands:
 $ cargo run ./hello.nmt
 $ ./build/output
 ```
+## Compile your code
+```
+nmt fileName.nmt
+```
+```nmt fileName.nmt``` generate your project to **build** directory
 
+For example:
+```mnt
+$ nemet examples/hello_world.nmt
+$ ./build/hello_world
+```
 ## About The Project
 
 A General Purpose Compiled Programming Language that generates x86-64 assembly as Intermediate representation (IR) which can be compiled to binary using nasm.
