@@ -90,6 +90,11 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
             lexer.next_token();
             Expr::String(str_token.literal)
         }
+        TokenType::Ptr => {
+            lexer.match_token(TokenType::Ptr);
+            let value = expr(lexer);
+            Expr::Ptr(Box::new(value))
+        }
         TokenType::True => {
             lexer.match_token(TokenType::True);
             Expr::Int(1)
@@ -314,6 +319,10 @@ pub fn block(lexer: &mut Lexer) -> Block {
 pub fn type_def(lexer: &mut Lexer) -> VariableType {
     lexer.match_token(TokenType::ATSign);
     match lexer.get_token_type() {
+        TokenType::Ptr => {
+            lexer.match_token(TokenType::Ptr);
+            VariableType::Pointer
+        }
         TokenType::Identifier => {
             let ident = lexer.get_token().literal;
             lexer.match_token(TokenType::Identifier);

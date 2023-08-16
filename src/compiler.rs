@@ -92,6 +92,7 @@ pub struct VariableMap {
     _ident: String,
     offset: usize,
     size: usize,
+    item_size: usize,
     is_mut: bool,
 }
 
@@ -138,13 +139,23 @@ impl IRGenerator {
         let ident: String;
         let var_map: VariableMap;
         let mut size = 8;
+        let mut item_size = 8;
         if var.v_type.is_some() {
             let typ = var.v_type.clone().unwrap();
             if let VariableType::Array(a, s) = typ {
-                if a.as_ref() != &VariableType::Int {
-                    todo!("Unsuported Array Type");
+                match *a.as_ref() {
+                    VariableType::Int => {
+                        size = 8 * s;
+                        item_size = 8;
+                    }
+                    VariableType::Char => {
+                        size = s;
+                        item_size = 1;
+                    }
+                    _ => {
+                        todo!("Unsuported Array Type");
+                    }
                 }
-                size = 8 * s;
             }
         }
         if var.is_static {
@@ -156,6 +167,7 @@ impl IRGenerator {
                 offset: self.mem_offset,
                 // TODO: Change size
                 size,
+                item_size,
                 is_mut: var.mutable,
             };
         }
@@ -165,9 +177,14 @@ impl IRGenerator {
             let init_value = var.init_value.clone().unwrap();
             // this pushes result in stack
             self.compile_expr(&init_value);
-            let mem_acss = format!("{} [rbp-{}]", mem_word(8), var_map.offset + var_map.size);
+            let mem_acss = format!(
+                "{} [rbp-{}]",
+                mem_word(var_map.item_size),
+                var_map.offset + var_map.size
+            );
             self.instruct_buf.push(asm!("pop rax"));
-            self.instruct_buf.push(asm!("mov {mem_acss},rax"));
+            self.instruct_buf
+                .push(asm!("mov {mem_acss},{}", rbs("a", var_map.item_size)));
         }
         self.variables_map.insert(ident, var_map);
     }
@@ -179,6 +196,7 @@ impl IRGenerator {
                 _ident: arg.ident.clone(),
                 offset: self.mem_offset,
                 is_mut: false,
+                item_size: 8,
                 size: 8,
             };
             if args_count < 6 {
@@ -186,10 +204,11 @@ impl IRGenerator {
                 let reg = function_args_register(args_count, 8);
                 self.instruct_buf.push(asm!("mov {},{}", mem_acss, reg));
             } else {
-                let mem_overload = format!("{} [rbp+{}]", mem_word(8), 16 + (args_count - 6) * 8);
-                let mem_acss = format!("{} [rbp-{}]", mem_word(8), map.offset + map.size);
-                self.instruct_buf
-                    .push(asm!("mov {},{}", mem_acss, mem_overload));
+                todo!();
+                // let mem_overload = format!("{} [rbp+{}]", mem_word(8), 16 + (args_count - 6) * 8);
+                //let mem_acss = format!("{} [rbp-{}]", mem_word(8), map.offset + map.size);
+                //self.instruct_buf
+                //    .push(asm!("mov {},{}", mem_acss, mem_overload));
             }
             self.variables_map.insert(ident, map);
             self.mem_offset += 8;
@@ -367,28 +386,33 @@ impl IRGenerator {
         }
     }
 
-    fn compile_inline_asm(&mut self, instr :&String) {
-        if instr.contains(&"%") {
+    fn compile_inline_asm(&mut self, instr: &String) {
+        if instr.contains('%') {
             let mut final_instr = instr.clone();
             let chars = final_instr.chars().collect::<Vec<char>>();
             let mut index = 0;
-            let is_empty = |index:usize| (index >= chars.len());
+            let is_empty = |index: usize| (index >= chars.len());
             while !is_empty(index) {
                 if chars[index] == '%' {
                     let mut ident = String::new();
-                    let first_index = index; 
+                    let first_index = index;
                     index += 1;
-                    while !is_empty(index) && 
-                        (chars[index].is_alphanumeric() || chars[index] == '_') {
+                    while !is_empty(index)
+                        && (chars[index].is_alphanumeric() || chars[index] == '_')
+                    {
                         ident.push(chars[index]);
                         index += 1;
                     }
                     if !ident.is_empty() {
                         let v_map = self.find_variable(ident.clone()).unwrap_or_else(|| {
-                            eprintln!("Error: Could not find variable {} in this scope", ident.clone());
+                            eprintln!(
+                                "Error: Could not find variable {} in this scope",
+                                ident.clone()
+                            );
                             exit(1);
                         });
-                        let mem_acss = format!("{} [rbp-{}]", mem_word(8), v_map.offset + v_map.size);
+                        let mem_acss =
+                            format!("{} [rbp-{}]", mem_word(8), v_map.offset + v_map.size);
                         let mut temp = String::new();
                         temp.push_str(chars[0..(first_index)].iter().collect::<String>().as_str());
                         temp.push_str(mem_acss.as_str());
@@ -403,9 +427,9 @@ impl IRGenerator {
                     index += 1;
                 }
             }
-            self.instruct_buf.push(asm!("{}",final_instr));
+            self.instruct_buf.push(asm!("{}", final_instr));
         } else {
-            self.instruct_buf.push(asm!("{}",instr));
+            self.instruct_buf.push(asm!("{}", instr));
         }
     }
 
@@ -423,30 +447,45 @@ impl IRGenerator {
         self.instruct_buf.push(asm!("jnz .L{}", block_tag));
     }
 
-    fn assgin_op(&mut self, op: &AssginOp, mem_acss: String) {
+    fn assgin_op(&mut self, op: &AssginOp, v_map: &VariableMap) {
+        let mem_acss = if v_map.item_size != v_map.size {
+            format!(
+                "{} [rbp-{}+rbx*{}]",
+                mem_word(v_map.item_size),
+                v_map.offset + v_map.size,
+                v_map.item_size
+            )
+        } else {
+            format!(
+                "{} [rbp-{}]",
+                mem_word(v_map.item_size),
+                v_map.offset + v_map.size
+            )
+        };
+        let reg = rbs("a", v_map.item_size);
         self.instruct_buf.push(asm!("pop rax"));
         match op {
             AssginOp::Eq => {
-                self.instruct_buf.push(asm!("mov {mem_acss},rax"));
+                self.instruct_buf.push(asm!("mov {mem_acss},{reg}"));
             }
             AssginOp::PlusEq => {
-                self.instruct_buf.push(asm!("add {mem_acss},rax"));
+                self.instruct_buf.push(asm!("add {mem_acss},{reg}"));
             }
             AssginOp::SubEq => {
-                self.instruct_buf.push(asm!("sub {mem_acss},rax"));
+                self.instruct_buf.push(asm!("sub {mem_acss},{reg}"));
             }
             AssginOp::MultiEq => {
-                self.instruct_buf.push(asm!("imul {mem_acss},rax"));
+                self.instruct_buf.push(asm!("imul {mem_acss},{reg}"));
             }
             AssginOp::DevideEq => {
                 // self.instruct_buf.push(asm!("cdq"));
                 self.instruct_buf.push(asm!("idiv rbx"));
-                self.instruct_buf.push(asm!("mov {mem_acss},rax"));
+                self.instruct_buf.push(asm!("mov {mem_acss},{reg}"));
             }
             AssginOp::ModEq => {
                 self.instruct_buf.push(asm!("cdq"));
                 self.instruct_buf.push(asm!("idiv rbx"));
-                self.instruct_buf.push(asm!("mov {mem_acss},rdx"));
+                self.instruct_buf.push(asm!("mov {mem_acss},{reg}"));
             }
         }
     }
@@ -454,26 +493,16 @@ impl IRGenerator {
     fn compile_assgin(&mut self, assign: &Assgin) {
         match &assign.left {
             Expr::Variable(v) => {
-                let v_map = self.find_variable(v.clone()).unwrap_or_else(|| {
-                    eprintln!("Error: Could not find variable {} in this scope", v.clone());
-                    exit(1);
-                });
+                let v_map = self.get_vriable_map(v);
                 if !v_map.is_mut {
                     eprintln!("Error: Variable is not mutable. Did you forgot to define it with '=' insted of ':=' ?");
                     exit(1);
                 }
                 self.compile_expr(&assign.right);
-                let mem_acss = format!("{} [rbp-{}]", mem_word(8), v_map.offset + v_map.size);
-                self.assgin_op(&assign.op, mem_acss);
+                self.assgin_op(&assign.op, &v_map);
             }
             Expr::ArrayIndex(ai) => {
-                let v_map = self.find_variable(ai.ident.clone()).unwrap_or_else(|| {
-                    eprintln!(
-                        "Error: Could not find variable {} in this scope",
-                        ai.ident.clone()
-                    );
-                    exit(1);
-                });
+                let v_map = self.get_vriable_map(&ai.ident);
                 if !v_map.is_mut {
                     eprintln!("Error: Variable is not mutable. Did you forgot to define it with '=' insted of ':=' ?");
                     exit(1);
@@ -481,14 +510,7 @@ impl IRGenerator {
                 self.compile_expr(&assign.right);
                 self.compile_expr(&ai.indexer);
                 self.instruct_buf.push(asm!("pop rbx"));
-                // TODO: Add Item size to v_map
-                let mem_acss = format!(
-                    "{} [rbp-{}+rbx*{}]",
-                    mem_word(8),
-                    v_map.offset + v_map.size,
-                    8
-                );
-                self.assgin_op(&assign.op, mem_acss);
+                self.assgin_op(&assign.op, &v_map);
             }
             _ => {
                 eprintln!("Error: Expected a Variable type expression found Value");
@@ -497,18 +519,27 @@ impl IRGenerator {
         }
     }
 
+    fn get_vriable_map(&mut self, var_ident: &String) -> VariableMap {
+        self.find_variable(var_ident.clone()).unwrap_or_else(|| {
+            eprintln!("Error: Trying to access an Undifined variable ({var_ident})");
+            exit(1);
+        })
+    }
+
     fn compile_expr(&mut self, expr: &Expr) {
         // left = compile expr
         // right = compile expr
         // +
         match expr {
             Expr::Variable(v) => {
-                let v_map = self.find_variable(v.clone()).unwrap_or_else(|| {
-                    eprintln!("Error: Trying to access an Undifined variable ({v})");
-                    exit(1);
-                });
-                let mem_acss = format!("{} [rbp-{}]", mem_word(8), v_map.offset + v_map.size);
-                self.instruct_buf.push(asm!("mov rax,{mem_acss}"));
+                let v_map = self.get_vriable_map(v);
+                let mem_acss = format!(
+                    "{} [rbp-{}]",
+                    mem_word(v_map.item_size),
+                    v_map.offset + v_map.size
+                );
+                self.instruct_buf
+                    .push(asm!("mov {},{mem_acss}", rbs("a", v_map.item_size)));
                 self.instruct_buf.push(asm!("push rax"));
             }
             Expr::Int(x) => {
@@ -614,6 +645,9 @@ impl IRGenerator {
             Expr::FunctionCall(fc) => {
                 self.compile_function_call(fc);
             }
+            Expr::Ptr(e) => {
+                self.compile_ptr(e);
+            }
             Expr::ArrayIndex(ai) => {
                 let v_map = self.find_variable(ai.ident.clone()).unwrap_or_else(|| {
                     eprintln!(
@@ -627,12 +661,28 @@ impl IRGenerator {
                 // TODO: Add Item size to v_map
                 let mem_acss = format!(
                     "{} [rbp-{}+rbx*{}]",
-                    mem_word(8),
+                    mem_word(v_map.item_size),
                     v_map.offset + v_map.size,
-                    8
+                    v_map.item_size
                 );
-                self.instruct_buf.push(asm!("mov rax,{mem_acss}"));
+                let reg = rbs("a", v_map.item_size);
+                self.instruct_buf.push(asm!("mov {reg},{mem_acss}"));
+                self.instruct_buf.push(asm!("push {reg}"));
+            }
+        }
+    }
+
+    fn compile_ptr(&mut self, expr: &Expr) {
+        match expr {
+            Expr::Variable(v) => {
+                let v_map = self.get_vriable_map(v);
+                self.instruct_buf.push(asm!("mov rax, rbp"));
+                self.instruct_buf
+                    .push(asm!("sub rax, {}", v_map.offset + v_map.size));
                 self.instruct_buf.push(asm!("push rax"));
+            }
+            _ => {
+                todo!("Impl Pointers");
             }
         }
     }
@@ -730,7 +780,6 @@ impl IRGenerator {
 
         file.write_all(b"section .text\n")?;
         file.write_all(b"global _start\n")?;
-
         file.write_all(b"print:\n")?;
         file.write_all(b"    push    rbp\n")?;
         file.write_all(b"    mov     rbp, rsp\n")?;

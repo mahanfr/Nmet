@@ -21,6 +21,8 @@ pub enum TokenType {
     String,
     /// Inline Asm
     Asm,
+    /// Pointer indicator
+    Ptr,
     /// "+" Plus And Pos
     Plus,
     /// "-" Sub and Neg
@@ -59,7 +61,7 @@ pub enum TokenType {
     True,
     /// Keyword false
     False,
-    /// Keyword include 
+    /// Keyword include
     Include,
     /// "@" Type defenition indicator
     ATSign,
@@ -95,7 +97,7 @@ pub enum TokenType {
     Or,
     /// "#" NOT DEFINED YET
     Log,
-    /// "?" Question Mark 
+    /// "?" Question Mark
     QMark,
     /// ";" End of stmt
     SemiColon,
@@ -544,7 +546,6 @@ impl Lexer {
     fn is_keyword(literal: &str) -> Option<TokenType> {
         match literal {
             "if" => Some(TokenType::If),
-            "asm" => Some(TokenType::Asm),
             "else" => Some(TokenType::Else),
             "func" => Some(TokenType::Func),
             "var" => Some(TokenType::Var),
@@ -556,6 +557,8 @@ impl Lexer {
             "true" => Some(TokenType::True),
             "false" => Some(TokenType::False),
             "include" => Some(TokenType::Include),
+            "asm" => Some(TokenType::Asm),
+            "ptr" => Some(TokenType::Ptr),
             _ => None,
         }
     }
