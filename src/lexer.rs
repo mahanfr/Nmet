@@ -19,6 +19,8 @@ pub enum TokenType {
     Char(char),
     /// String Literal e.g: "Hello world", "hi\nhello"
     String,
+    /// Inline Asm
+    Asm,
     /// "+" Plus And Pos
     Plus,
     /// "-" Sub and Neg
@@ -93,6 +95,8 @@ pub enum TokenType {
     Or,
     /// "#" NOT DEFINED YET
     Log,
+    /// "?" Question Mark 
+    QMark,
     /// ";" End of stmt
     SemiColon,
     /// ":" NOT DEFINED YET
@@ -101,6 +105,8 @@ pub enum TokenType {
     DoubleColon,
     /// "," Seperating Arguments
     Comma,
+    /// "$" Dollar Sign
+    Dollar,
     /// "("
     OParen,
     /// ")"
@@ -538,6 +544,7 @@ impl Lexer {
     fn is_keyword(literal: &str) -> Option<TokenType> {
         match literal {
             "if" => Some(TokenType::If),
+            "asm" => Some(TokenType::Asm),
             "else" => Some(TokenType::Else),
             "func" => Some(TokenType::Func),
             "var" => Some(TokenType::Var),
@@ -572,6 +579,8 @@ impl Lexer {
             '*' => Some(TokenType::Multi),
             '/' => Some(TokenType::Devide),
             '#' => Some(TokenType::Log),
+            '$' => Some(TokenType::Dollar),
+            '?' => Some(TokenType::QMark),
             ':' => Some(TokenType::Colon),
             ';' => Some(TokenType::SemiColon),
             '.' => Some(TokenType::Dot),

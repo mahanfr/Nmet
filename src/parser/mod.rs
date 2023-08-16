@@ -291,6 +291,17 @@ pub fn block(lexer: &mut Lexer) -> Block {
                 }
                 lexer.match_token(TokenType::SemiColon);
             }
+            TokenType::Asm => {
+                lexer.match_token(TokenType::Asm);
+                lexer.match_token(TokenType::OCurly);
+                let mut instructs = Vec::<String>::new();
+                while lexer.get_token_type() == TokenType::String {
+                    instructs.push(lexer.get_token().literal);
+                    lexer.match_token(TokenType::String);
+                }
+                lexer.match_token(TokenType::CCurly);
+                stmts.push(Stmt::InlineAsm(instructs));
+            }
             _ => {
                 todo!();
             }
@@ -323,6 +334,8 @@ pub fn type_def(lexer: &mut Lexer) -> VariableType {
             if token.t_type == TokenType::Identifier {
                 var_type = VariableType::from_string(lexer.get_token().literal);
                 lexer.match_token(TokenType::Identifier);
+            } else if token.t_type == TokenType::ATSign {
+                var_type = self::type_def(lexer);
             } else {
                 eprintln!(
                     "Error: Expected Identifier found {:?}, at {}",
@@ -344,6 +357,10 @@ pub fn type_def(lexer: &mut Lexer) -> VariableType {
                 TokenType::Int(s) => {
                     size = s as usize;
                     lexer.match_token(TokenType::Int(s));
+                }
+                TokenType::QMark => {
+                    lexer.match_token(TokenType::QMark);
+                    return VariableType::Pointer;
                 }
                 _ => {
                     eprintln!(

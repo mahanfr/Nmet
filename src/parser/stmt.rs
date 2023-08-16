@@ -8,6 +8,7 @@ pub enum VariableType {
     Array(Box<VariableType>, usize),
     String,
     Int,
+    Pointer,
     UInt,
     Bool,
     Char,
@@ -20,6 +21,7 @@ impl VariableType {
             "char" | "u8" => Self::Char,
             "bool" => Self::Bool,
             "str" => Self::String,
+            "ptr" => Self::Pointer,
             _ => Self::Custom(literal),
         }
     }
@@ -36,6 +38,7 @@ pub enum Stmt {
     While(WhileStmt),
     If(IFStmt),
     Return(Expr),
+    InlineAsm(Vec<String>),
     Break,
     Continue,
 }

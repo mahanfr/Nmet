@@ -200,6 +200,8 @@ impl IRGenerator {
         self.scoped_blocks = Vec::new();
         self.block_id = 0;
         self.scoped_blocks.push(0);
+        self.mem_offset = 0;
+        self.variables_map = HashMap::new();
         if f.ident == "main" {
             self.instruct_buf.push("_start:\n".to_string());
         } else {
@@ -354,9 +356,56 @@ impl IRGenerator {
                 self.instruct_buf.push(asm!("ret"));
                 println!("Warning: might segfault add leave or fix dataframe");
             }
+            Stmt::InlineAsm(instructs) => {
+                for instr in instructs {
+                    self.compile_inline_asm(instr);
+                }
+            }
             _ => {
                 todo!();
             }
+        }
+    }
+
+    fn compile_inline_asm(&mut self, instr :&String) {
+        if instr.contains(&"%") {
+            let mut final_instr = instr.clone();
+            let chars = final_instr.chars().collect::<Vec<char>>();
+            let mut index = 0;
+            let is_empty = |index:usize| (index >= chars.len());
+            while !is_empty(index) {
+                if chars[index] == '%' {
+                    let mut ident = String::new();
+                    let first_index = index; 
+                    index += 1;
+                    while !is_empty(index) && 
+                        (chars[index].is_alphanumeric() || chars[index] == '_') {
+                        ident.push(chars[index]);
+                        index += 1;
+                    }
+                    if !ident.is_empty() {
+                        let v_map = self.find_variable(ident.clone()).unwrap_or_else(|| {
+                            eprintln!("Error: Could not find variable {} in this scope", ident.clone());
+                            exit(1);
+                        });
+                        let mem_acss = format!("{} [rbp-{}]", mem_word(8), v_map.offset + v_map.size);
+                        let mut temp = String::new();
+                        temp.push_str(chars[0..(first_index)].iter().collect::<String>().as_str());
+                        temp.push_str(mem_acss.as_str());
+                        temp.push_str(chars[index..].iter().collect::<String>().as_str());
+                        final_instr = temp;
+                        index += mem_acss.len()
+                    } else {
+                        eprintln!("Error: Invalid Identifier for Inline Asm");
+                        exit(1);
+                    }
+                } else {
+                    index += 1;
+                }
+            }
+            self.instruct_buf.push(asm!("{}",final_instr));
+        } else {
+            self.instruct_buf.push(asm!("{}",instr));
         }
     }
 

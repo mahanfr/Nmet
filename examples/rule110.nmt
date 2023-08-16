@@ -1,3 +1,4 @@
+~~ Rule 110 Cellular Automaton
 func main() {
     var board @[int,30];
     board[28] = 1;
