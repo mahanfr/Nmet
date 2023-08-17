@@ -5,7 +5,7 @@ pub mod program;
 pub mod stmt;
 use std::process::exit;
 
-use crate::lexer::{Lexer, TokenType};
+use crate::lexer::{Lexer, TokenType, self};
 
 use crate::parser::block::*;
 use crate::parser::expr::{
@@ -485,6 +485,9 @@ pub fn program(lexer: &mut Lexer) -> ProgramFile {
             TokenType::Var => {
                 items.push(ProgramItem::StaticVar(variable_declare(lexer)));
             }
+            TokenType::Import =>{
+                items.push(import_file(lexer))
+            }
             _ => {
                 eprintln!(
                     "Error: Unexpected Token ({:?}) for top level program at {}",
@@ -500,4 +503,11 @@ pub fn program(lexer: &mut Lexer) -> ProgramFile {
         file_path: lexer.file_path.clone(),
         items,
     }
+}
+
+pub fn import_file(lexer: &mut Lexer) -> ProgramItem {
+    lexer.match_token(TokenType::Import);
+    let file_path = lexer.get_token().literal;
+    lexer.match_token(TokenType::String);
+    ProgramItem::Import(file_path)
 }

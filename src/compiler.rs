@@ -272,6 +272,9 @@ impl IRGenerator {
                     self.functions_map.insert(f.ident.clone(), f.clone());
                     self.function(f);
                 }
+                ProgramItem::Import(_) =>{
+                    todo!("cum")
+                }
             }
         }
         assert!(

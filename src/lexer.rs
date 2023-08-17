@@ -127,6 +127,8 @@ pub enum TokenType {
     Eof,
     /// START OF FILE
     Sof,
+    //import module
+    Import,
 }
 
 impl TokenType {
@@ -559,6 +561,7 @@ impl Lexer {
             "include" => Some(TokenType::Include),
             "asm" => Some(TokenType::Asm),
             "ptr" => Some(TokenType::Ptr),
+            "import" => Some(TokenType::Import),
             _ => None,
         }
     }

@@ -14,4 +14,5 @@ pub struct ProgramFile {
 pub enum ProgramItem {
     Func(Function),
     StaticVar(VariableDeclare),
+    Import(String),
 }
