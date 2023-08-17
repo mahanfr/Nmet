@@ -338,10 +338,10 @@ impl IRGenerator {
                     Expr::String(_) => {
                         self.instruct_buf.push(asm!("mov rax, 1"));
                         self.instruct_buf.push(asm!("mov rdi, 1"));
-                        self.instruct_buf
-                            .push(asm!("mov rsi, data{}", self.data_buf.len() - 2));
-                        self.instruct_buf
-                            .push(asm!("mov rdx, len{}", self.data_buf.len() - 2));
+                        self.instruct_buf.push(asm!("pop rbx"));
+                        self.instruct_buf.push(asm!("pop rcx"));
+                        self.instruct_buf.push(asm!("mov rsi, rcx"));
+                        self.instruct_buf.push(asm!("mov rdx, rbx"));
                         self.instruct_buf.push(asm!("syscall"));
                     }
                     _ => {
@@ -633,6 +633,8 @@ impl IRGenerator {
                 let data_array = Self::asmfy_string(str);
                 self.data_buf.push(asm!("data{id} db {}", data_array));
                 self.data_buf.push(asm!("len{id} equ $ - data{id}"));
+                self.instruct_buf.push(asm!("push data{id}"));
+                self.instruct_buf.push(asm!("push len{id}"));
                 // data6524 db "<str>"
                 // len6524     data6524
                 // push len6524jkjk
@@ -690,8 +692,16 @@ impl IRGenerator {
     fn compile_function_call(&mut self, fc: &FunctionCall) {
         for (index, arg) in fc.args.iter().enumerate() {
             self.compile_expr(arg);
-            self.instruct_buf
-                .push(asm!("pop {}", function_args_register(index, 8)));
+            match arg {
+                Expr::String(_) => {
+                    self.instruct_buf.push(asm!("pop rax"));
+                    self.instruct_buf.push(asm!("pop {}", function_args_register(index, 8)));
+                }
+                _ => {
+                    self.instruct_buf
+                        .push(asm!("pop {}", function_args_register(index, 8)));
+                }
+            }
         }
         // TODO: Setup a unresolved function table
         let fun = self.functions_map.get(&fc.ident).unwrap();

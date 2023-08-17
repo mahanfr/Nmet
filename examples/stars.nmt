@@ -17,9 +17,8 @@ func main() {
     while index < 20 {
         index += 1;
         write(1, ptr line, index);
+        write(1, "\n", 1);
         line[index] = 42;
-        print "\n";
-        ~~ write(1, "\n", 1);
         ~~ line.push("*");
     }
 }
