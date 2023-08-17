@@ -1,5 +1,5 @@
 
-func read(fd @int, buf @ptr, size @u64) @ptr {
+func sys_read(fd @int, buf @ptr, size @u64) @ptr {
     asm {
         "mov rax, 0"
         "mov rdi, %fd"
@@ -10,17 +10,27 @@ func read(fd @int, buf @ptr, size @u64) @ptr {
     return buf;
 }
 
-func write(fd @int, buf @ptr, size @u64) {
+func sys_write(fd @int, buf @ptr, size @u64) {
+    var err @int = 0;
     asm {
         "mov rax, 1"
         "mov rdi, %fd"
         "mov rsi, %buf"
         "mov rdx, %size"
         "syscall"
+        "mov %err, rax"
     }
 }
 
-func open(filename @str, flags @int, mode @int) @u32 {
+func sys_exit(code @int) {
+    asm {
+        "mov rdi, %code"
+        "mov rax, 60"
+        "syscall"
+    }
+}
+
+func sys_open(filename @str, flags @int, mode @int) @u32 {
     var fd @u32 = 0;
     asm {
         "mov rax, 2"
@@ -33,7 +43,7 @@ func open(filename @str, flags @int, mode @int) @u32 {
     return fd;
 }
 
-func close(fd @int) {
+func sys_close(fd @int) {
     asm {
         "mov rax, 3"
         "mov rdi, %fd"
