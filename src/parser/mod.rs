@@ -493,9 +493,7 @@ pub fn program(lexer: &mut Lexer) -> ProgramFile {
             TokenType::Var => {
                 items.push(ProgramItem::StaticVar(variable_declare(lexer)));
             }
-            TokenType::Import =>{
-                items.push(import_file(lexer))
-            }
+            TokenType::Import => items.push(import_file(lexer)),
             _ => {
                 eprintln!(
                     "Error: Unexpected Token ({:?}) for top level program at {}",

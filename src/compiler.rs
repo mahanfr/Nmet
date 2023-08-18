@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 use std::error::Error;
-use std::fs::{self, File};
-use std::io::{BufWriter, Write};
 use std::process::exit;
 
+use crate::asm_generator::x86_64_nasm_generator;
 use crate::parser::block::Block;
 use crate::parser::expr::{CompareOp, Expr, FunctionCall, Op};
 use crate::parser::function::{Function, FunctionArg};
@@ -12,13 +11,21 @@ use crate::parser::program::ProgramItem;
 use crate::parser::stmt::{
     Assgin, AssginOp, ElseBlock, IFStmt, Stmt, VariableDeclare, VariableType, WhileStmt,
 };
-use crate::utils::get_program_name;
 
 macro_rules! asm {
     ($($arg:tt)+) => (
         format!("    {}\n",format_args!($($arg)+))
     );
 }
+
+pub fn compile_to_asm(path: String) {
+    let mut compiler = Compiler::new();
+    let (instr_buf,data_buf) = 
+        compiler.compile(path.clone())
+        .expect("Can not Compile Program");
+    x86_64_nasm_generator(path, instr_buf, data_buf).unwrap();
+}
+
 
 pub fn mem_word(size: usize) -> String {
     match size {
@@ -262,7 +269,7 @@ impl Compiler {
     }
 
     // TODO: Handle Compilation Error
-    pub fn compile(&mut self, path: String) -> Result<(), Box<dyn Error>> {
+    pub fn compile(&mut self, path: String) -> Result<(Vec<String>,Vec<String>), Box<dyn Error>> {
         let program = parse_file(path);
         for item in program.items {
             match item {
@@ -274,9 +281,11 @@ impl Compiler {
                     self.functions_map.insert(f.ident.clone(), f.clone());
                     self.function(f);
                 }
-                ProgramItem::Import(_) => {
-                    
-                    todo!();
+                ProgramItem::Import(next_path) => {
+                    let mut new_path = String::new();
+                    new_path.push_str(next_path.as_str());
+                    new_path.push_str(".nmt");
+                    self.compile(new_path)?;
                 }
             }
         }
@@ -284,10 +293,7 @@ impl Compiler {
             self.scoped_blocks.is_empty(),
             "Somting went wrong: Scope has not been cleared"
         );
-
-        //println!("{:?}",self.scoped_blocks);
-        self.write_to_file(program.file_path)?;
-        Ok(())
+        Ok((self.instruct_buf.clone(),self.data_buf.clone()))
     }
 
     /*
@@ -701,7 +707,8 @@ impl Compiler {
             match arg {
                 Expr::String(_) => {
                     self.instruct_buf.push(asm!("pop rax"));
-                    self.instruct_buf.push(asm!("pop {}", function_args_register(index, 8)));
+                    self.instruct_buf
+                        .push(asm!("pop {}", function_args_register(index, 8)));
                 }
                 _ => {
                     self.instruct_buf
@@ -773,82 +780,5 @@ impl Compiler {
             }
         }
         res
-    }
-
-    // TODO: Error Handleing Error Type FILE
-    fn write_to_file(&self, path: impl ToString) -> Result<(), Box<dyn Error>> {
-        fs::create_dir_all("./build").unwrap();
-        let out_name = get_program_name(path);
-        let stream = File::create(format!("./build/{}.asm", out_name)).unwrap();
-        let mut file = BufWriter::new(stream);
-        println!("[info] Generating asm files...");
-        file.write_all(b";; This File is Automatically Created Useing Nemet Parser\n")?;
-        file.write_all(b";; Under MIT License Copyright MahanFarzaneh 2023-2024\n\n")?;
-
-        file.write_all(b"\n")?;
-        if !self.data_buf.is_empty() {
-            file.write_all(b"section .data\n")?;
-            for data in &self.data_buf {
-                file.write_all(data.as_bytes())?;
-            }
-        }
-        file.write_all(b"\n")?;
-
-        file.write_all(b"section .text\n")?;
-        file.write_all(b"global _start\n")?;
-        file.write_all(b"print:\n")?;
-        file.write_all(b"    push    rbp\n")?;
-        file.write_all(b"    mov     rbp, rsp\n")?;
-        file.write_all(b"    sub     rsp, 64\n")?;
-        file.write_all(b"    mov     qword [rbp-56], rdi\n")?;
-        file.write_all(b"    mov     qword [rbp-8], 1\n")?;
-        file.write_all(b"    mov     eax, 32\n")?;
-        file.write_all(b"    sub     rax, qword [rbp-8]\n")?;
-        file.write_all(b"    mov     BYTE [rbp-48+rax], 10\n")?;
-        file.write_all(b".L3:\n")?;
-        file.write_all(b"    mov     rcx, qword [rbp-56]\n")?;
-        file.write_all(b"    mov     rdx, -3689348814741910323\n")?;
-        file.write_all(b"    mov     rax, rcx\n")?;
-        file.write_all(b"    mul     rdx\n")?;
-        file.write_all(b"    shr     rdx, 3\n")?;
-        file.write_all(b"    mov     rax, rdx\n")?;
-        file.write_all(b"    sal     rax, 2\n")?;
-        file.write_all(b"    add     rax, rdx\n")?;
-        file.write_all(b"    add     rax, rax\n")?;
-        file.write_all(b"    sub     rcx, rax\n")?;
-        file.write_all(b"    mov     rdx, rcx\n")?;
-        file.write_all(b"    mov     eax, edx\n")?;
-        file.write_all(b"    lea     edx, [rax+48]\n")?;
-        file.write_all(b"    mov     eax, 31\n")?;
-        file.write_all(b"    sub     rax, qword [rbp-8]\n")?;
-        file.write_all(b"    mov     byte [rbp-48+rax], dl\n")?;
-        file.write_all(b"    add     qword [rbp-8], 1\n")?;
-        file.write_all(b"    mov     rax, qword [rbp-56]\n")?;
-        file.write_all(b"    mov     rdx, -3689348814741910323\n")?;
-        file.write_all(b"    mul     rdx\n")?;
-        file.write_all(b"    mov     rax, rdx\n")?;
-        file.write_all(b"    shr     rax, 3\n")?;
-        file.write_all(b"    mov     qword [rbp-56], rax\n")?;
-        file.write_all(b"    cmp     qword [rbp-56], 0\n")?;
-        file.write_all(b"    jne     .L3\n")?;
-        file.write_all(b"    mov     eax, 32\n")?;
-        file.write_all(b"    sub     rax, qword [rbp-8]\n")?;
-        file.write_all(b"    lea     rdx, [rbp-48]\n")?;
-        file.write_all(b"    add     rax, rdx\n")?;
-        file.write_all(b"    mov     rsi, rax\n")?;
-        file.write_all(b"    mov     rbx, qword [rbp-8]\n")?;
-        file.write_all(b"    mov     rdx, rbx\n")?;
-        file.write_all(b"    mov     rdi, 1\n")?;
-        file.write_all(b"    mov     rax, 1\n")?;
-        file.write_all(b"    syscall\n")?;
-        file.write_all(b"    leave\n")?;
-        file.write_all(b"    ret\n")?;
-
-        for instruct in &self.instruct_buf {
-            file.write_all(instruct.as_bytes())?;
-        }
-
-        file.flush().unwrap();
-        Ok(())
     }
 }

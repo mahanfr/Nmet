@@ -1,14 +1,16 @@
-use crate::{compiler::Compiler, utils::get_program_name};
+use crate::utils::get_program_name;
 use std::env::args;
 use std::error::Error;
 use std::process::Command;
 
+mod asm_generator;
 mod command_line;
 mod compiler;
 mod lexer;
 mod parser;
 mod utils;
 use command_line::{help_command, CliArgs};
+use compiler::compile_to_asm;
 
 // --- Static Compiler Defenition
 pub static VERSION: &str = "v0.0.1-Beta";
@@ -17,10 +19,7 @@ pub static DEBUG: bool = true;
 
 /// Compiles the given file into an executable
 fn compile_command(arg: &mut CliArgs) {
-    let mut compiler = Compiler::new();
-    compiler
-        .compile(arg.get())
-        .expect("Can not Compile Program");
+    compile_to_asm(arg.get());
     compile_to_exc(arg.get());
 }
 
@@ -91,20 +90,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 #[cfg(test)]
 mod functional {
-    use crate::{
-        compile_to_exc, compiler::Compiler,
-        utils::get_program_name,
-    };
-    use std::{
-        fs::remove_file,
-        process::Command,
-    };
+    use crate::{compile_to_exc, compiler::compile_to_asm, utils::get_program_name};
+    use std::{fs::remove_file, process::Command};
 
     fn generate_asm(path: impl ToString) {
-        let mut compiler = Compiler::new();
-        compiler
-            .compile(path.to_string())
-            .expect("Can not Compile Program");
+        compile_to_asm(path.to_string());
         compile_to_exc(path.to_string());
         let program_name = get_program_name(path);
         remove_file(format!("./build/{}.o", program_name)).unwrap_or_else(|_| ());
