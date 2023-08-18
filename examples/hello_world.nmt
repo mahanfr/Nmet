@@ -1,3 +1,4 @@
+import "./rule110"
 
 func main() {
     print "hello from nemet!\n";
