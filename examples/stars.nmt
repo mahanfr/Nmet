@@ -1,23 +1,13 @@
-func sys_write(fd @int, buf @ptr, size @u64) {
-    var err @int = 0;
-    asm {
-        "mov rax, 1"
-        "mov rdi, %fd"
-        "mov rsi, %buf"
-        "mov rdx, %size"
-        "syscall"
-        "mov %err, rax"
-    }
-}
+import "./std/syscalls" :: sys_write
 
 func main() {
     var line @[char,30];
-    line[0] = 42;
+    line[0] = '*';
     var index = 0;
     while index < 20 {
         index += 1;
         sys_write(1, ptr line, index);
         sys_write(1, "\n", 1);
-        line[index] = 42;
+        line[index] = '*';
     }
 }

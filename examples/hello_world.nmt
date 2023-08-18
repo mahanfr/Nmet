@@ -2,5 +2,6 @@ import "./std/syscalls" :: sys_write , sys_exit
 
 func main() {
     sys_write(1,"Hello world!\n",13);
+    sys_exit(0);
     ~~ print "hello from nemet!\n";
 }
