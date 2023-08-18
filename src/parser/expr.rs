@@ -7,6 +7,7 @@ pub enum Expr {
     Binary(BinaryExpr),
     Compare(CompareExpr),
     Int(i32),
+    Char(u8),
     Ptr(Box<Expr>),
     String(String),
     Variable(String),

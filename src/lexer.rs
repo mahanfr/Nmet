@@ -395,9 +395,8 @@ impl Lexer {
     /// Tokenses the char literal
     /// ONLY call when current char is (')
     fn tokenize_char_literal(&mut self) -> Token {
-        let first = self.source[self.cur];
         self.drop();
-        let mut literal = String::new();
+        let literal;
         let char = self.source[self.cur];
         if char == '\'' {
             eprintln!("char literal can not be empty {}", self.get_loc_string());
@@ -414,26 +413,12 @@ impl Lexer {
             }
             let escape = self.source[self.cur];
             match escape {
-                'n' => {
-                    literal.push('\n');
-                    self.drop();
-                }
-                '\'' => {
-                    literal.push('\'');
-                    self.drop();
-                }
-                't' => {
-                    literal.push('\t');
-                    self.drop();
-                }
-                'r' => {
-                    literal.push('\r');
-                    self.drop();
-                }
-                '\\' => {
-                    literal.push('\\');
-                    self.drop();
-                }
+                'n'  => {literal = '\n';}
+                '\'' => {literal = '\'';}
+                't'  => {literal = '\t';}
+                'r'  => {literal = '\r';}
+                '\\' => {literal = '\\';}
+                '0'  => {literal = '\\';}
                 _ => {
                     eprintln!(
                         "unsupported escape sequence (\\{}) {}",
@@ -443,8 +428,9 @@ impl Lexer {
                     exit(1);
                 }
             }
+            self.drop();
         } else {
-            literal.push(char);
+            literal = char;
             self.drop();
         }
 
@@ -454,7 +440,7 @@ impl Lexer {
                 exit(1);
             }
             self.drop();
-            Token::new(TokenType::Char(first), literal, self.get_loc())
+            Token::new(TokenType::Char(literal), literal.to_string(), self.get_loc())
         } else {
             eprintln!(
                 "Error: Char literal is not closed properly at {}",

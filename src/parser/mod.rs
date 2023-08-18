@@ -111,6 +111,10 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
             lexer.match_token(TokenType::False);
             Expr::Int(0)
         }
+        TokenType::Char(c) => {
+            lexer.next_token();
+            Expr::Char(c as u8)
+        }
         TokenType::Int(val) => {
             lexer.next_token();
             Expr::Int(val)

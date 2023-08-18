@@ -582,9 +582,12 @@ impl Compiler {
                     .push(asm!("mov {},{mem_acss}", rbs("a", v_map.item_size)));
                 self.instruct_buf.push(asm!("push rax"));
             }
+            Expr::Char(x) => {
+                self.instruct_buf.push(asm!("push {x}"));
+            }
             Expr::Int(x) => {
                 // push x
-                self.instruct_buf.push(asm!("push {}", x));
+                self.instruct_buf.push(asm!("push {x}"));
             }
             Expr::Compare(c) => {
                 // TODO: Convert exprs to 0 or 1 and push into stack
