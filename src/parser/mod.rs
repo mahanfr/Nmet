@@ -3,9 +3,10 @@ pub mod expr;
 pub mod function;
 pub mod program;
 pub mod stmt;
+use std::fs;
 use std::process::exit;
 
-use crate::lexer::{Lexer, TokenType, self};
+use crate::lexer::{Lexer, TokenType};
 
 use crate::parser::block::*;
 use crate::parser::expr::{
@@ -14,6 +15,13 @@ use crate::parser::expr::{
 use crate::parser::function::*;
 use crate::parser::program::*;
 use crate::parser::stmt::*;
+
+pub fn parse_file(path: String) -> ProgramFile {
+    let source = fs::read_to_string(path.clone()).expect("Can not Read the file");
+    let mut lexer = Lexer::new(path, source);
+    program(&mut lexer)
+}
+
 // -4 -> 4 neg
 // 4 + 2 -> 4 2 +
 // 4 * 3 + 6 -> 4 3 * 6 +

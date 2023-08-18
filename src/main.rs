@@ -1,8 +1,6 @@
-use crate::parser::program;
-use crate::{compiler::IRGenerator, utils::get_program_name};
+use crate::{compiler::Compiler, utils::get_program_name};
 use std::env::args;
 use std::error::Error;
-use std::fs;
 use std::process::Command;
 
 mod command_line;
@@ -11,7 +9,6 @@ mod lexer;
 mod parser;
 mod utils;
 use command_line::{help_command, CliArgs};
-use lexer::Lexer;
 
 // --- Static Compiler Defenition
 pub static VERSION: &str = "v0.0.1-Beta";
@@ -20,11 +17,9 @@ pub static DEBUG: bool = true;
 
 /// Compiles the given file into an executable
 fn compile_command(arg: &mut CliArgs) {
-    let source = fs::read_to_string(arg.get()).expect("Can not Read the file");
-    let mut lexer = Lexer::new(arg.get(), source);
-    let mut ir_gen = IRGenerator::new();
-    ir_gen
-        .compile(program(&mut lexer))
+    let mut compiler = Compiler::new();
+    compiler
+        .compile(arg.get())
         .expect("Can not Compile Program");
     compile_to_exc(arg.get());
 }
@@ -97,20 +92,18 @@ fn main() -> Result<(), Box<dyn Error>> {
 #[cfg(test)]
 mod functional {
     use crate::{
-        compile_to_exc, compiler::IRGenerator, lexer::Lexer, parser::program,
+        compile_to_exc, compiler::Compiler,
         utils::get_program_name,
     };
     use std::{
-        fs::{self, remove_file},
+        fs::remove_file,
         process::Command,
     };
 
     fn generate_asm(path: impl ToString) {
-        let source = fs::read_to_string(path.to_string()).expect("Can not Read the file");
-        let mut lexer = Lexer::new(path.to_string(), source);
-        let mut ir_gen = IRGenerator::new();
-        ir_gen
-            .compile(program(&mut lexer))
+        let mut compiler = Compiler::new();
+        compiler
+            .compile(path.to_string())
             .expect("Can not Compile Program");
         compile_to_exc(path.to_string());
         let program_name = get_program_name(path);

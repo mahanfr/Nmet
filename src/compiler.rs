@@ -7,7 +7,8 @@ use std::process::exit;
 use crate::parser::block::Block;
 use crate::parser::expr::{CompareOp, Expr, FunctionCall, Op};
 use crate::parser::function::{Function, FunctionArg};
-use crate::parser::program::{ProgramFile, ProgramItem};
+use crate::parser::parse_file;
+use crate::parser::program::ProgramItem;
 use crate::parser::stmt::{
     Assgin, AssginOp, ElseBlock, IFStmt, Stmt, VariableDeclare, VariableType, WhileStmt,
 };
@@ -96,7 +97,7 @@ pub struct VariableMap {
     is_mut: bool,
 }
 
-pub struct IRGenerator {
+pub struct Compiler {
     instruct_buf: Vec<String>,
     data_buf: Vec<String>,
     scoped_blocks: Vec<usize>,
@@ -106,7 +107,7 @@ pub struct IRGenerator {
     mem_offset: usize,
 }
 
-impl IRGenerator {
+impl Compiler {
     // TODO: handle Error for Parsing
     pub fn new() -> Self {
         Self {
@@ -261,7 +262,8 @@ impl IRGenerator {
     }
 
     // TODO: Handle Compilation Error
-    pub fn compile(&mut self, program: ProgramFile) -> Result<(), Box<dyn Error>> {
+    pub fn compile(&mut self, path: String) -> Result<(), Box<dyn Error>> {
+        let program = parse_file(path);
         for item in program.items {
             match item {
                 ProgramItem::StaticVar(_s) => {
@@ -272,8 +274,9 @@ impl IRGenerator {
                     self.functions_map.insert(f.ident.clone(), f.clone());
                     self.function(f);
                 }
-                ProgramItem::Import(_) =>{
-                    todo!("cum")
+                ProgramItem::Import(_) => {
+                    
+                    todo!();
                 }
             }
         }
