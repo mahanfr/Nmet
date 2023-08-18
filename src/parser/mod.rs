@@ -515,5 +515,21 @@ pub fn import_file(lexer: &mut Lexer) -> ProgramItem {
     lexer.match_token(TokenType::Import);
     let file_path = lexer.get_token().literal;
     lexer.match_token(TokenType::String);
-    ProgramItem::Import(file_path)
+    if lexer.get_token_type() == TokenType::DoubleColon {
+        lexer.match_token(TokenType::DoubleColon);
+        let mut idents_vec = Vec::<String>::new();
+        loop {
+            let ident = lexer.get_token().literal;
+            lexer.match_token(TokenType::Identifier);
+            idents_vec.push(ident);
+            if lexer.get_token_type() == TokenType::Comma {
+                lexer.match_token(TokenType::Comma);
+            } else {
+                break;
+            }
+        }
+        ProgramItem::Import(file_path, idents_vec)
+    } else {
+        ProgramItem::Import(file_path, vec![])
+    }
 }

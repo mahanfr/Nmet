@@ -20,12 +20,11 @@ macro_rules! asm {
 
 pub fn compile_to_asm(path: String) {
     let mut compiler = Compiler::new();
-    let (instr_buf,data_buf) = 
-        compiler.compile(path.clone())
+    let (instr_buf, data_buf) = compiler
+        .compile(path.clone())
         .expect("Can not Compile Program");
     x86_64_nasm_generator(path, instr_buf, data_buf).unwrap();
 }
-
 
 pub fn mem_word(size: usize) -> String {
     match size {
@@ -268,8 +267,37 @@ impl Compiler {
         }
     }
 
+    pub fn compile_lib(
+        &mut self,
+        path: String,
+        exports: Vec<String>,
+    ) -> Result<(Vec<String>, Vec<String>), Box<dyn Error>> {
+        let program = parse_file(path);
+        for item in program.items {
+            match item {
+                ProgramItem::StaticVar(_s) => {
+                    todo!();
+                    // self.insert_variable(&s);
+                }
+                ProgramItem::Func(f) => {
+                    if exports.contains(&f.ident) {
+                        self.functions_map.insert(f.ident.clone(), f.clone());
+                        self.function(f);
+                    }
+                }
+                ProgramItem::Import(next_path, idents) => {
+                    let mut new_path = String::new();
+                    new_path.push_str(next_path.as_str());
+                    new_path.push_str(".nmt");
+                    self.compile_lib(new_path, idents)?;
+                }
+            }
+        }
+        Ok((self.instruct_buf.clone(), self.data_buf.clone()))
+    }
+
     // TODO: Handle Compilation Error
-    pub fn compile(&mut self, path: String) -> Result<(Vec<String>,Vec<String>), Box<dyn Error>> {
+    pub fn compile(&mut self, path: String) -> Result<(Vec<String>, Vec<String>), Box<dyn Error>> {
         let program = parse_file(path);
         for item in program.items {
             match item {
@@ -281,11 +309,11 @@ impl Compiler {
                     self.functions_map.insert(f.ident.clone(), f.clone());
                     self.function(f);
                 }
-                ProgramItem::Import(next_path) => {
+                ProgramItem::Import(next_path, idents) => {
                     let mut new_path = String::new();
                     new_path.push_str(next_path.as_str());
                     new_path.push_str(".nmt");
-                    self.compile(new_path)?;
+                    self.compile_lib(new_path, idents)?;
                 }
             }
         }
@@ -293,7 +321,7 @@ impl Compiler {
             self.scoped_blocks.is_empty(),
             "Somting went wrong: Scope has not been cleared"
         );
-        Ok((self.instruct_buf.clone(),self.data_buf.clone()))
+        Ok((self.instruct_buf.clone(), self.data_buf.clone()))
     }
 
     /*
@@ -717,7 +745,11 @@ impl Compiler {
             }
         }
         // TODO: Setup a unresolved function table
-        let fun = self.functions_map.get(&fc.ident).unwrap();
+        let fun = self.functions_map.get(&fc.ident).unwrap_or_else(|| {
+            eprintln!("Error: Function {} is not avaliable in this scope.",&fc.ident);
+            eprintln!("Make sure you are calling the correct function");
+            exit(-1);
+        });
         self.instruct_buf.push(asm!("mov rax, 0"));
         self.instruct_buf.push(asm!("call {}", fc.ident));
         if fun.ret_type.is_some() {

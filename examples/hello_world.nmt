@@ -1,5 +1,6 @@
-import "./rule110"
+import "./std/syscalls" :: sys_write , sys_exit
 
 func main() {
-    print "hello from nemet!\n";
+    sys_write(1,"Hello world!\n",13);
+    ~~ print "hello from nemet!\n";
 }
