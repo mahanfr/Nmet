@@ -24,54 +24,61 @@ pub fn block(lexer: &mut Lexer) -> Block {
         }
         match lexer.get_token_type() {
             TokenType::Var => {
+                let loc = lexer.get_current_loc();
                 stmts.push(Stmt {
                     stype: StmtType::VariableDecl(variable_declare(lexer)),
-                    loc: lexer.get_token_loc(),
+                    loc,
                 });
                 lexer.match_token(TokenType::SemiColon);
             }
             TokenType::Print => {
+                let loc = lexer.get_current_loc();
                 lexer.match_token(TokenType::Print);
                 let expr = expr(lexer);
                 stmts.push(Stmt {
                     stype: StmtType::Print(expr),
-                    loc: lexer.get_token_loc(),
+                    loc,
                 });
                 lexer.match_token(TokenType::SemiColon);
             }
             TokenType::Break => {
+                let loc = lexer.get_current_loc();
                 lexer.match_token(TokenType::Break);
                 stmts.push(Stmt {
                     stype: StmtType::Break,
-                    loc: lexer.get_token_loc(),
+                    loc,
                 });
                 lexer.match_token(TokenType::SemiColon);
             }
             TokenType::Continue => {
+                let loc = lexer.get_current_loc();
                 lexer.match_token(TokenType::Continue);
                 stmts.push(Stmt {
                     stype: StmtType::Continue,
-                    loc: lexer.get_token_loc(),
+                    loc,
                 });
                 lexer.match_token(TokenType::SemiColon);
             }
             TokenType::If => {
+                let loc = lexer.get_current_loc();
                 stmts.push(Stmt {
                     stype: StmtType::If(if_stmt(lexer)),
-                    loc: lexer.get_token_loc(),
+                    loc,
                 });
             }
             TokenType::While => {
+                let loc = lexer.get_current_loc();
                 stmts.push(Stmt {
                     stype: StmtType::While(while_stmt(lexer)),
-                    loc: lexer.get_token_loc(),
+                    loc,
                 });
             }
             TokenType::Return => {
+                let loc = lexer.get_current_loc();
                 lexer.match_token(TokenType::Return);
                 stmts.push(Stmt {
                     stype: StmtType::Return(expr(lexer)),
-                    loc: lexer.get_token_loc(),
+                    loc,
                 });
                 lexer.match_token(TokenType::SemiColon);
             }
@@ -80,6 +87,7 @@ pub fn block(lexer: &mut Lexer) -> Block {
                 stmts.push(assgin(lexer));
             }
             TokenType::Asm => {
+                let loc = lexer.get_current_loc();
                 lexer.match_token(TokenType::Asm);
                 lexer.match_token(TokenType::OCurly);
                 let mut instructs = Vec::<String>::new();
@@ -90,7 +98,7 @@ pub fn block(lexer: &mut Lexer) -> Block {
                 lexer.match_token(TokenType::CCurly);
                 stmts.push(Stmt {
                     stype: StmtType::InlineAsm(instructs),
-                    loc: lexer.get_token_loc(),
+                    loc,
                 });
             }
             _ => {

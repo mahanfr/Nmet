@@ -354,6 +354,14 @@ impl Lexer {
         self.token.loc.clone()
     }
 
+    pub fn get_current_loc(&self) -> Loc {
+        Loc::new(
+            self.file_path.clone(),
+            self.row + 1,
+            self.cur - self.bol + 1,
+        )
+    }
+
     /// Scans the next token and sets the current token to the new token
     pub fn next_token(&mut self) -> Token {
         let token = self._next_token();
@@ -376,11 +384,7 @@ impl Lexer {
             return Token::empty();
         }
         let first = self.source[self.cur];
-        let loc = Loc::new(
-            self.file_path.clone(),
-            self.row + 1,
-            self.cur - self.bol + 1,
-        );
+        let loc = self.get_current_loc();
 
         if first.is_ascii_alphabetic() || first == '_' {
             let index = self.cur;
@@ -438,11 +442,7 @@ impl Lexer {
         self.drop();
         let literal;
         let char = self.source[self.cur];
-        let loc = Loc::new(
-            self.file_path.clone(),
-            self.row + 1,
-            self.cur - self.bol + 1,
-        );
+        let loc = self.get_current_loc();
         if char == '\'' {
             error("char literal can not be empty", loc);
         }
@@ -497,11 +497,7 @@ impl Lexer {
     fn tokenize_string_literal(&mut self) -> Token {
         self.drop();
         let mut literal = String::new();
-        let loc = Loc::new(
-            self.file_path.clone(),
-            self.row + 1,
-            self.cur - self.bol + 1,
-        );
+        let loc = self.get_current_loc();
         while !self.is_empty() {
             let char = self.source[self.cur];
             if char == '\"' {
@@ -654,11 +650,7 @@ impl Lexer {
     /// * `literal` - token literal that we whant to check
     fn parse_numeric_literal(&self, literal: &String) -> TokenType {
         // 0x001 0xff 0b0010
-        let loc = Loc::new(
-            self.file_path.clone(),
-            self.row + 1,
-            self.cur - self.bol + 1,
-        );
+        let loc = self.get_current_loc();
         let mut lit_chars = literal.chars();
         if literal.contains('x') {
             self.expect_char(&lit_chars.next(), vec!['0']);
@@ -700,11 +692,7 @@ impl Lexer {
     /// Returns char if exits in a list
     /// Will Exit the program if no match
     fn expect_char(&self, copt: &Option<char>, chars: Vec<char>) -> char {
-        let loc = Loc::new(
-            self.file_path.clone(),
-            self.row + 1,
-            self.cur - self.bol + 1,
-        );
+        let loc = self.get_current_loc();
         let char = copt.unwrap_or_else(|| {
             error("Undifined character set for numbers", loc);
         });

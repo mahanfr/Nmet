@@ -29,6 +29,7 @@ impl VariableType {
 }
 
 pub fn type_def(lexer: &mut Lexer) -> VariableType {
+    let loc = lexer.get_current_loc();
     lexer.match_token(TokenType::ATSign);
     match lexer.get_token_type() {
         TokenType::Ptr => {
@@ -46,7 +47,7 @@ pub fn type_def(lexer: &mut Lexer) -> VariableType {
             lexer.match_token(TokenType::OBracket);
             let token = lexer.get_token();
             if token.is_empty() {
-                error("Expected an Identifier found EOF", lexer.get_token_loc());
+                error("Expected an Identifier found EOF", loc);
             }
             if token.t_type == TokenType::Identifier {
                 var_type = VariableType::from_string(lexer.get_token().literal);
@@ -59,13 +60,13 @@ pub fn type_def(lexer: &mut Lexer) -> VariableType {
                         "Error: Expected Identifier found ({})",
                         lexer.get_token_type()
                     ),
-                    lexer.get_token_loc(),
+                    loc,
                 );
             }
             lexer.match_token(TokenType::Comma);
             let token = lexer.get_token();
             if token.is_empty() {
-                error("Error: Expected a Number found EOF", lexer.get_token_loc());
+                error("Error: Expected a Number found EOF", loc);
             }
             match token.t_type {
                 TokenType::Int(s) => {
@@ -82,7 +83,7 @@ pub fn type_def(lexer: &mut Lexer) -> VariableType {
                             "Error: Expected Integer Number found ({})",
                             lexer.get_token_type()
                         ),
-                        lexer.get_token_loc(),
+                        loc,
                     );
                 }
             }
@@ -92,7 +93,7 @@ pub fn type_def(lexer: &mut Lexer) -> VariableType {
         _ => {
             error(
                 format!("Syntax Error: Unknown Token ({})", lexer.get_token_type()),
-                lexer.get_token_loc(),
+                loc,
             );
         }
     }

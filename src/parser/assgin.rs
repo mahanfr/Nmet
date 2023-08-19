@@ -41,13 +41,14 @@ impl AssginOp {
 }
 
 pub fn assgin(lexer: &mut Lexer) -> Stmt {
+    let loc = lexer.get_current_loc();
     let left_expr = expr(lexer);
     let token_type = lexer.get_token_type();
     if token_type == TokenType::SemiColon {
         lexer.match_token(TokenType::SemiColon);
         Stmt {
             stype: StmtType::Expr(left_expr),
-            loc: lexer.get_token_loc(),
+            loc,
         }
     } else if token_type.is_assgin_token() {
         let op_type = AssginOp::from_token_type(&token_type);
@@ -60,12 +61,12 @@ pub fn assgin(lexer: &mut Lexer) -> Stmt {
                 right: right_expr,
                 op: op_type,
             }),
-            loc: lexer.get_token_loc(),
+            loc,
         };
     } else {
         error(
-            format!("Expected Semicolon found ({})", lexer.get_token_type(),),
-            lexer.get_token_loc(),
+            format!("Expected Semicolon found ({})", lexer.get_token_type()),
+            loc,
         );
     }
 }

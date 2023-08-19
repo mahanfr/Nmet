@@ -29,6 +29,7 @@ pub fn variable_declare(lexer: &mut Lexer) -> VariableDeclare {
     if lexer.get_token_type() == TokenType::ATSign {
         v_type = Some(type_def(lexer));
     }
+    let loc = lexer.get_current_loc();
     match lexer.get_token_type() {
         TokenType::DoubleColon => {
             is_static = true;
@@ -53,7 +54,7 @@ pub fn variable_declare(lexer: &mut Lexer) -> VariableDeclare {
                     "Expected \"=\" or \":=\" found ({})",
                     lexer.get_token_type()
                 ),
-                lexer.get_token_loc(),
+                loc,
             );
         }
     }

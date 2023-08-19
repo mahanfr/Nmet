@@ -44,7 +44,7 @@ pub fn program(lexer: &mut Lexer) -> ProgramFile {
                     "Unexpected Token ({}) for the top level program",
                     lexer.get_token_type()
                 ),
-                lexer.get_token_loc(),
+                lexer.get_current_loc(),
             ),
         }
     }

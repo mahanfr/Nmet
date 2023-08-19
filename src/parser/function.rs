@@ -21,14 +21,12 @@ pub struct Function {
 }
 
 pub fn function_def(lexer: &mut Lexer) -> Function {
+    let loc = lexer.get_current_loc();
     lexer.match_token(TokenType::Func);
     let function_ident_token = lexer.get_token();
     let mut ret_type: Option<VariableType> = None;
     if function_ident_token.is_empty() {
-        error(
-            "Function defenition without identifier".to_string(),
-            lexer.get_token_loc(),
-        );
+        error("Function defenition without identifier", loc);
     }
     lexer.match_token(TokenType::Identifier);
     let args = function_def_args(lexer);
@@ -45,6 +43,7 @@ pub fn function_def(lexer: &mut Lexer) -> Function {
 }
 
 pub fn function_def_args(lexer: &mut Lexer) -> Vec<FunctionArg> {
+    let loc = lexer.get_current_loc();
     let mut args = Vec::<FunctionArg>::new();
     lexer.match_token(TokenType::OParen);
     loop {
@@ -68,7 +67,7 @@ pub fn function_def_args(lexer: &mut Lexer) -> Vec<FunctionArg> {
             _ => {
                 error(
                     format!("Expected Identifier found ({})", lexer.get_token_type()),
-                    lexer.get_token_loc(),
+                    loc,
                 );
             }
         }

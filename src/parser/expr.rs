@@ -209,6 +209,7 @@ pub fn term(lexer: &mut Lexer) -> Expr {
 }
 
 pub fn factor(lexer: &mut Lexer) -> Expr {
+    let loc = lexer.get_current_loc();
     match lexer.get_token_type() {
         TokenType::OParen => {
             lexer.match_token(TokenType::OParen);
@@ -225,7 +226,7 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
                     op,
                     right: Box::new(value),
                 }),
-                loc: lexer.get_token_loc(),
+                loc,
             }
         }
         TokenType::String => {
@@ -233,7 +234,7 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
             lexer.next_token();
             Expr {
                 etype: ExprType::String(str_token.literal),
-                loc: lexer.get_token_loc(),
+                loc,
             }
         }
         TokenType::Ptr => {
@@ -241,35 +242,35 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
             let value = expr(lexer);
             Expr {
                 etype: ExprType::Ptr(Box::new(value)),
-                loc: lexer.get_token_loc(),
+                loc,
             }
         }
         TokenType::True => {
             lexer.match_token(TokenType::True);
             Expr {
                 etype: ExprType::Int(1),
-                loc: lexer.get_token_loc(),
+                loc,
             }
         }
         TokenType::False => {
             lexer.match_token(TokenType::False);
             Expr {
                 etype: ExprType::Int(0),
-                loc: lexer.get_token_loc(),
+                loc,
             }
         }
         TokenType::Char(c) => {
             lexer.next_token();
             Expr {
                 etype: ExprType::Char(c as u8),
-                loc: lexer.get_token_loc(),
+                loc,
             }
         }
         TokenType::Int(val) => {
             lexer.next_token();
             Expr {
                 etype: ExprType::Int(val),
-                loc: lexer.get_token_loc(),
+                loc,
             }
         }
         TokenType::Identifier => {
@@ -277,7 +278,7 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
             if lexer.next_token().is_empty() {
                 return Expr {
                     etype: ExprType::Variable(ident_name),
-                    loc: lexer.get_token_loc(),
+                    loc,
                 };
             }
             match lexer.get_token_type() {
@@ -288,7 +289,7 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
                             ident: ident_name,
                             args,
                         }),
-                        loc: lexer.get_token_loc(),
+                        loc,
                     }
                 }
                 TokenType::OBracket => {
@@ -298,12 +299,12 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
                             ident: ident_name,
                             indexer: Box::new(indexer),
                         }),
-                        loc: lexer.get_token_loc(),
+                        loc,
                     }
                 }
                 _ => Expr {
                     etype: ExprType::Variable(ident_name),
-                    loc: lexer.get_token_loc(),
+                    loc,
                 },
             }
         }
@@ -313,7 +314,7 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
                     "Unexpected Token ({}) while parsing expr",
                     lexer.get_token_type(),
                 ),
-                lexer.get_token_loc(),
+                loc,
             );
         }
     }
