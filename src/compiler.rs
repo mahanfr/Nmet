@@ -3,7 +3,7 @@ use std::error::Error;
 
 use crate::asm_generator::x86_64_nasm_generator;
 use crate::error_handeling::error;
-use crate::parser::assgin::{Assgin, AssginOp};
+use crate::parser::assign::{Assign, AssignOp};
 use crate::parser::block::Block;
 use crate::parser::expr::{CompareOp, Expr, ExprType, FunctionCall, Op, UnaryExpr};
 use crate::parser::function::{Function, FunctionArg};
@@ -395,7 +395,7 @@ impl Compiler {
                 let exit_tag = self.instruct_buf.len();
                 self.compile_if_stmt(ifs, exit_tag);
             }
-            StmtType::Assgin(a) => match self.compile_assgin(a) {
+            StmtType::Assign(a) => match self.compile_assgin(a) {
                 Ok(_) => (),
                 Err(msg) => error(msg, stmt.loc.clone()),
             },
@@ -490,7 +490,7 @@ impl Compiler {
         self.instruct_buf.push(asm!("jnz .L{}", block_tag));
     }
 
-    fn assgin_op(&mut self, op: &AssginOp, v_map: &VariableMap) {
+    fn assgin_op(&mut self, op: &AssignOp, v_map: &VariableMap) {
         let mem_acss = if v_map.item_size != v_map.size {
             format!(
                 "{} [rbp-{}+rbx*{}]",
@@ -508,22 +508,22 @@ impl Compiler {
         let reg = rbs("a", v_map.item_size);
         self.instruct_buf.push(asm!("pop rax"));
         match op {
-            AssginOp::Eq => {
+            AssignOp::Eq => {
                 self.instruct_buf.push(asm!("mov {mem_acss},{reg}"));
             }
-            AssginOp::PlusEq => {
+            AssignOp::PlusEq => {
                 self.instruct_buf.push(asm!("add {mem_acss},{reg}"));
             }
-            AssginOp::SubEq => {
+            AssignOp::SubEq => {
                 self.instruct_buf.push(asm!("sub {mem_acss},{reg}"));
             }
-            AssginOp::MultiEq => {
+            AssignOp::MultiEq => {
                 let b_reg = rbs("b", v_map.item_size);
                 self.instruct_buf.push(asm!("mov {b_reg},{mem_acss}"));
                 self.instruct_buf.push(asm!("imul {reg},{b_reg}"));
                 self.instruct_buf.push(asm!("mov {mem_acss},{reg}"));
             }
-            AssginOp::DevideEq => {
+            AssignOp::DevideEq => {
                 let b_reg = rbs("b", v_map.item_size);
                 self.instruct_buf.push(asm!("mov {b_reg},{reg}"));
                 self.instruct_buf.push(asm!("mov {reg},{mem_acss}"));
@@ -531,7 +531,7 @@ impl Compiler {
                 self.instruct_buf.push(asm!("idiv rbx"));
                 self.instruct_buf.push(asm!("mov {mem_acss},{reg}"));
             }
-            AssginOp::ModEq => {
+            AssignOp::ModEq => {
                 let b_reg = rbs("b", v_map.item_size);
                 self.instruct_buf.push(asm!("mov {b_reg},{reg}"));
                 self.instruct_buf.push(asm!("mov {reg},{mem_acss}"));
@@ -543,7 +543,7 @@ impl Compiler {
         }
     }
 
-    fn compile_assgin(&mut self, assign: &Assgin) -> Result<(), String> {
+    fn compile_assgin(&mut self, assign: &Assign) -> Result<(), String> {
         match &assign.left.etype {
             ExprType::Variable(v) => {
                 let Some(v_map) = self.get_vriable_map(v) else {

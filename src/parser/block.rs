@@ -4,7 +4,7 @@ use crate::{
 };
 
 use super::{
-    assgin::assgin,
+    assign::assign,
     expr::expr,
     stmt::{if_stmt, while_stmt, StmtType},
     variable_decl::variable_declare,
@@ -84,7 +84,7 @@ pub fn block(lexer: &mut Lexer) -> Block {
             }
             TokenType::Identifier => {
                 //Assgin Op
-                stmts.push(assgin(lexer));
+                stmts.push(assign(lexer));
             }
             TokenType::Asm => {
                 let loc = lexer.get_current_loc();

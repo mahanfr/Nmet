@@ -9,14 +9,14 @@ use super::{
 };
 
 #[derive(Debug, Clone)]
-pub struct Assgin {
+pub struct Assign {
     pub left: Expr,
     pub right: Expr,
-    pub op: AssginOp,
+    pub op: AssignOp,
 }
 
 #[derive(Debug, Clone)]
-pub enum AssginOp {
+pub enum AssignOp {
     Eq,
     PlusEq,
     SubEq,
@@ -24,7 +24,7 @@ pub enum AssginOp {
     DevideEq,
     ModEq,
 }
-impl AssginOp {
+impl AssignOp {
     pub fn from_token_type(ttype: &TokenType) -> Self {
         match ttype {
             TokenType::Eq => Self::Eq,
@@ -40,7 +40,7 @@ impl AssginOp {
     }
 }
 
-pub fn assgin(lexer: &mut Lexer) -> Stmt {
+pub fn assign(lexer: &mut Lexer) -> Stmt {
     let loc = lexer.get_current_loc();
     let left_expr = expr(lexer);
     let token_type = lexer.get_token_type();
@@ -51,12 +51,12 @@ pub fn assgin(lexer: &mut Lexer) -> Stmt {
             loc,
         }
     } else if token_type.is_assgin_token() {
-        let op_type = AssginOp::from_token_type(&token_type);
+        let op_type = AssignOp::from_token_type(&token_type);
         lexer.match_token(token_type);
         let right_expr = expr(lexer);
         lexer.match_token(TokenType::SemiColon);
         return Stmt {
-            stype: StmtType::Assgin(Assgin {
+            stype: StmtType::Assign(Assign {
                 left: left_expr,
                 right: right_expr,
                 op: op_type,

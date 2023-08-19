@@ -3,7 +3,7 @@ use crate::lexer::{Lexer, TokenType};
 use crate::parser::block::Block;
 use crate::parser::expr::Expr;
 
-use super::assgin::Assgin;
+use super::assign::Assign;
 use super::block::block;
 use super::expr::expr;
 use super::variable_decl::VariableDeclare;
@@ -20,7 +20,7 @@ pub enum StmtType {
     Expr(Expr),
     VariableDecl(VariableDeclare),
     // expr = expr
-    Assgin(Assgin),
+    Assign(Assign),
     Print(Expr),
     While(WhileStmt),
     If(IFStmt),
