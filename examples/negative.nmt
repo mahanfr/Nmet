@@ -1,5 +1,5 @@
 import "./std/fmt" :: print_int
 
 func main() {
-    print_int(55);
+    print_int(0);
 }
