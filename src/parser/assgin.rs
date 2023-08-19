@@ -1,10 +1,11 @@
-use std::process::exit;
-
-use crate::lexer::{Lexer, TokenType};
+use crate::{
+    error_handeling::error,
+    lexer::{Lexer, TokenType},
+};
 
 use super::{
     expr::{expr, Expr},
-    stmt::Stmt,
+    stmt::{Stmt, StmtType},
 };
 
 #[derive(Debug, Clone)]
@@ -44,23 +45,27 @@ pub fn assgin(lexer: &mut Lexer) -> Stmt {
     let token_type = lexer.get_token_type();
     if token_type == TokenType::SemiColon {
         lexer.match_token(TokenType::SemiColon);
-        return Stmt::Expr(left_expr);
+        Stmt {
+            stype: StmtType::Expr(left_expr),
+            loc: lexer.get_token_loc(),
+        }
     } else if token_type.is_assgin_token() {
         let op_type = AssginOp::from_token_type(&token_type);
         lexer.match_token(token_type);
         let right_expr = expr(lexer);
         lexer.match_token(TokenType::SemiColon);
-        return Stmt::Assgin(Assgin {
-            left: left_expr,
-            right: right_expr,
-            op: op_type,
-        });
+        return Stmt {
+            stype: StmtType::Assgin(Assgin {
+                left: left_expr,
+                right: right_expr,
+                op: op_type,
+            }),
+            loc: lexer.get_token_loc(),
+        };
     } else {
-        eprintln!(
-            "Error: Expected Semicolon at {}:{}",
-            lexer.file_path,
-            lexer.get_token_loc()
+        error(
+            format!("Expected Semicolon found ({})", lexer.get_token_type(),),
+            lexer.get_token_loc(),
         );
-        exit(-1);
     }
 }

@@ -1,6 +1,5 @@
-use std::process::exit;
-
 use crate::{
+    error_handeling::error,
     lexer::{Lexer, TokenType},
     parser::types::type_def,
 };
@@ -49,13 +48,13 @@ pub fn variable_declare(lexer: &mut Lexer) -> VariableDeclare {
         }
         TokenType::SemiColon => {}
         _ => {
-            eprintln!(
-                "Error: Expected \"=\" or \":=\" found ({:?}) at {}:{}",
-                lexer.get_token_type(),
-                lexer.file_path,
-                lexer.get_token_loc()
+            error(
+                format!(
+                    "Expected \"=\" or \":=\" found ({})",
+                    lexer.get_token_type()
+                ),
+                lexer.get_token_loc(),
             );
-            exit(-1);
         }
     }
     VariableDeclare {

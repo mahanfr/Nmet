@@ -1,6 +1,7 @@
-use std::process::exit;
-
-use crate::lexer::{Lexer, TokenType};
+use crate::{
+    error_handeling::error,
+    lexer::{Lexer, TokenType},
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum VariableType {
@@ -45,12 +46,7 @@ pub fn type_def(lexer: &mut Lexer) -> VariableType {
             lexer.match_token(TokenType::OBracket);
             let token = lexer.get_token();
             if token.is_empty() {
-                eprintln!(
-                    "Error: Expected an Identifier found EOF at {}:{}",
-                    lexer.file_path,
-                    lexer.get_token_loc()
-                );
-                exit(1);
+                error("Expected an Identifier found EOF", lexer.get_token_loc());
             }
             if token.t_type == TokenType::Identifier {
                 var_type = VariableType::from_string(lexer.get_token().literal);
@@ -58,23 +54,18 @@ pub fn type_def(lexer: &mut Lexer) -> VariableType {
             } else if token.t_type == TokenType::ATSign {
                 var_type = self::type_def(lexer);
             } else {
-                eprintln!(
-                    "Error: Expected Identifier found {:?}, at {}:{}",
-                    lexer.get_token_type(),
-                    lexer.file_path,
-                    lexer.get_token_loc()
+                error(
+                    format!(
+                        "Error: Expected Identifier found ({})",
+                        lexer.get_token_type()
+                    ),
+                    lexer.get_token_loc(),
                 );
-                exit(1);
             }
             lexer.match_token(TokenType::Comma);
             let token = lexer.get_token();
             if token.is_empty() {
-                eprintln!(
-                    "Error: Expected a Number found EOF at {}:{}",
-                    lexer.file_path,
-                    lexer.get_token_loc()
-                );
-                exit(1);
+                error("Error: Expected a Number found EOF", lexer.get_token_loc());
             }
             match token.t_type {
                 TokenType::Int(s) => {
@@ -86,21 +77,23 @@ pub fn type_def(lexer: &mut Lexer) -> VariableType {
                     return VariableType::Pointer;
                 }
                 _ => {
-                    eprintln!(
-                        "Error: Expected Integer Number found {:?}, at {}:{}",
-                        lexer.get_token_type(),
-                        lexer.file_path,
-                        lexer.get_token_loc()
+                    error(
+                        format!(
+                            "Error: Expected Integer Number found ({})",
+                            lexer.get_token_type()
+                        ),
+                        lexer.get_token_loc(),
                     );
-                    exit(1);
                 }
             }
             lexer.match_token(TokenType::CBracket);
             VariableType::Array(Box::new(var_type), size)
         }
         _ => {
-            eprintln!("Syntax Error: Unknown Token at {}:{}", lexer.file_path, lexer.get_token_loc());
-            exit(1);
+            error(
+                format!("Syntax Error: Unknown Token ({})", lexer.get_token_type()),
+                lexer.get_token_loc(),
+            );
         }
     }
 }

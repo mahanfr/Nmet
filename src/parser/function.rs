@@ -1,6 +1,5 @@
-use std::process::exit;
-
 use crate::{
+    error_handeling::error,
     lexer::{Lexer, TokenType},
     parser::{block::Block, types::type_def},
 };
@@ -26,12 +25,10 @@ pub fn function_def(lexer: &mut Lexer) -> Function {
     let function_ident_token = lexer.get_token();
     let mut ret_type: Option<VariableType> = None;
     if function_ident_token.is_empty() {
-        eprintln!(
-            "Function Defenition without Identifier at {}:{}",
-            lexer.file_path,
-            lexer.get_token_loc()
+        error(
+            "Function defenition without identifier".to_string(),
+            lexer.get_token_loc(),
         );
-        exit(-1);
     }
     lexer.match_token(TokenType::Identifier);
     let args = function_def_args(lexer);
@@ -69,13 +66,10 @@ pub fn function_def_args(lexer: &mut Lexer) -> Vec<FunctionArg> {
                 });
             }
             _ => {
-                eprintln!(
-                    "Error: Expected Identifier found ({:?}) at {}:{}",
-                    lexer.get_token_type(),
-                    lexer.file_path,
-                    lexer.get_token_loc()
+                error(
+                    format!("Expected Identifier found ({})", lexer.get_token_type()),
+                    lexer.get_token_loc(),
                 );
-                exit(-1);
             }
         }
     }

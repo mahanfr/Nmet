@@ -1,6 +1,5 @@
-use std::process::exit;
-
 use crate::{
+    error_handeling::error,
     lexer::{Lexer, TokenType},
     parser::function::Function,
 };
@@ -40,15 +39,13 @@ pub fn program(lexer: &mut Lexer) -> ProgramFile {
                 items.push(ProgramItem::StaticVar(variable_declare(lexer)));
             }
             TokenType::Import => items.push(import_file(lexer)),
-            _ => {
-                eprintln!(
-                    "Error: Unexpected Token ({:?}) for top level program at {}:{}",
-                    lexer.get_token_type(),
-                    lexer.file_path,
-                    lexer.get_token_loc()
-                );
-                exit(-1);
-            }
+            _ => error(
+                format!(
+                    "Unexpected Token ({}) for the top level program",
+                    lexer.get_token_type()
+                ),
+                lexer.get_token_loc(),
+            ),
         }
     }
     ProgramFile {

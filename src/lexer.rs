@@ -4,25 +4,9 @@
  *  Token: Turns Source code into An Iteration of tokens
  *
  * */
-use std::{fmt::Display, process::exit};
+use std::fmt::Display;
 
-#[derive(Debug, Clone, Copy)]
-pub struct Loc {
-    pub line: usize,
-    pub col: usize,
-}
-
-impl Loc {
-    pub fn new(line: usize, col: usize) -> Self {
-        Self { line, col }
-    }
-}
-
-impl Display for Loc {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}:{}", self.line, self.col)
-    }
-}
+use crate::error_handeling::{error, Loc};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {
@@ -78,8 +62,6 @@ pub enum TokenType {
     True,
     /// Keyword false
     False,
-    /// Keyword include
-    Include,
     /// "@" Type defenition indicator
     ATSign,
     /// "=" Assgin a value to a variable
@@ -157,6 +139,72 @@ impl TokenType {
     }
 }
 
+impl Display for TokenType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TokenType::Identifier => write!(f, "Identifier"),
+            TokenType::Int(i) => write!(f, "{}", i),
+            TokenType::Float(fl) => write!(f, "{}", fl),
+            TokenType::Char(char) => write!(f, "{}", char),
+            TokenType::String => write!(f, "String Literal"),
+            TokenType::Asm => write!(f, "Inline Asm"),
+            TokenType::Ptr => write!(f, "Pointer"),
+            TokenType::Plus => write!(f, "+"),
+            TokenType::Minus => write!(f, "-"),
+            TokenType::Multi => write!(f, "*"),
+            TokenType::Devide => write!(f, "/"),
+            TokenType::Mod => write!(f, "%"),
+            TokenType::Not => write!(f, "!"),
+            TokenType::Bigger => write!(f, ">"),
+            TokenType::Smaller => write!(f, "<"),
+            TokenType::Func => write!(f, "func"),
+            TokenType::If => write!(f, "if"),
+            TokenType::Var => write!(f, "var"),
+            TokenType::Else => write!(f, "else"),
+            TokenType::Return => write!(f, "return"),
+            TokenType::While => write!(f, "while"),
+            TokenType::Break => write!(f, "break"),
+            TokenType::Continue => write!(f, "continue"),
+            TokenType::Print => write!(f, "print"),
+            TokenType::True => write!(f, "true"),
+            TokenType::False => write!(f, "false"),
+            TokenType::ATSign => write!(f, "@"),
+            TokenType::Eq => write!(f, "="),
+            TokenType::ColonEq => write!(f, ":="),
+            TokenType::DoubleEq => write!(f, "=="),
+            TokenType::NotEq => write!(f, "!="),
+            TokenType::BiggerEq => write!(f, ">="),
+            TokenType::SmallerEq => write!(f, "<="),
+            TokenType::PlusEq => write!(f, "+="),
+            TokenType::SubEq => write!(f, "-="),
+            TokenType::MultiEq => write!(f, "*="),
+            TokenType::DivEq => write!(f, "/="),
+            TokenType::ModEq => write!(f, "%="),
+            TokenType::Lsh => write!(f, "<<"),
+            TokenType::Rsh => write!(f, ">>"),
+            TokenType::And => write!(f, "&"),
+            TokenType::Or => write!(f, "|"),
+            TokenType::Log => write!(f, "#"),
+            TokenType::QMark => write!(f, "?"),
+            TokenType::SemiColon => write!(f, ";"),
+            TokenType::Colon => write!(f, ":"),
+            TokenType::DoubleColon => write!(f, "::"),
+            TokenType::Comma => write!(f, ","),
+            TokenType::Dollar => write!(f, "$"),
+            TokenType::OParen => write!(f, "("),
+            TokenType::CParen => write!(f, ")"),
+            TokenType::OBracket => write!(f, "["),
+            TokenType::CBracket => write!(f, "]"),
+            TokenType::OCurly => write!(f, "{{"),
+            TokenType::CCurly => write!(f, "}}"),
+            TokenType::Dot => write!(f, "."),
+            TokenType::Eof => write!(f, "Eof"),
+            TokenType::Sof => write!(f, "Sof"),
+            TokenType::Import => write!(f, "import"),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Token {
     pub loc: Loc,
@@ -200,7 +248,7 @@ impl Token {
         Self {
             literal: String::new(),
             t_type: TokenType::Sof,
-            loc: Loc::new(1, 1),
+            loc: Loc::new("??".to_string(), 1, 1),
         }
     }
 }
@@ -274,11 +322,7 @@ impl Lexer {
     pub fn get_token_type(&self) -> TokenType {
         let tk = self.token.clone();
         if tk.t_type == TokenType::Eof {
-            eprintln!(
-                "Expected a Token, found Eof at {}:{}",
-                self.file_path, tk.loc
-            );
-            exit(-1);
+            error("Expected a Token, found Eof", tk.loc);
         };
         tk.t_type
     }
@@ -294,14 +338,10 @@ impl Lexer {
         if tk.t_type == t_type {
             self.next_token();
         } else {
-            eprintln!(
-                "Expected {:?}, found {:?} at {}:{}",
-                t_type,
-                tk.t_type,
-                self.file_path,
-                self.get_token_loc()
+            error(
+                format!("Expected ({}), found ({})", t_type, tk.t_type),
+                tk.loc,
             );
-            exit(-1);
         }
     }
 
@@ -311,7 +351,7 @@ impl Lexer {
     }
 
     pub fn get_token_loc(&self) -> Loc {
-        self.token.loc
+        self.token.loc.clone()
     }
 
     /// Scans the next token and sets the current token to the new token
@@ -336,7 +376,11 @@ impl Lexer {
             return Token::empty();
         }
         let first = self.source[self.cur];
-        let loc = self.get_token_loc();
+        let loc = Loc::new(
+            self.file_path.clone(),
+            self.row + 1,
+            self.cur - self.bol + 1,
+        );
 
         if first.is_ascii_alphabetic() || first == '_' {
             let index = self.cur;
@@ -360,7 +404,7 @@ impl Lexer {
                 self.drop();
             }
             let literal = String::from_iter(self.source[index..self.cur].to_vec());
-            let ttype_and_val = Self::parse_numeric_literal(&literal);
+            let ttype_and_val = self.parse_numeric_literal(&literal);
             return Token::new(ttype_and_val, literal, loc);
         }
         if first == '\'' {
@@ -385,8 +429,7 @@ impl Lexer {
             return Token::new(tt, first.to_string(), loc);
         }
 
-        eprintln!("Unexpected Character at {}", loc);
-        exit(1);
+        error("Unexpected Character", loc);
     }
 
     /// Tokenses the char literal
@@ -395,16 +438,18 @@ impl Lexer {
         self.drop();
         let literal;
         let char = self.source[self.cur];
-        let loc = self.get_token_loc();
+        let loc = Loc::new(
+            self.file_path.clone(),
+            self.row + 1,
+            self.cur - self.bol + 1,
+        );
         if char == '\'' {
-            eprintln!("char literal can not be empty {}", loc);
-            exit(1);
+            error("char literal can not be empty", loc);
         }
         if char == '\\' {
             self.drop();
             if self.is_empty() {
-                eprintln!("char literal unfinished escape sequence {}", loc);
-                exit(1);
+                error("char literal unfinished escape sequence", loc);
             }
             let escape = self.source[self.cur];
             match escape {
@@ -427,8 +472,7 @@ impl Lexer {
                     literal = '\\';
                 }
                 _ => {
-                    eprintln!("unsupported escape sequence (\\{}) {}", escape, loc);
-                    exit(1);
+                    error(format!("unsupported escape sequence (\\{})", escape), loc);
                 }
             }
             self.drop();
@@ -439,14 +483,12 @@ impl Lexer {
 
         if !self.is_empty() {
             if self.source[self.cur] != '\'' {
-                eprintln!("unsupported char {}", loc);
-                exit(1);
+                error("unsupported char", loc);
             }
             self.drop();
             Token::new(TokenType::Char(literal), literal.to_string(), loc)
         } else {
-            eprintln!("Error: Char literal is not closed properly at {}", loc);
-            exit(1);
+            error("Error: Char literal is not closed properly", loc);
         }
     }
 
@@ -455,21 +497,23 @@ impl Lexer {
     fn tokenize_string_literal(&mut self) -> Token {
         self.drop();
         let mut literal = String::new();
-        let loc = self.get_token_loc();
+        let loc = Loc::new(
+            self.file_path.clone(),
+            self.row + 1,
+            self.cur - self.bol + 1,
+        );
         while !self.is_empty() {
             let char = self.source[self.cur];
             if char == '\"' {
                 break;
             }
             if char == '\n' {
-                eprintln!("string literal not closed before end of line {}", loc);
-                exit(1);
+                error("string literal not closed before end of line", loc);
             }
             if char == '\\' {
                 self.drop();
                 if self.is_empty() {
-                    eprintln!("string literal unfinished escape sequence {}", loc);
-                    exit(1);
+                    error("string literal unfinished escape sequence", loc);
                 }
 
                 let escape = self.source[self.cur];
@@ -495,8 +539,7 @@ impl Lexer {
                         self.drop();
                     }
                     _ => {
-                        eprintln!("unsupported escape sequence (\\{}) {}", escape, loc);
-                        exit(1);
+                        error(format!("unsupported escape sequence (\\{})", escape), loc);
                     }
                 }
             } else {
@@ -508,8 +551,7 @@ impl Lexer {
             self.drop();
             Token::new(TokenType::String, literal, loc)
         } else {
-            eprintln!("Error: String literal is not closed properly at {}", loc);
-            exit(1);
+            error("Error: String literal is not closed properly", loc);
         }
     }
 
@@ -532,7 +574,6 @@ impl Lexer {
             "print" => Some(TokenType::Print),
             "true" => Some(TokenType::True),
             "false" => Some(TokenType::False),
-            "include" => Some(TokenType::Include),
             "asm" => Some(TokenType::Asm),
             "ptr" => Some(TokenType::Ptr),
             "import" => Some(TokenType::Import),
@@ -611,29 +652,38 @@ impl Lexer {
     /// # Arguments
     ///
     /// * `literal` - token literal that we whant to check
-    fn parse_numeric_literal(literal: &String) -> TokenType {
+    fn parse_numeric_literal(&self, literal: &String) -> TokenType {
         // 0x001 0xff 0b0010
+        let loc = Loc::new(
+            self.file_path.clone(),
+            self.row + 1,
+            self.cur - self.bol + 1,
+        );
         let mut lit_chars = literal.chars();
         if literal.contains('x') {
-            Self::expect_char(&lit_chars.next(), vec!['0']);
-            Self::expect_char(&lit_chars.next(), vec!['x']);
+            self.expect_char(&lit_chars.next(), vec!['0']);
+            self.expect_char(&lit_chars.next(), vec!['x']);
             let mut value: i32 = 0;
             for ch in lit_chars {
                 let digit = ch.to_digit(16).unwrap_or_else(|| {
-                    eprintln!("Error: Unknown character in parsing: {}", literal);
-                    exit(-1);
+                    error(
+                        format!("Unknown character in parsing ({})", literal),
+                        loc.clone(),
+                    );
                 });
                 value = (value * 16i32) + digit as i32;
             }
             TokenType::Int(value)
         } else if literal.contains('b') {
-            Self::expect_char(&lit_chars.next(), vec!['0']);
-            Self::expect_char(&lit_chars.next(), vec!['b']);
+            self.expect_char(&lit_chars.next(), vec!['0']);
+            self.expect_char(&lit_chars.next(), vec!['b']);
             let mut value: i32 = 0;
             for ch in lit_chars {
                 let digit = ch.to_digit(2).unwrap_or_else(|| {
-                    eprintln!("Error: Unknown character in parsing: {}", literal);
-                    exit(-1);
+                    error(
+                        format!("Unknown character in parsing ({})", literal),
+                        loc.clone(),
+                    );
                 });
                 value = (value * 2i32) + digit as i32;
             }
@@ -649,10 +699,14 @@ impl Lexer {
 
     /// Returns char if exits in a list
     /// Will Exit the program if no match
-    fn expect_char(copt: &Option<char>, chars: Vec<char>) -> char {
+    fn expect_char(&self, copt: &Option<char>, chars: Vec<char>) -> char {
+        let loc = Loc::new(
+            self.file_path.clone(),
+            self.row + 1,
+            self.cur - self.bol + 1,
+        );
         let char = copt.unwrap_or_else(|| {
-            eprintln!("Error: Undifined character set for numbers");
-            exit(-1);
+            error("Undifined character set for numbers", loc);
         });
         if chars.contains(&char) {
             return char;

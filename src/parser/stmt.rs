@@ -1,3 +1,4 @@
+use crate::error_handeling::Loc;
 use crate::lexer::{Lexer, TokenType};
 use crate::parser::block::Block;
 use crate::parser::expr::Expr;
@@ -8,7 +9,13 @@ use super::expr::expr;
 use super::variable_decl::VariableDeclare;
 
 #[derive(Debug, Clone)]
-pub enum Stmt {
+pub struct Stmt {
+    pub stype: StmtType,
+    pub loc: Loc,
+}
+
+#[derive(Debug, Clone)]
+pub enum StmtType {
     // expr
     Expr(Expr),
     VariableDecl(VariableDeclare),

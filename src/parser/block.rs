@@ -6,7 +6,7 @@ use crate::{
 use super::{
     assgin::assgin,
     expr::expr,
-    stmt::{if_stmt, while_stmt},
+    stmt::{if_stmt, while_stmt, StmtType},
     variable_decl::variable_declare,
 };
 
@@ -24,34 +24,55 @@ pub fn block(lexer: &mut Lexer) -> Block {
         }
         match lexer.get_token_type() {
             TokenType::Var => {
-                stmts.push(Stmt::VariableDecl(variable_declare(lexer)));
+                stmts.push(Stmt {
+                    stype: StmtType::VariableDecl(variable_declare(lexer)),
+                    loc: lexer.get_token_loc(),
+                });
                 lexer.match_token(TokenType::SemiColon);
             }
             TokenType::Print => {
                 lexer.match_token(TokenType::Print);
                 let expr = expr(lexer);
-                stmts.push(Stmt::Print(expr));
+                stmts.push(Stmt {
+                    stype: StmtType::Print(expr),
+                    loc: lexer.get_token_loc(),
+                });
                 lexer.match_token(TokenType::SemiColon);
             }
             TokenType::Break => {
                 lexer.match_token(TokenType::Break);
-                stmts.push(Stmt::Break);
+                stmts.push(Stmt {
+                    stype: StmtType::Break,
+                    loc: lexer.get_token_loc(),
+                });
                 lexer.match_token(TokenType::SemiColon);
             }
             TokenType::Continue => {
                 lexer.match_token(TokenType::Continue);
-                stmts.push(Stmt::Continue);
+                stmts.push(Stmt {
+                    stype: StmtType::Continue,
+                    loc: lexer.get_token_loc(),
+                });
                 lexer.match_token(TokenType::SemiColon);
             }
             TokenType::If => {
-                stmts.push(Stmt::If(if_stmt(lexer)));
+                stmts.push(Stmt {
+                    stype: StmtType::If(if_stmt(lexer)),
+                    loc: lexer.get_token_loc(),
+                });
             }
             TokenType::While => {
-                stmts.push(Stmt::While(while_stmt(lexer)));
+                stmts.push(Stmt {
+                    stype: StmtType::While(while_stmt(lexer)),
+                    loc: lexer.get_token_loc(),
+                });
             }
             TokenType::Return => {
                 lexer.match_token(TokenType::Return);
-                stmts.push(Stmt::Return(expr(lexer)));
+                stmts.push(Stmt {
+                    stype: StmtType::Return(expr(lexer)),
+                    loc: lexer.get_token_loc(),
+                });
                 lexer.match_token(TokenType::SemiColon);
             }
             TokenType::Identifier => {
@@ -67,7 +88,10 @@ pub fn block(lexer: &mut Lexer) -> Block {
                     lexer.match_token(TokenType::String);
                 }
                 lexer.match_token(TokenType::CCurly);
-                stmts.push(Stmt::InlineAsm(instructs));
+                stmts.push(Stmt {
+                    stype: StmtType::InlineAsm(instructs),
+                    loc: lexer.get_token_loc(),
+                });
             }
             _ => {
                 todo!();

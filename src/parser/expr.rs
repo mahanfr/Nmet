@@ -1,9 +1,17 @@
-use crate::lexer::{Lexer, TokenType};
+use crate::{
+    error_handeling::{error, Loc},
+    lexer::{Lexer, TokenType},
+};
 use core::fmt::Display;
-use std::process::exit;
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Expr {
+pub struct Expr {
+    pub loc: Loc,
+    pub etype: ExprType,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum ExprType {
     Unary(UnaryExpr),
     Binary(BinaryExpr),
     Compare(CompareExpr),
@@ -15,7 +23,7 @@ pub enum Expr {
     FunctionCall(FunctionCall),
     ArrayIndex(ArrayIndex),
 }
-impl Expr {
+impl ExprType {
     pub fn is_binary_op(t_token: TokenType) -> bool {
         matches!(
             t_token,
@@ -146,24 +154,30 @@ pub fn expr(lexer: &mut Lexer) -> Expr {
     let mut term_expr = term(lexer);
     loop {
         let t_type = lexer.get_token_type();
-        if Expr::is_binary_op(t_type) {
+        if ExprType::is_binary_op(t_type) {
             let op = Op::from_token_type(t_type);
             lexer.next_token();
             let right = term(lexer);
-            term_expr = Expr::Binary(BinaryExpr {
-                left: Box::new(term_expr),
-                op,
-                right: Box::new(right),
-            });
-        } else if Expr::is_compare_op(t_type) {
+            term_expr = Expr {
+                etype: ExprType::Binary(BinaryExpr {
+                    left: Box::new(term_expr),
+                    op,
+                    right: Box::new(right),
+                }),
+                loc: lexer.get_token_loc(),
+            };
+        } else if ExprType::is_compare_op(t_type) {
             let op = CompareOp::from_token_type(lexer.get_token_type());
             lexer.next_token();
             let right = term(lexer);
-            term_expr = Expr::Compare(CompareExpr {
-                left: Box::new(term_expr),
-                op,
-                right: Box::new(right),
-            });
+            term_expr = Expr {
+                etype: ExprType::Compare(CompareExpr {
+                    left: Box::new(term_expr),
+                    op,
+                    right: Box::new(right),
+                }),
+                loc: lexer.get_token_loc(),
+            };
         } else {
             break;
         }
@@ -182,11 +196,14 @@ pub fn term(lexer: &mut Lexer) -> Expr {
         let op = Op::from_token_type(lexer.get_token_type());
         lexer.next_token();
         let right = factor(lexer);
-        left = Expr::Binary(BinaryExpr {
-            left: Box::new(left),
-            op,
-            right: Box::new(right),
-        });
+        left = Expr {
+            etype: ExprType::Binary(BinaryExpr {
+                left: Box::new(left),
+                op,
+                right: Box::new(right),
+            }),
+            loc: lexer.get_token_loc(),
+        };
     }
     left
 }
@@ -203,68 +220,101 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
             let op = Op::from_token_type(lexer.get_token_type());
             lexer.next_token();
             let value = factor(lexer);
-            Expr::Unary(UnaryExpr {
-                op,
-                right: Box::new(value),
-            })
+            Expr {
+                etype: ExprType::Unary(UnaryExpr {
+                    op,
+                    right: Box::new(value),
+                }),
+                loc: lexer.get_token_loc(),
+            }
         }
         TokenType::String => {
             let str_token = lexer.get_token();
             lexer.next_token();
-            Expr::String(str_token.literal)
+            Expr {
+                etype: ExprType::String(str_token.literal),
+                loc: lexer.get_token_loc(),
+            }
         }
         TokenType::Ptr => {
             lexer.match_token(TokenType::Ptr);
             let value = expr(lexer);
-            Expr::Ptr(Box::new(value))
+            Expr {
+                etype: ExprType::Ptr(Box::new(value)),
+                loc: lexer.get_token_loc(),
+            }
         }
         TokenType::True => {
             lexer.match_token(TokenType::True);
-            Expr::Int(1)
+            Expr {
+                etype: ExprType::Int(1),
+                loc: lexer.get_token_loc(),
+            }
         }
         TokenType::False => {
             lexer.match_token(TokenType::False);
-            Expr::Int(0)
+            Expr {
+                etype: ExprType::Int(0),
+                loc: lexer.get_token_loc(),
+            }
         }
         TokenType::Char(c) => {
             lexer.next_token();
-            Expr::Char(c as u8)
+            Expr {
+                etype: ExprType::Char(c as u8),
+                loc: lexer.get_token_loc(),
+            }
         }
         TokenType::Int(val) => {
             lexer.next_token();
-            Expr::Int(val)
+            Expr {
+                etype: ExprType::Int(val),
+                loc: lexer.get_token_loc(),
+            }
         }
         TokenType::Identifier => {
             let ident_name = lexer.get_token().literal;
             if lexer.next_token().is_empty() {
-                return Expr::Variable(ident_name);
+                return Expr {
+                    etype: ExprType::Variable(ident_name),
+                    loc: lexer.get_token_loc(),
+                };
             }
             match lexer.get_token_type() {
                 TokenType::OParen => {
                     let args = function_call_args(lexer);
-                    Expr::FunctionCall(FunctionCall {
-                        ident: ident_name,
-                        args,
-                    })
+                    Expr {
+                        etype: ExprType::FunctionCall(FunctionCall {
+                            ident: ident_name,
+                            args,
+                        }),
+                        loc: lexer.get_token_loc(),
+                    }
                 }
                 TokenType::OBracket => {
                     let indexer = array_indexer(lexer);
-                    Expr::ArrayIndex(ArrayIndex {
-                        ident: ident_name,
-                        indexer: Box::new(indexer),
-                    })
+                    Expr {
+                        etype: ExprType::ArrayIndex(ArrayIndex {
+                            ident: ident_name,
+                            indexer: Box::new(indexer),
+                        }),
+                        loc: lexer.get_token_loc(),
+                    }
                 }
-                _ => Expr::Variable(ident_name),
+                _ => Expr {
+                    etype: ExprType::Variable(ident_name),
+                    loc: lexer.get_token_loc(),
+                },
             }
         }
         _ => {
-            eprintln!(
-                "Unexpected Token ({:?}) while parsing expr at {}:{}",
-                lexer.get_token_type(),
-                lexer.file_path,
-                lexer.get_token_loc()
+            error(
+                format!(
+                    "Unexpected Token ({}) while parsing expr",
+                    lexer.get_token_type(),
+                ),
+                lexer.get_token_loc(),
             );
-            exit(-1);
         }
     }
 }
