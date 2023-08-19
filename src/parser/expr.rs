@@ -1,5 +1,6 @@
-use crate::lexer::TokenType;
+use crate::lexer::{Lexer, TokenType};
 use core::fmt::Display;
+use std::process::exit;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
@@ -139,4 +140,159 @@ impl CompareOp {
             }
         }
     }
+}
+
+pub fn expr(lexer: &mut Lexer) -> Expr {
+    let mut term_expr = term(lexer);
+    loop {
+        let t_type = lexer.get_token_type();
+        if Expr::is_binary_op(t_type) {
+            let op = Op::from_token_type(t_type);
+            lexer.next_token();
+            let right = term(lexer);
+            term_expr = Expr::Binary(BinaryExpr {
+                left: Box::new(term_expr),
+                op,
+                right: Box::new(right),
+            });
+        } else if Expr::is_compare_op(t_type) {
+            let op = CompareOp::from_token_type(lexer.get_token_type());
+            lexer.next_token();
+            let right = term(lexer);
+            term_expr = Expr::Compare(CompareExpr {
+                left: Box::new(term_expr),
+                op,
+                right: Box::new(right),
+            });
+        } else {
+            break;
+        }
+    }
+    term_expr
+}
+
+pub fn term(lexer: &mut Lexer) -> Expr {
+    let mut left = factor(lexer);
+    while lexer.get_token_type() == TokenType::Multi
+        || lexer.get_token_type() == TokenType::Devide
+        || lexer.get_token_type() == TokenType::Mod
+        || lexer.get_token_type() == TokenType::Lsh
+        || lexer.get_token_type() == TokenType::Rsh
+    {
+        let op = Op::from_token_type(lexer.get_token_type());
+        lexer.next_token();
+        let right = factor(lexer);
+        left = Expr::Binary(BinaryExpr {
+            left: Box::new(left),
+            op,
+            right: Box::new(right),
+        });
+    }
+    left
+}
+
+pub fn factor(lexer: &mut Lexer) -> Expr {
+    match lexer.get_token_type() {
+        TokenType::OParen => {
+            lexer.match_token(TokenType::OParen);
+            let value = expr(lexer);
+            lexer.match_token(TokenType::CParen);
+            value
+        }
+        TokenType::Plus | TokenType::Minus | TokenType::Not => {
+            let op = Op::from_token_type(lexer.get_token_type());
+            lexer.next_token();
+            let value = factor(lexer);
+            Expr::Unary(UnaryExpr {
+                op,
+                right: Box::new(value),
+            })
+        }
+        TokenType::String => {
+            let str_token = lexer.get_token();
+            lexer.next_token();
+            Expr::String(str_token.literal)
+        }
+        TokenType::Ptr => {
+            lexer.match_token(TokenType::Ptr);
+            let value = expr(lexer);
+            Expr::Ptr(Box::new(value))
+        }
+        TokenType::True => {
+            lexer.match_token(TokenType::True);
+            Expr::Int(1)
+        }
+        TokenType::False => {
+            lexer.match_token(TokenType::False);
+            Expr::Int(0)
+        }
+        TokenType::Char(c) => {
+            lexer.next_token();
+            Expr::Char(c as u8)
+        }
+        TokenType::Int(val) => {
+            lexer.next_token();
+            Expr::Int(val)
+        }
+        TokenType::Identifier => {
+            let ident_name = lexer.get_token().literal;
+            if lexer.next_token().is_empty() {
+                return Expr::Variable(ident_name);
+            }
+            match lexer.get_token_type() {
+                TokenType::OParen => {
+                    let args = function_call_args(lexer);
+                    Expr::FunctionCall(FunctionCall {
+                        ident: ident_name,
+                        args,
+                    })
+                }
+                TokenType::OBracket => {
+                    let indexer = array_indexer(lexer);
+                    Expr::ArrayIndex(ArrayIndex {
+                        ident: ident_name,
+                        indexer: Box::new(indexer),
+                    })
+                }
+                _ => Expr::Variable(ident_name),
+            }
+        }
+        _ => {
+            eprintln!(
+                "Unexpected Token ({:?}) while parsing expr at {}:{}",
+                lexer.get_token_type(),
+                lexer.file_path,
+                lexer.get_token_loc()
+            );
+            exit(-1);
+        }
+    }
+}
+
+pub fn array_indexer(lexer: &mut Lexer) -> Expr {
+    lexer.match_token(TokenType::OBracket);
+    let index = expr(lexer);
+    lexer.match_token(TokenType::CBracket);
+    index
+}
+
+pub fn function_call_args(lexer: &mut Lexer) -> Vec<Expr> {
+    let mut args = Vec::<Expr>::new();
+    lexer.match_token(TokenType::OParen);
+    loop {
+        //|| | expr | expr , expr
+        match lexer.get_token_type() {
+            TokenType::CParen => {
+                lexer.match_token(TokenType::CParen);
+                break;
+            }
+            _ => {
+                args.push(expr(lexer));
+                if lexer.get_token_type() == TokenType::Comma {
+                    lexer.match_token(TokenType::Comma);
+                }
+            }
+        }
+    }
+    args
 }

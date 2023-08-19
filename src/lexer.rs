@@ -4,8 +4,25 @@
  *  Token: Turns Source code into An Iteration of tokens
  *
  * */
-use std::process::exit;
-type Loc = (String, usize, usize);
+use std::{fmt::Display, process::exit};
+
+#[derive(Debug, Clone, Copy)]
+pub struct Loc {
+    pub line: usize,
+    pub col: usize,
+}
+
+impl Loc {
+    pub fn new(line: usize, col: usize) -> Self {
+        Self { line, col }
+    }
+}
+
+impl Display for Loc {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.line, self.col)
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {
@@ -142,9 +159,7 @@ impl TokenType {
 
 #[derive(Debug, Clone)]
 pub struct Token {
-    pub file_path: String,
-    pub col: usize,
-    pub line: usize,
+    pub loc: Loc,
     pub literal: String,
     pub t_type: TokenType,
 }
@@ -170,9 +185,7 @@ impl Token {
         Self {
             literal,
             t_type,
-            file_path: loc.0,
-            line: loc.1,
-            col: loc.2,
+            loc,
         }
     }
 
@@ -187,9 +200,7 @@ impl Token {
         Self {
             literal: String::new(),
             t_type: TokenType::Sof,
-            file_path: String::new(),
-            line: 0,
-            col: 0,
+            loc: Loc::new(1, 1),
         }
     }
 }
@@ -258,31 +269,15 @@ impl Lexer {
         }
     }
 
-    /// Returned the current location of cur
-    fn get_loc(&self) -> Loc {
-        (
-            self.file_path.clone(),
-            self.row + 1,
-            self.cur - self.bol + 1,
-        )
-    }
-
-    /// Formats the current token location to string
-    pub fn get_loc_string(&self) -> String {
-        let loc: Loc = (
-            self.file_path.clone(),
-            self.row + 1,
-            self.cur - self.bol + 1,
-        );
-        format!("{}:{}:{}", loc.0, loc.1, loc.2)
-    }
-
     /// Returns type of the current token
     /// Can exit the program if token is EOF
     pub fn get_token_type(&self) -> TokenType {
         let tk = self.token.clone();
         if tk.t_type == TokenType::Eof {
-            eprintln!("Expected a Token, found Eof at {}", self.get_loc_string());
+            eprintln!(
+                "Expected a Token, found Eof at {}:{}",
+                self.file_path, tk.loc
+            );
             exit(-1);
         };
         tk.t_type
@@ -300,10 +295,11 @@ impl Lexer {
             self.next_token();
         } else {
             eprintln!(
-                "Expected {:?}, found {:?} at {}",
+                "Expected {:?}, found {:?} at {}:{}",
                 t_type,
                 tk.t_type,
-                self.get_loc_string()
+                self.file_path,
+                self.get_token_loc()
             );
             exit(-1);
         }
@@ -312,6 +308,10 @@ impl Lexer {
     /// Returns the current token
     pub fn get_token(&self) -> Token {
         self.token.clone()
+    }
+
+    pub fn get_token_loc(&self) -> Loc {
+        self.token.loc
     }
 
     /// Scans the next token and sets the current token to the new token
@@ -336,6 +336,7 @@ impl Lexer {
             return Token::empty();
         }
         let first = self.source[self.cur];
+        let loc = self.get_token_loc();
 
         if first.is_ascii_alphabetic() || first == '_' {
             let index = self.cur;
@@ -346,8 +347,8 @@ impl Lexer {
             }
             let literal = String::from_iter(self.source[index..self.cur].to_vec());
             match Self::is_keyword(&literal) {
-                Some(keyword_token) => return Token::new(keyword_token, literal, self.get_loc()),
-                None => return Token::new(TokenType::Identifier, literal, self.get_loc()),
+                Some(keyword_token) => return Token::new(keyword_token, literal, loc),
+                None => return Token::new(TokenType::Identifier, literal, loc),
             }
         }
         if first.is_ascii_digit() {
@@ -360,7 +361,7 @@ impl Lexer {
             }
             let literal = String::from_iter(self.source[index..self.cur].to_vec());
             let ttype_and_val = Self::parse_numeric_literal(&literal);
-            return Token::new(ttype_and_val, literal, self.get_loc());
+            return Token::new(ttype_and_val, literal, loc);
         }
         if first == '\'' {
             return self.tokenize_char_literal();
@@ -377,18 +378,14 @@ impl Lexer {
                 if Self::is_single_char_token(next).is_some() {
                     if let Some(dtt) = Self::is_double_char_token(first, next) {
                         self.drop();
-                        return Token::new(
-                            dtt,
-                            String::from_iter(vec![first, next]),
-                            self.get_loc(),
-                        );
+                        return Token::new(dtt, String::from_iter(vec![first, next]), loc);
                     }
                 }
             }
-            return Token::new(tt, first.to_string(), self.get_loc());
+            return Token::new(tt, first.to_string(), loc);
         }
 
-        eprintln!("Unexpected Character at {}", self.get_loc_string());
+        eprintln!("Unexpected Character at {}", loc);
         exit(1);
     }
 
@@ -398,33 +395,39 @@ impl Lexer {
         self.drop();
         let literal;
         let char = self.source[self.cur];
+        let loc = self.get_token_loc();
         if char == '\'' {
-            eprintln!("char literal can not be empty {}", self.get_loc_string());
+            eprintln!("char literal can not be empty {}", loc);
             exit(1);
         }
         if char == '\\' {
             self.drop();
             if self.is_empty() {
-                eprintln!(
-                    "char literal unfinished escape sequence {}",
-                    self.get_loc_string()
-                );
+                eprintln!("char literal unfinished escape sequence {}", loc);
                 exit(1);
             }
             let escape = self.source[self.cur];
             match escape {
-                'n'  => {literal = '\n';}
-                '\'' => {literal = '\'';}
-                't'  => {literal = '\t';}
-                'r'  => {literal = '\r';}
-                '\\' => {literal = '\\';}
-                '0'  => {literal = '\\';}
+                'n' => {
+                    literal = '\n';
+                }
+                '\'' => {
+                    literal = '\'';
+                }
+                't' => {
+                    literal = '\t';
+                }
+                'r' => {
+                    literal = '\r';
+                }
+                '\\' => {
+                    literal = '\\';
+                }
+                '0' => {
+                    literal = '\\';
+                }
                 _ => {
-                    eprintln!(
-                        "unsupported escape sequence (\\{}) {}",
-                        escape,
-                        self.get_loc_string()
-                    );
+                    eprintln!("unsupported escape sequence (\\{}) {}", escape, loc);
                     exit(1);
                 }
             }
@@ -436,16 +439,13 @@ impl Lexer {
 
         if !self.is_empty() {
             if self.source[self.cur] != '\'' {
-                eprintln!("unsupported char {}", self.get_loc_string());
+                eprintln!("unsupported char {}", loc);
                 exit(1);
             }
             self.drop();
-            Token::new(TokenType::Char(literal), literal.to_string(), self.get_loc())
+            Token::new(TokenType::Char(literal), literal.to_string(), loc)
         } else {
-            eprintln!(
-                "Error: Char literal is not closed properly at {}",
-                self.get_loc_string()
-            );
+            eprintln!("Error: Char literal is not closed properly at {}", loc);
             exit(1);
         }
     }
@@ -455,25 +455,20 @@ impl Lexer {
     fn tokenize_string_literal(&mut self) -> Token {
         self.drop();
         let mut literal = String::new();
+        let loc = self.get_token_loc();
         while !self.is_empty() {
             let char = self.source[self.cur];
             if char == '\"' {
                 break;
             }
             if char == '\n' {
-                eprintln!(
-                    "string literal not closed before end of line {}",
-                    self.get_loc_string()
-                );
+                eprintln!("string literal not closed before end of line {}", loc);
                 exit(1);
             }
             if char == '\\' {
                 self.drop();
                 if self.is_empty() {
-                    eprintln!(
-                        "string literal unfinished escape sequence {}",
-                        self.get_loc_string()
-                    );
+                    eprintln!("string literal unfinished escape sequence {}", loc);
                     exit(1);
                 }
 
@@ -500,11 +495,7 @@ impl Lexer {
                         self.drop();
                     }
                     _ => {
-                        eprintln!(
-                            "unsupported escape sequence (\\{}) {}",
-                            escape,
-                            self.get_loc_string()
-                        );
+                        eprintln!("unsupported escape sequence (\\{}) {}", escape, loc);
                         exit(1);
                     }
                 }
@@ -515,12 +506,9 @@ impl Lexer {
         }
         if !self.is_empty() {
             self.drop();
-            Token::new(TokenType::String, literal, self.get_loc())
+            Token::new(TokenType::String, literal, loc)
         } else {
-            eprintln!(
-                "Error: String literal is not closed properly at {}",
-                self.get_loc_string()
-            );
+            eprintln!("Error: String literal is not closed properly at {}", loc);
             exit(1);
         }
     }

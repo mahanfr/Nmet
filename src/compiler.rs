@@ -3,14 +3,15 @@ use std::error::Error;
 use std::process::exit;
 
 use crate::asm_generator::x86_64_nasm_generator;
+use crate::parser::assgin::{Assgin, AssginOp};
 use crate::parser::block::Block;
 use crate::parser::expr::{CompareOp, Expr, FunctionCall, Op, UnaryExpr};
 use crate::parser::function::{Function, FunctionArg};
 use crate::parser::parse_file;
 use crate::parser::program::ProgramItem;
-use crate::parser::stmt::{
-    Assgin, AssginOp, ElseBlock, IFStmt, Stmt, VariableDeclare, VariableType, WhileStmt,
-};
+use crate::parser::stmt::{ElseBlock, IFStmt, Stmt, WhileStmt};
+use crate::parser::types::VariableType;
+use crate::parser::variable_decl::VariableDeclare;
 
 macro_rules! asm {
     ($($arg:tt)+) => (
@@ -519,11 +520,12 @@ impl Compiler {
             }
             AssginOp::DevideEq => {
                 // self.instruct_buf.push(asm!("cdq"));
+                self.instruct_buf.push(asm!("cqo"));
                 self.instruct_buf.push(asm!("idiv rbx"));
                 self.instruct_buf.push(asm!("mov {mem_acss},{reg}"));
             }
             AssginOp::ModEq => {
-                self.instruct_buf.push(asm!("cdq"));
+                self.instruct_buf.push(asm!("cqo"));
                 self.instruct_buf.push(asm!("idiv rbx"));
                 self.instruct_buf.push(asm!("mov {mem_acss},{reg}"));
             }
@@ -770,7 +772,10 @@ impl Compiler {
         }
         // TODO: Setup a unresolved function table
         let fun = self.functions_map.get(&fc.ident).unwrap_or_else(|| {
-            eprintln!("Error: Function {} is not avaliable in this scope.",&fc.ident);
+            eprintln!(
+                "Error: Function {} is not avaliable in this scope.",
+                &fc.ident
+            );
             eprintln!("Make sure you are calling the correct function");
             exit(-1);
         });
