@@ -1,39 +1,26 @@
-use crate::lexer::TokenType;
+use crate::error_handeling::Loc;
+use crate::lexer::{Lexer, TokenType};
 use crate::parser::block::Block;
 use crate::parser::expr::Expr;
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum VariableType {
-    Custom(String),
-    Array(Box<VariableType>, usize),
-    String,
-    Int,
-    Pointer,
-    UInt,
-    Bool,
-    Char,
-}
-impl VariableType {
-    pub fn from_string(literal: String) -> Self {
-        match literal.as_str() {
-            "int" | "i32" => Self::Int,
-            "uint" | "u32" => Self::UInt,
-            "char" | "u8" => Self::Char,
-            "bool" => Self::Bool,
-            "str" => Self::String,
-            "ptr" => Self::Pointer,
-            _ => Self::Custom(literal),
-        }
-    }
+use super::assign::Assign;
+use super::block::block;
+use super::expr::expr;
+use super::variable_decl::VariableDeclare;
+
+#[derive(Debug, Clone)]
+pub struct Stmt {
+    pub stype: StmtType,
+    pub loc: Loc,
 }
 
 #[derive(Debug, Clone)]
-pub enum Stmt {
+pub enum StmtType {
     // expr
     Expr(Expr),
     VariableDecl(VariableDeclare),
     // expr = expr
-    Assgin(Assgin),
+    Assign(Assign),
     Print(Expr),
     While(WhileStmt),
     If(IFStmt),
@@ -41,38 +28,6 @@ pub enum Stmt {
     InlineAsm(Vec<String>),
     Break,
     Continue,
-}
-
-#[derive(Debug, Clone)]
-pub struct Assgin {
-    pub left: Expr,
-    pub right: Expr,
-    pub op: AssginOp,
-}
-
-#[derive(Debug, Clone)]
-pub enum AssginOp {
-    Eq,
-    PlusEq,
-    SubEq,
-    MultiEq,
-    DevideEq,
-    ModEq,
-}
-impl AssginOp {
-    pub fn from_token_type(ttype: &TokenType) -> Self {
-        match ttype {
-            TokenType::Eq => Self::Eq,
-            TokenType::PlusEq => Self::PlusEq,
-            TokenType::SubEq => Self::SubEq,
-            TokenType::MultiEq => Self::MultiEq,
-            TokenType::DivEq => Self::DevideEq,
-            TokenType::ModEq => Self::ModEq,
-            _ => {
-                unreachable!();
-            }
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -95,11 +50,44 @@ pub struct WhileStmt {
     pub block: Block,
 }
 
-#[derive(Debug, Clone)]
-pub struct VariableDeclare {
-    pub mutable: bool,
-    pub is_static: bool,
-    pub ident: String,
-    pub v_type: Option<VariableType>,
-    pub init_value: Option<Expr>,
+/*
+ * Stmt := {declare | expr { = expr}} ;
+ * declare := let Ident = expr;
+*/
+
+pub fn if_stmt(lexer: &mut Lexer) -> IFStmt {
+    lexer.match_token(TokenType::If);
+    let condition = expr(lexer);
+    let then_block = block(lexer);
+    if lexer.get_token_type() == TokenType::Else {
+        lexer.match_token(TokenType::Else);
+        if lexer.get_token_type() == TokenType::If {
+            let else_block = Box::new(ElseBlock::Elif(if_stmt(lexer)));
+            IFStmt {
+                condition,
+                then_block,
+                else_block,
+            }
+        } else {
+            let else_block = Box::new(ElseBlock::Else(block(lexer)));
+            IFStmt {
+                condition,
+                then_block,
+                else_block,
+            }
+        }
+    } else {
+        IFStmt {
+            condition,
+            then_block,
+            else_block: Box::new(ElseBlock::None),
+        }
+    }
+}
+
+pub fn while_stmt(lexer: &mut Lexer) -> WhileStmt {
+    lexer.match_token(TokenType::While);
+    let condition = expr(lexer);
+    let block = block(lexer);
+    WhileStmt { condition, block }
 }

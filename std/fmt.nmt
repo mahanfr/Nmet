@@ -1,0 +1,23 @@
+import "./std/syscalls" :: sys_write
+
+func print_int(x @int) {
+     var a = x;
+     if a < 0 {
+        a = !a + 1;
+     }
+     var buffer @[char,32];
+     var buf_sz @int = 1;
+     buffer[32 - buf_sz] = '\n';
+     buffer[32 - buf_sz - 1] = a % 10 + '0';
+     buf_sz += 1;
+     a /= 10;
+     while a > 0 {
+         buffer[32 - buf_sz - 1] = a % 10 + '0';
+         buf_sz+=1;
+         a /= 10;
+     }
+     if x < 0 {
+         sys_write(1,"-", 1);
+     }
+     sys_write(1,(ptr buffer) + 32 - buf_sz , buf_sz);
+}

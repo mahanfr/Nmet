@@ -1,8 +1,5 @@
+import "./std/fmt" :: print_int
 
 func main() {
-    var i = -10;
-    while i < 0 {
-        i += 1;
-    }
-    print -2 / 1;
+    print_int(0);
 }

@@ -6,6 +6,7 @@ use std::process::Command;
 mod asm_generator;
 mod command_line;
 mod compiler;
+mod error_handeling;
 mod lexer;
 mod parser;
 mod utils;
@@ -189,6 +190,21 @@ mod functional {
             expectation.to_string()
         );
         remove_file("./build/functions").unwrap_or_else(|_| ());
+    }
+
+    #[test]
+    fn assgin_test() {
+        generate_asm("./tests/assgin.nmt");
+        let output = Command::new("./build/assgin")
+            .output()
+            .expect("Error Executing the program!");
+        assert!(output.status.success());
+        let expectation = "20\n22\n12\n24\n2\n0\n";
+        assert_eq!(
+            String::from_utf8(output.stdout).unwrap(),
+            expectation.to_string()
+        );
+        remove_file("./build/assgin").unwrap_or_else(|_| ());
     }
 
     #[test]

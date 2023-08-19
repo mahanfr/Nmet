@@ -1,16 +1,17 @@
 use std::collections::HashMap;
 use std::error::Error;
-use std::process::exit;
 
 use crate::asm_generator::x86_64_nasm_generator;
+use crate::error_handeling::error;
+use crate::parser::assign::{Assign, AssignOp};
 use crate::parser::block::Block;
-use crate::parser::expr::{CompareOp, Expr, FunctionCall, Op, UnaryExpr};
+use crate::parser::expr::{CompareOp, Expr, ExprType, FunctionCall, Op, UnaryExpr};
 use crate::parser::function::{Function, FunctionArg};
 use crate::parser::parse_file;
 use crate::parser::program::ProgramItem;
-use crate::parser::stmt::{
-    Assgin, AssginOp, ElseBlock, IFStmt, Stmt, VariableDeclare, VariableType, WhileStmt,
-};
+use crate::parser::stmt::{ElseBlock, IFStmt, Stmt, StmtType, WhileStmt};
+use crate::parser::types::VariableType;
+use crate::parser::variable_decl::VariableDeclare;
 
 macro_rules! asm {
     ($($arg:tt)+) => (
@@ -368,14 +369,14 @@ impl Compiler {
     }
 
     fn compile_stmt(&mut self, stmt: &Stmt) {
-        match stmt {
-            Stmt::VariableDecl(v) => {
+        match &stmt.stype {
+            StmtType::VariableDecl(v) => {
                 self.insert_variable(v);
             }
-            Stmt::Print(e) => {
+            StmtType::Print(e) => {
                 self.compile_expr(e);
-                match e {
-                    Expr::String(_) => {
+                match e.etype {
+                    ExprType::String(_) => {
                         self.instruct_buf.push(asm!("mov rax, 1"));
                         self.instruct_buf.push(asm!("mov rdi, 1"));
                         self.instruct_buf.push(asm!("pop rbx"));
@@ -390,34 +391,37 @@ impl Compiler {
                     }
                 }
             }
-            Stmt::If(ifs) => {
+            StmtType::If(ifs) => {
                 let exit_tag = self.instruct_buf.len();
                 self.compile_if_stmt(ifs, exit_tag);
             }
-            Stmt::Assgin(a) => {
-                self.compile_assgin(a);
-            }
-            Stmt::While(w) => {
+            StmtType::Assign(a) => match self.compile_assgin(a) {
+                Ok(_) => (),
+                Err(msg) => error(msg, stmt.loc.clone()),
+            },
+            StmtType::While(w) => {
                 self.compile_while(w);
             }
-            Stmt::Expr(e) => match e {
-                Expr::FunctionCall(_) => {
+            StmtType::Expr(e) => match e.etype {
+                ExprType::FunctionCall(_) => {
                     self.compile_expr(e);
                 }
                 _ => {
-                    println!("Warning: Expretion with no effect ignored!");
+                    println!("Warning: Expression with no effect ignored!");
                 }
             },
-            Stmt::Return(e) => {
+            StmtType::Return(e) => {
                 self.compile_expr(e);
                 self.instruct_buf.push(asm!("pop rax"));
                 self.instruct_buf.push(asm!("leave"));
                 self.instruct_buf.push(asm!("ret"));
-                println!("Warning: might segfault add leave or fix dataframe");
             }
-            Stmt::InlineAsm(instructs) => {
+            StmtType::InlineAsm(instructs) => {
                 for instr in instructs {
-                    self.compile_inline_asm(instr);
+                    match self.compile_inline_asm(instr) {
+                        Ok(_) => (),
+                        Err(msg) => error(msg, stmt.loc.clone()),
+                    }
                 }
             }
             _ => {
@@ -426,7 +430,7 @@ impl Compiler {
         }
     }
 
-    fn compile_inline_asm(&mut self, instr: &String) {
+    fn compile_inline_asm(&mut self, instr: &String) -> Result<(), String> {
         if instr.contains('%') {
             let mut final_instr = instr.clone();
             let chars = final_instr.chars().collect::<Vec<char>>();
@@ -444,13 +448,12 @@ impl Compiler {
                         index += 1;
                     }
                     if !ident.is_empty() {
-                        let v_map = self.find_variable(ident.clone()).unwrap_or_else(|| {
-                            eprintln!(
-                                "Error: Could not find variable {} in this scope",
+                        let Some(v_map) = self.find_variable(ident.clone()) else {
+                            return Err(format!(
+                                "Could not find variable {} in this scope",
                                 ident.clone()
-                            );
-                            exit(1);
-                        });
+                            ));
+                        };
                         let mem_acss =
                             format!("{} [rbp-{}]", mem_word(8), v_map.offset + v_map.size);
                         let mut temp = String::new();
@@ -460,8 +463,7 @@ impl Compiler {
                         final_instr = temp;
                         index += mem_acss.len()
                     } else {
-                        eprintln!("Error: Invalid Identifier for Inline Asm");
-                        exit(1);
+                        return Err("Invalid Identifier for Inline Asm".to_string());
                     }
                 } else {
                     index += 1;
@@ -471,6 +473,7 @@ impl Compiler {
         } else {
             self.instruct_buf.push(asm!("{}", instr));
         }
+        Ok(())
     }
 
     fn compile_while(&mut self, w_stmt: &WhileStmt) {
@@ -487,7 +490,7 @@ impl Compiler {
         self.instruct_buf.push(asm!("jnz .L{}", block_tag));
     }
 
-    fn assgin_op(&mut self, op: &AssginOp, v_map: &VariableMap) {
+    fn assgin_op(&mut self, op: &AssignOp, v_map: &VariableMap) {
         let mem_acss = if v_map.item_size != v_map.size {
             format!(
                 "{} [rbp-{}+rbx*{}]",
@@ -505,74 +508,84 @@ impl Compiler {
         let reg = rbs("a", v_map.item_size);
         self.instruct_buf.push(asm!("pop rax"));
         match op {
-            AssginOp::Eq => {
+            AssignOp::Eq => {
                 self.instruct_buf.push(asm!("mov {mem_acss},{reg}"));
             }
-            AssginOp::PlusEq => {
+            AssignOp::PlusEq => {
                 self.instruct_buf.push(asm!("add {mem_acss},{reg}"));
             }
-            AssginOp::SubEq => {
+            AssignOp::SubEq => {
                 self.instruct_buf.push(asm!("sub {mem_acss},{reg}"));
             }
-            AssginOp::MultiEq => {
-                self.instruct_buf.push(asm!("imul {mem_acss},{reg}"));
+            AssignOp::MultiEq => {
+                let b_reg = rbs("b", v_map.item_size);
+                self.instruct_buf.push(asm!("mov {b_reg},{mem_acss}"));
+                self.instruct_buf.push(asm!("imul {reg},{b_reg}"));
+                self.instruct_buf.push(asm!("mov {mem_acss},{reg}"));
             }
-            AssginOp::DevideEq => {
-                // self.instruct_buf.push(asm!("cdq"));
+            AssignOp::DevideEq => {
+                let b_reg = rbs("b", v_map.item_size);
+                self.instruct_buf.push(asm!("mov {b_reg},{reg}"));
+                self.instruct_buf.push(asm!("mov {reg},{mem_acss}"));
+                self.instruct_buf.push(asm!("cqo"));
                 self.instruct_buf.push(asm!("idiv rbx"));
                 self.instruct_buf.push(asm!("mov {mem_acss},{reg}"));
             }
-            AssginOp::ModEq => {
-                self.instruct_buf.push(asm!("cdq"));
+            AssignOp::ModEq => {
+                let b_reg = rbs("b", v_map.item_size);
+                self.instruct_buf.push(asm!("mov {b_reg},{reg}"));
+                self.instruct_buf.push(asm!("mov {reg},{mem_acss}"));
+                self.instruct_buf.push(asm!("cqo"));
                 self.instruct_buf.push(asm!("idiv rbx"));
-                self.instruct_buf.push(asm!("mov {mem_acss},{reg}"));
+                let d_reg = rbs("d", v_map.item_size);
+                self.instruct_buf.push(asm!("mov {mem_acss},{d_reg}"));
             }
         }
     }
 
-    fn compile_assgin(&mut self, assign: &Assgin) {
-        match &assign.left {
-            Expr::Variable(v) => {
-                let v_map = self.get_vriable_map(v);
+    fn compile_assgin(&mut self, assign: &Assign) -> Result<(), String> {
+        match &assign.left.etype {
+            ExprType::Variable(v) => {
+                let Some(v_map) = self.get_vriable_map(v) else {
+                    return Err("Trying to access an Undifined variable".to_string());
+                };
                 if !v_map.is_mut {
-                    eprintln!("Error: Variable is not mutable. Did you forgot to define it with '=' insted of ':=' ?");
-                    exit(1);
+                    return Err("Error: Variable is not mutable. Did you forgot to define it with '=' insted of ':=' ?".to_string());
                 }
                 self.compile_expr(&assign.right);
                 self.assgin_op(&assign.op, &v_map);
+                Ok(())
             }
-            Expr::ArrayIndex(ai) => {
-                let v_map = self.get_vriable_map(&ai.ident);
+            ExprType::ArrayIndex(ai) => {
+                let Some(v_map) = self.get_vriable_map(&ai.ident) else {
+                    return Err("Trying to access an Undifined variable".to_string());
+                };
                 if !v_map.is_mut {
-                    eprintln!("Error: Variable is not mutable. Did you forgot to define it with '=' insted of ':=' ?");
-                    exit(1);
+                    return Err("Error: Variable is not mutable. Did you forgot to define it with '=' insted of ':=' ?".to_string());
                 }
                 self.compile_expr(&assign.right);
                 self.compile_expr(&ai.indexer);
                 self.instruct_buf.push(asm!("pop rbx"));
                 self.assgin_op(&assign.op, &v_map);
+                Ok(())
             }
-            _ => {
-                eprintln!("Error: Expected a Variable type expression found Value");
-                exit(1);
-            }
+            _ => Err("Error: Expected a Variable type expression found Value".to_string()),
         }
     }
 
-    fn get_vriable_map(&mut self, var_ident: &String) -> VariableMap {
-        self.find_variable(var_ident.clone()).unwrap_or_else(|| {
-            eprintln!("Error: Trying to access an Undifined variable ({var_ident})");
-            exit(1);
-        })
+    fn get_vriable_map(&mut self, var_ident: &str) -> Option<VariableMap> {
+        self.find_variable(var_ident.to_owned())
     }
 
     fn compile_expr(&mut self, expr: &Expr) {
         // left = compile expr
         // right = compile expr
         // +
-        match expr {
-            Expr::Variable(v) => {
-                let v_map = self.get_vriable_map(v);
+        match &expr.etype {
+            ExprType::Variable(v) => {
+                let Some(v_map) = self.get_vriable_map(v) else {
+                    error("Trying to access an Undifined variable",expr.loc.clone());
+                };
                 let mem_acss = format!(
                     "{} [rbp-{}]",
                     mem_word(v_map.item_size),
@@ -582,14 +595,14 @@ impl Compiler {
                     .push(asm!("mov {},{mem_acss}", rbs("a", v_map.item_size)));
                 self.instruct_buf.push(asm!("push rax"));
             }
-            Expr::Char(x) => {
+            ExprType::Char(x) => {
                 self.instruct_buf.push(asm!("push {x}"));
             }
-            Expr::Int(x) => {
+            ExprType::Int(x) => {
                 // push x
                 self.instruct_buf.push(asm!("push {x}"));
             }
-            Expr::Compare(c) => {
+            ExprType::Compare(c) => {
                 // TODO: Convert exprs to 0 or 1 and push into stack
                 self.compile_expr(c.left.as_ref());
                 self.compile_expr(c.right.as_ref());
@@ -620,7 +633,7 @@ impl Compiler {
                 }
                 self.instruct_buf.push(asm!("push rcx"));
             }
-            Expr::Binary(b) => {
+            ExprType::Binary(b) => {
                 self.compile_expr(b.left.as_ref());
                 self.compile_expr(b.right.as_ref());
                 self.instruct_buf.push(asm!("pop rbx"));
@@ -671,20 +684,15 @@ impl Compiler {
                     }
                 }
             }
-            Expr::String(str) => {
+            ExprType::String(str) => {
                 let id = self.data_buf.len();
                 let data_array = Self::asmfy_string(str);
                 self.data_buf.push(asm!("data{id} db {}", data_array));
                 self.data_buf.push(asm!("len{id} equ $ - data{id}"));
                 self.instruct_buf.push(asm!("push data{id}"));
                 self.instruct_buf.push(asm!("push len{id}"));
-                // data6524 db "<str>"
-                // len6524     data6524
-                // push len6524jkjk
-                // push data6524
-                // self.instruct_buf.push(asm!("push 13"));
             }
-            Expr::Unary(u) => {
+            ExprType::Unary(u) => {
                 self.compile_unary(u);
                 self.instruct_buf.push(asm!("pop rax"));
                 match u.op {
@@ -704,19 +712,22 @@ impl Compiler {
                     }
                 }
             }
-            Expr::FunctionCall(fc) => {
-                self.compile_function_call(fc);
-            }
-            Expr::Ptr(e) => {
+            ExprType::FunctionCall(fc) => match self.compile_function_call(fc) {
+                Ok(_) => (),
+                Err(msg) => error(msg, expr.loc.clone()),
+            },
+            ExprType::Ptr(e) => {
                 self.compile_ptr(e);
             }
-            Expr::ArrayIndex(ai) => {
+            ExprType::ArrayIndex(ai) => {
                 let v_map = self.find_variable(ai.ident.clone()).unwrap_or_else(|| {
-                    eprintln!(
-                        "Error: Trying to access an Undifined variable ({})",
-                        ai.ident
+                    error(
+                        format!(
+                            "Error: Trying to access an Undifined variable ({})",
+                            ai.ident
+                        ),
+                        expr.loc.clone(),
                     );
-                    exit(1);
                 });
                 self.compile_expr(&ai.indexer);
                 self.instruct_buf.push(asm!("pop rbx"));
@@ -739,9 +750,11 @@ impl Compiler {
     }
 
     fn compile_ptr(&mut self, expr: &Expr) {
-        match expr {
-            Expr::Variable(v) => {
-                let v_map = self.get_vriable_map(v);
+        match &expr.etype {
+            ExprType::Variable(v) => {
+                let Some(v_map) = self.get_vriable_map(v) else {
+                    error("Trying to access an Undifined variable",expr.loc.clone());
+                };
                 self.instruct_buf.push(asm!("mov rax, rbp"));
                 self.instruct_buf
                     .push(asm!("sub rax, {}", v_map.offset + v_map.size));
@@ -753,11 +766,11 @@ impl Compiler {
         }
     }
 
-    fn compile_function_call(&mut self, fc: &FunctionCall) {
+    fn compile_function_call(&mut self, fc: &FunctionCall) -> Result<(), String> {
         for (index, arg) in fc.args.iter().enumerate() {
             self.compile_expr(arg);
-            match arg {
-                Expr::String(_) => {
+            match arg.etype {
+                ExprType::String(_) => {
                     self.instruct_buf.push(asm!("pop rax"));
                     self.instruct_buf
                         .push(asm!("pop {}", function_args_register(index, 8)));
@@ -769,16 +782,20 @@ impl Compiler {
             }
         }
         // TODO: Setup a unresolved function table
-        let fun = self.functions_map.get(&fc.ident).unwrap_or_else(|| {
-            eprintln!("Error: Function {} is not avaliable in this scope.",&fc.ident);
-            eprintln!("Make sure you are calling the correct function");
-            exit(-1);
-        });
+        let Some(fun) = self.functions_map.get(&fc.ident) else {
+            return Err(
+            format!(
+                "Error: Function {} is not avaliable in this scope. {}",
+                &fc.ident,
+                "Make sure you are calling the correct function"
+            ))
+        };
         self.instruct_buf.push(asm!("mov rax, 0"));
         self.instruct_buf.push(asm!("call {}", fc.ident));
         if fun.ret_type.is_some() {
             self.instruct_buf.push(asm!("push rax"));
         }
+        Ok(())
     }
 
     fn asmfy_string(str: &str) -> String {
