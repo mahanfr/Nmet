@@ -516,18 +516,27 @@ impl Compiler {
                 self.instruct_buf.push(asm!("sub {mem_acss},{reg}"));
             }
             AssginOp::MultiEq => {
-                self.instruct_buf.push(asm!("imul {mem_acss},{reg}"));
+                let b_reg = rbs("b",v_map.item_size);
+                self.instruct_buf.push(asm!("mov {b_reg},{mem_acss}"));
+                self.instruct_buf.push(asm!("imul {reg},{b_reg}"));
+                self.instruct_buf.push(asm!("mov {mem_acss},{reg}"));
             }
             AssginOp::DevideEq => {
-                // self.instruct_buf.push(asm!("cdq"));
+                let b_reg = rbs("b",v_map.item_size);
+                self.instruct_buf.push(asm!("mov {b_reg},{reg}"));
+                self.instruct_buf.push(asm!("mov {reg},{mem_acss}"));
                 self.instruct_buf.push(asm!("cqo"));
                 self.instruct_buf.push(asm!("idiv rbx"));
                 self.instruct_buf.push(asm!("mov {mem_acss},{reg}"));
             }
             AssginOp::ModEq => {
+                let b_reg = rbs("b",v_map.item_size);
+                self.instruct_buf.push(asm!("mov {b_reg},{reg}"));
+                self.instruct_buf.push(asm!("mov {reg},{mem_acss}"));
                 self.instruct_buf.push(asm!("cqo"));
                 self.instruct_buf.push(asm!("idiv rbx"));
-                self.instruct_buf.push(asm!("mov {mem_acss},{reg}"));
+                let d_reg = rbs("d",v_map.item_size);
+                self.instruct_buf.push(asm!("mov {mem_acss},{d_reg}"));
             }
         }
     }
