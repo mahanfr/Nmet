@@ -1,0 +1,8 @@
+
+func main() {
+    var i = -10;
+    while i < 0 {
+        i += 1;
+    }
+    print -2 / 1;
+}

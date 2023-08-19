@@ -4,7 +4,7 @@ use std::process::exit;
 
 use crate::asm_generator::x86_64_nasm_generator;
 use crate::parser::block::Block;
-use crate::parser::expr::{CompareOp, Expr, FunctionCall, Op};
+use crate::parser::expr::{CompareOp, Expr, FunctionCall, Op, UnaryExpr};
 use crate::parser::function::{Function, FunctionArg};
 use crate::parser::parse_file;
 use crate::parser::program::ProgramItem;
@@ -639,12 +639,12 @@ impl Compiler {
                         self.instruct_buf.push(asm!("push rax"));
                     }
                     Op::Devide => {
-                        self.instruct_buf.push(asm!("cdq"));
+                        self.instruct_buf.push(asm!("cqo"));
                         self.instruct_buf.push(asm!("idiv rbx"));
                         self.instruct_buf.push(asm!("push rax"));
                     }
                     Op::Mod => {
-                        self.instruct_buf.push(asm!("cdq"));
+                        self.instruct_buf.push(asm!("cqo"));
                         self.instruct_buf.push(asm!("idiv rbx"));
                         self.instruct_buf.push(asm!("push rdx"));
                     }
@@ -684,8 +684,25 @@ impl Compiler {
                 // push data6524
                 // self.instruct_buf.push(asm!("push 13"));
             }
-            Expr::Unary(_) => {
-                todo!();
+            Expr::Unary(u) => {
+                self.compile_unary(u);
+                self.instruct_buf.push(asm!("pop rax"));
+                match u.op {
+                    Op::Sub => {
+                        self.instruct_buf.push(asm!("neg rax"));
+                        self.instruct_buf.push(asm!("push rax"));
+                    }
+                    Op::Plus => {
+                        self.instruct_buf.push(asm!("push rax"));
+                    }
+                    Op::Not => {
+                        self.instruct_buf.push(asm!("not rax"));
+                        self.instruct_buf.push(asm!("push rax"));
+                    }
+                    _ => {
+                        unreachable!();
+                    }
+                }
             }
             Expr::FunctionCall(fc) => {
                 self.compile_function_call(fc);
@@ -715,6 +732,10 @@ impl Compiler {
                 self.instruct_buf.push(asm!("push {reg}"));
             }
         }
+    }
+
+    fn compile_unary(&mut self, unary: &UnaryExpr) {
+        self.compile_expr(&unary.right);
     }
 
     fn compile_ptr(&mut self, expr: &Expr) {
