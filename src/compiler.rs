@@ -223,7 +223,7 @@ impl Compiler {
         }
     }
 
-    pub fn function(&mut self, f: Function) {
+    pub fn function(&mut self, f: &Function) {
         self.scoped_blocks = Vec::new();
         self.block_id = 0;
         self.scoped_blocks.push(0);
@@ -274,6 +274,13 @@ impl Compiler {
         exports: Vec<String>,
     ) -> Result<(Vec<String>, Vec<String>), Box<dyn Error>> {
         let program = parse_file(path);
+        let is_importable = |ident: &String| {
+            if !exports.is_empty() {
+                return exports.contains(&ident);
+            }else {
+                return true;
+            }
+        };
         for item in program.items {
             match item {
                 ProgramItem::StaticVar(_s) => {
@@ -281,9 +288,8 @@ impl Compiler {
                     // self.insert_variable(&s);
                 }
                 ProgramItem::Func(f) => {
-                    if exports.contains(&f.ident) {
+                    if is_importable(&f.ident) && !self.functions_map.contains_key(&f.ident) {
                         self.functions_map.insert(f.ident.clone(), f.clone());
-                        self.function(f);
                     }
                 }
                 ProgramItem::Import(next_path, idents) => {
@@ -308,7 +314,6 @@ impl Compiler {
                 }
                 ProgramItem::Func(f) => {
                     self.functions_map.insert(f.ident.clone(), f.clone());
-                    self.function(f);
                 }
                 ProgramItem::Import(next_path, idents) => {
                     let mut new_path = String::new();
@@ -317,6 +322,10 @@ impl Compiler {
                     self.compile_lib(new_path, idents)?;
                 }
             }
+        }
+        let functions = self.functions_map.clone();
+        for f in functions.values() {
+            self.function(f);
         }
         assert!(
             self.scoped_blocks.is_empty(),

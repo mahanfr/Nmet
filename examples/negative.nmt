@@ -1,5 +1,11 @@
 import "./std/fmt" :: print_int
+import "./std/syscalls" :: sys_write
 
 func main() {
-    print_int(0);
+    hello();
+    print_int(1 - 10);
+}
+
+func hello() {
+    sys_write(1,"Hello\n",6);
 }
