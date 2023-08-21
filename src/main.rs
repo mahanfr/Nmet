@@ -6,6 +6,7 @@ use std::process::Command;
 mod asm_generator;
 mod command_line;
 mod compiler;
+mod nemet_macros;
 mod error_handeling;
 mod lexer;
 mod parser;
