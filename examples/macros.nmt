@@ -1,0 +1,14 @@
+import "./std/io" :: print_int
+
+macro _print !a+ {
+    ?str {
+        sys_write(1,a, size_of(a));
+    } 
+    ?int {
+        print_int(a);
+    }
+}
+
+func main() {
+    $_print "Hello " FIVE " times!\n";
+}

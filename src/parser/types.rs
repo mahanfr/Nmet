@@ -5,6 +5,7 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum VariableType {
+    Any,
     Custom(String),
     Array(Box<VariableType>, usize),
     String,
@@ -17,6 +18,7 @@ pub enum VariableType {
 impl VariableType {
     pub fn from_string(literal: String) -> Self {
         match literal.as_str() {
+            "?" => Self::Any,
             "int" | "i32" => Self::Int,
             "uint" | "u32" => Self::UInt,
             "char" | "u8" => Self::Char,

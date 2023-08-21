@@ -3,6 +3,7 @@ use std::error::Error;
 
 use crate::asm_generator::x86_64_nasm_generator;
 use crate::error_handeling::error;
+use crate::nemet_macros::{Macro, MacroCall};
 use crate::parser::assign::{Assign, AssignOp};
 use crate::parser::block::Block;
 use crate::parser::expr::{CompareOp, Expr, ExprType, FunctionCall, Op, UnaryExpr};
@@ -111,6 +112,7 @@ pub struct Compiler {
     block_id: usize,
     variables_map: HashMap<String, VariableMap>,
     functions_map: HashMap<String, Function>,
+    macros_map: HashMap<String,Macro>,
     mem_offset: usize,
 }
 
@@ -124,6 +126,7 @@ impl Compiler {
             block_id: 0,
             variables_map: HashMap::new(),
             functions_map: HashMap::new(),
+            macros_map: HashMap::new(),
             mem_offset: 0,
         }
     }
@@ -292,6 +295,11 @@ impl Compiler {
                         self.functions_map.insert(f.ident.clone(), f.clone());
                     }
                 }
+                ProgramItem::Macro(i, m) => {
+                    if is_importable(&i) && !self.macros_map.contains_key(&i) {
+                        self.macros_map.insert(i,m);
+                    }
+                }
                 ProgramItem::Import(next_path, idents) => {
                     let mut new_path = String::new();
                     new_path.push_str(next_path.as_str());
@@ -311,6 +319,9 @@ impl Compiler {
                 ProgramItem::StaticVar(_s) => {
                     todo!();
                     // self.insert_variable(&s);
+                }
+                ProgramItem::Macro(i, m) => {
+                    self.macros_map.insert(i,m);
                 }
                 ProgramItem::Func(f) => {
                     self.functions_map.insert(f.ident.clone(), f.clone());
@@ -377,8 +388,27 @@ impl Compiler {
         }
     }
 
+    fn compile_macro_call(&mut self, macro_call: &MacroCall) -> Result<(),String>{
+        let Some(macro_) = self.macros_map.get(&macro_call.ident) else {
+            return Err(format!("Undifined macro_call {}",macro_call.ident));
+        };
+        if (macro_.args as usize) < macro_call.call_args.len() {
+            return Err(format!("Args Suplied to this macro is more than the definition allows"));
+        }
+        for _ in macro_call.call_args.iter() {
+            todo!();
+        }
+        Ok(())
+    }
+
     fn compile_stmt(&mut self, stmt: &Stmt) {
         match &stmt.stype {
+            StmtType::MacroCall(m) => {
+                match self.compile_macro_call(m) {
+                    Ok(_) => (),
+                    Err(msg) => error(msg,stmt.loc.clone()),
+                }
+            }
             StmtType::VariableDecl(v) => {
                 self.insert_variable(v);
             }

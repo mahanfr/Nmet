@@ -1,5 +1,6 @@
 use crate::error_handeling::Loc;
 use crate::lexer::{Lexer, TokenType};
+use crate::nemet_macros::MacroCall;
 use crate::parser::block::Block;
 use crate::parser::expr::Expr;
 
@@ -26,6 +27,7 @@ pub enum StmtType {
     If(IFStmt),
     Return(Expr),
     InlineAsm(Vec<String>),
+    MacroCall(MacroCall),
     Break,
     Continue,
 }

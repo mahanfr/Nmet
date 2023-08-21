@@ -4,9 +4,9 @@
  *  Token: Turns Source code into An Iteration of tokens
  *
  * */
-use std::fmt::Display;
+use std::{fmt::Display, collections::HashMap};
 
-use crate::error_handeling::{error, Loc};
+use crate::{error_handeling::{error, Loc}, nemet_macros::Macro};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {
@@ -126,8 +126,10 @@ pub enum TokenType {
     Eof,
     /// START OF FILE
     Sof,
-    //import module
+    // Import module
     Import,
+    // Macro Definition
+    Macro,
 }
 
 impl TokenType {
@@ -201,6 +203,7 @@ impl Display for TokenType {
             TokenType::Eof => write!(f, "Eof"),
             TokenType::Sof => write!(f, "Sof"),
             TokenType::Import => write!(f, "import"),
+            TokenType::Macro => write!(f, "macro"),
         }
     }
 }
@@ -573,6 +576,7 @@ impl Lexer {
             "asm" => Some(TokenType::Asm),
             "ptr" => Some(TokenType::Ptr),
             "import" => Some(TokenType::Import),
+            "macro" => Some(TokenType::Macro),
             _ => None,
         }
     }

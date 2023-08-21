@@ -1,4 +1,4 @@
-import "./std/fmt" :: print_int
+import "./std/io" :: print_int
 import "./std/syscalls" :: sys_write
 
 func main() {
