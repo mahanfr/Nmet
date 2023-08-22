@@ -4,12 +4,9 @@
  *  Token: Turns Source code into An Iteration of tokens
  *
  * */
-use std::{collections::HashMap, fmt::Display};
+use std::fmt::Display;
 
-use crate::{
-    error_handeling::{error, Loc},
-    nemet_macros::Macro,
-};
+use crate:: error_handeling::{error, Loc};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {

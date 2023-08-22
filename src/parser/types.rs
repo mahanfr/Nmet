@@ -5,7 +5,7 @@ use crate::{
     lexer::{Lexer, TokenType},
 };
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub enum VariableType {
     Any,
     Int,

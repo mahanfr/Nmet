@@ -8,7 +8,6 @@ mod command_line;
 mod compiler;
 mod error_handeling;
 mod lexer;
-mod nemet_macros;
 mod parser;
 mod type_check;
 mod utils;

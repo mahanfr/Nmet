@@ -1,7 +1,6 @@
 use crate::{
     error_handeling::error,
     lexer::{Lexer, TokenType},
-    nemet_macros::{parse_macro_def, Macro},
     parser::function::Function,
 };
 
@@ -22,7 +21,6 @@ pub struct ProgramFile {
 pub enum ProgramItem {
     Func(Function),
     StaticVar(VariableDeclare),
-    Macro(String, Macro),
     Import(String, Vec<String>),
 }
 
@@ -40,10 +38,6 @@ pub fn program(lexer: &mut Lexer) -> ProgramFile {
             }
             TokenType::Var => {
                 items.push(ProgramItem::StaticVar(variable_declare(lexer)));
-            }
-            TokenType::Macro => {
-                let macro_def = parse_macro_def(lexer);
-                items.push(ProgramItem::Macro(macro_def.0, macro_def.1));
             }
             TokenType::Import => items.push(import_file(lexer)),
             _ => error(
