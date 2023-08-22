@@ -1,7 +1,8 @@
 use crate::{
     error_handeling::error,
     lexer::{Lexer, TokenType},
-    parser::function::Function, nemet_macros::{parse_macro_def, Macro},
+    nemet_macros::{parse_macro_def, Macro},
+    parser::function::Function,
 };
 
 use super::{
@@ -42,7 +43,7 @@ pub fn program(lexer: &mut Lexer) -> ProgramFile {
             }
             TokenType::Macro => {
                 let macro_def = parse_macro_def(lexer);
-                items.push(ProgramItem::Macro(macro_def.0,macro_def.1));
+                items.push(ProgramItem::Macro(macro_def.0, macro_def.1));
             }
             TokenType::Import => items.push(import_file(lexer)),
             _ => error(

@@ -1,4 +1,11 @@
-use crate::{lexer::{TokenType, Lexer, Token}, parser::{expr::{ExprType, Expr, expr}, types::VariableType}, error_handeling::error};
+use crate::{
+    error_handeling::error,
+    lexer::{Lexer, Token, TokenType},
+    parser::{
+        expr::{expr, Expr, ExprType},
+        types::VariableType,
+    },
+};
 
 #[derive(Debug, Clone)]
 pub struct MacroCall {
@@ -34,7 +41,7 @@ pub enum MacroInjection {
 pub struct MacroRule {
     // ExprType
     pub pattern: VariableType,
-    pub ingejector: Vec<MacroInjection>
+    pub ingejector: Vec<MacroInjection>,
 }
 
 #[derive(Debug, Clone)]
@@ -43,7 +50,7 @@ pub struct Macro {
     pub rules: Vec<MacroRule>,
 }
 
-pub fn parse_macro_def(lexer: &mut Lexer) -> (String,Macro){
+pub fn parse_macro_def(lexer: &mut Lexer) -> (String, Macro) {
     let loc = lexer.get_token_loc();
     lexer.match_token(TokenType::Macro);
     let macro_ident = lexer.get_token().literal;
@@ -57,18 +64,21 @@ pub fn parse_macro_def(lexer: &mut Lexer) -> (String,Macro){
         lexer.match_token(TokenType::Plus);
     }
     if lexer.get_token_type() == TokenType::OCurly {
-        let macro_body = parse_single_var_macro_body(lexer,match_ident.clone());
+        let macro_body = parse_single_var_macro_body(lexer, match_ident.clone());
         lexer.match_token(TokenType::CCurly);
-        (macro_ident.clone(), Macro {
-            args: times,
-            rules: macro_body,
-        })
+        (
+            macro_ident.clone(),
+            Macro {
+                args: times,
+                rules: macro_body,
+            },
+        )
     } else {
-        error("This Type Of Macros are not supported yet!",loc);
+        error("This Type Of Macros are not supported yet!", loc);
     }
 }
 
-fn parse_single_var_macro_body(lexer: &mut Lexer,ident: String) -> Vec<MacroRule> {
+fn parse_single_var_macro_body(lexer: &mut Lexer, ident: String) -> Vec<MacroRule> {
     lexer.match_token(TokenType::OCurly);
     let mut macro_rules = Vec::<MacroRule>::new();
     loop {
@@ -80,7 +90,7 @@ fn parse_single_var_macro_body(lexer: &mut Lexer,ident: String) -> Vec<MacroRule
             let etype = match lexer.get_token().literal.as_str() {
                 "str" => VariableType::String,
                 "int" => VariableType::Int,
-                _ => unimplemented!()
+                _ => unimplemented!(),
             };
             lexer.match_token(TokenType::Identifier);
             lexer.match_token(TokenType::OCurly);
@@ -90,15 +100,19 @@ fn parse_single_var_macro_body(lexer: &mut Lexer,ident: String) -> Vec<MacroRule
                     lexer.match_token(TokenType::CCurly);
                     break;
                 } else {
-                    if lexer.get_token_type() == TokenType::String &&
-                        lexer.get_token().literal == ident {
+                    if lexer.get_token_type() == TokenType::String
+                        && lexer.get_token().literal == ident
+                    {
                         macro_injects.push(MacroInjection::Injection);
                     } else {
                         macro_injects.push(MacroInjection::Token(lexer.get_token()));
                     }
                     lexer.next_token();
                 }
-                macro_rules.push(MacroRule{pattern: etype.clone(),ingejector: macro_injects});
+                macro_rules.push(MacroRule {
+                    pattern: etype.clone(),
+                    ingejector: macro_injects,
+                });
             }
         } else {
             unimplemented!();
@@ -106,4 +120,3 @@ fn parse_single_var_macro_body(lexer: &mut Lexer,ident: String) -> Vec<MacroRule
     }
     macro_rules
 }
-

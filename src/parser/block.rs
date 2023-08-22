@@ -1,6 +1,7 @@
 use crate::{
     lexer::{Lexer, TokenType},
-    parser::stmt::Stmt, nemet_macros::parse_macro_call,
+    nemet_macros::parse_macro_call,
+    parser::stmt::Stmt,
 };
 
 use super::{
