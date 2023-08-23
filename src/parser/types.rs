@@ -5,22 +5,38 @@ use crate::{
     lexer::{Lexer, TokenType},
 };
 
+/// Type of any variable or function
+/// Expandable
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub enum VariableType {
+    /// Default type for functions
     Void,
+    /// Type of a Variable Before type refering
+    /// Will cause unreachable code if used
     Any,
+    /// 4 byte integer
     Int,
+    /// 4 byte unsigned integer
     UInt,
+    /// 8 byte long
     Long,
+    /// 8 byte unsigned long
     ULong,
+    /// 1 byte Boolean
     Bool,
+    /// 1 byte character or integer
     Char,
+    /// 16 byte String pointer and usize
     String,
+    /// 8 byte Adress to a memory
     Pointer,
+    /// const sized array
     Array(Box<VariableType>, usize),
+    /// user defined types
     Custom(String),
 }
 impl VariableType {
+    /// Convert String literal to Variable Type
     pub fn from_string(literal: String) -> Self {
         match literal.as_str() {
             "?" => Self::Any,
@@ -37,6 +53,7 @@ impl VariableType {
         }
     }
 
+    /// Returns size of a single item in the type
     pub fn item_size(&self) -> usize {
         match self {
             Self::Array(a, _) => a.size(),
@@ -45,6 +62,7 @@ impl VariableType {
         }
     }
 
+    /// returns size of the type
     pub fn size(&self) -> usize {
         match self {
             Self::Int | Self::UInt => 4,
@@ -58,10 +76,12 @@ impl VariableType {
         }
     }
 
+    /// checks if type is any
     pub fn is_any(&self) -> bool {
         matches!(self, Self::Any)
     }
 
+    /// Cast two types into a single type
     pub fn cast(&self, other: &Self) -> Result<Self, String> {
         let cmp = (self, other);
         if cmp.0 == cmp.1 {
@@ -90,6 +110,7 @@ impl VariableType {
         }
     }
 
+    /// returns true if types can be used mathmaticaly
     pub fn is_numeric(&self) -> bool {
         matches!(
             self,
@@ -116,6 +137,7 @@ impl Display for VariableType {
     }
 }
 
+/// Parse type definition
 pub fn type_def(lexer: &mut Lexer) -> VariableType {
     let loc = lexer.get_current_loc();
     lexer.match_token(TokenType::ATSign);

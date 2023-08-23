@@ -4,26 +4,52 @@ use crate::{
 };
 use core::fmt::Display;
 
+/// Expr
+/// Contains Informationn about and expression
+/// * loc - location of current expr
+/// * etype - expression token type
 #[derive(Debug, PartialEq, Clone)]
 pub struct Expr {
     pub loc: Loc,
     pub etype: ExprType,
 }
 
+/// All Supported Expression types
 #[derive(Debug, PartialEq, Clone)]
 pub enum ExprType {
+    /// Op + Expr
+    /// e.g: -2 +var !cat()
     Unary(UnaryExpr),
+    /// Expr + Op + Expr
+    /// e.g: 12 + 3 , 4 * a
     Binary(BinaryExpr),
+    /// Expr + CompareOp + Expr
+    /// e.g: 1 == 2, a <= 8
     Compare(CompareExpr),
+    /// Integer values
+    /// e.g: 10
     Int(i32),
+    /// Character values
+    /// e.g: 'a', '\n', 10
     Char(u8),
+    /// Address of expr in memory
+    /// e.g: ptr a
     Ptr(Box<Expr>),
+    /// String values
+    /// e.g: "Hello\n"
     String(String),
+    /// Variables
+    /// e.g:a, x, y
     Variable(String),
+    /// Function Call
+    /// e.g: cat(), is_odd(10)
     FunctionCall(FunctionCall),
+    /// Array Index
+    /// e.g: list[10]
     ArrayIndex(ArrayIndex),
 }
 impl ExprType {
+    /// returns true if token type is used in binary operations
     pub fn is_binary_op(t_token: TokenType) -> bool {
         matches!(
             t_token,
@@ -31,10 +57,12 @@ impl ExprType {
         )
     }
 
+    /// returns true if token type is used in logical operations
     pub fn is_logical_op(t_token: TokenType) -> bool {
         matches!(t_token, TokenType::DoubleOr | TokenType::DoubleAnd)
     }
 
+    /// returns true if token type is used in term operations
     pub fn is_term_op(t_token: TokenType) -> bool {
         matches!(
             t_token,
@@ -42,6 +70,7 @@ impl ExprType {
         )
     }
 
+    /// returns true if token type is used in compare operations
     pub fn is_compare_op(t_token: TokenType) -> bool {
         matches!(
             t_token,
@@ -55,12 +84,21 @@ impl ExprType {
     }
 }
 
+/// Unaray Expr
+/// Used for Exprssion with On Expression and one Operation
+/// * op: Operation Operation
+/// * right: Expression in the right side of operation
 #[derive(Debug, PartialEq, Clone)]
 pub struct UnaryExpr {
     pub op: Op,
     pub right: Box<Expr>,
 }
 
+/// Binary Expr
+/// Used of Expressions with one Operation and two Expression
+/// * left: Expression in the left side of operation
+/// * op: Operation Operation
+/// * right: Expression in the right side of operation
 #[derive(Debug, PartialEq, Clone)]
 pub struct BinaryExpr {
     pub left: Box<Expr>,
@@ -68,22 +106,36 @@ pub struct BinaryExpr {
     pub right: Box<Expr>,
 }
 
+/// All Supported Mathematical Operations
 #[derive(Debug, PartialEq, Clone)]
 pub enum Op {
+    /// addition and plus sign
     Plus,
+    /// subtraction and negative sign
     Sub,
+    /// multipication
     Multi,
+    /// divition
     Devide,
+    /// Binary Not
     Not,
+    /// Modulo
     Mod,
+    /// Binary And
     And,
+    /// Binary Or
     Or,
+    /// Binary Left Shift
     Lsh,
+    /// Binary Right Shift
     Rsh,
+    /// Logical And
     LogicalAnd,
+    /// Logical Or
     LogicalOr,
 }
 impl Op {
+    /// Convert token type to Op
     pub fn from_token_type(token_type: TokenType) -> Self {
         match token_type {
             TokenType::Plus => Self::Plus,
@@ -123,18 +175,31 @@ impl Display for Op {
     }
 }
 
+/// Function call
+/// Used for Function call Expression
+/// * ident - name of the function
+/// * args  - function call argumnets
 #[derive(Debug, PartialEq, Clone)]
 pub struct FunctionCall {
     pub ident: String,
     pub args: Vec<Expr>,
 }
 
+/// Array Index
+/// Used for Array Indexing Expression
+/// * ident - name of the variable
+/// * indexer - expresstion that indexes the array
 #[derive(Debug, PartialEq, Clone)]
 pub struct ArrayIndex {
     pub ident: String,
     pub indexer: Box<Expr>,
 }
 
+/// Compare Expr
+/// Used of iCompare Expressions with one Operation and two Expression
+/// * left: Expression in the left side of operation
+/// * op: Compare Operation
+/// * right: Expression in the right side of operation
 #[derive(Debug, PartialEq, Clone)]
 pub struct CompareExpr {
     pub left: Box<Expr>,
@@ -142,16 +207,24 @@ pub struct CompareExpr {
     pub right: Box<Expr>,
 }
 
+/// All Supported Compare Operation
 #[derive(Debug, PartialEq, Clone)]
 pub enum CompareOp {
+    /// != Not Equal
     NotEq,
+    /// == Equal
     Eq,
+    /// > Bigger
     Bigger,
+    /// < Smaller
     Smaller,
+    /// >= Bigger Equal
     BiggerEq,
+    /// <= Smaller Equal
     SmallerEq,
 }
 impl CompareOp {
+    /// Converts token type to compare operation
     pub fn from_token_type(t_type: TokenType) -> Self {
         match t_type {
             TokenType::DoubleEq => Self::Eq,
@@ -167,6 +240,9 @@ impl CompareOp {
     }
 }
 
+/// Parsing Expr
+/// returns Least Prioraty operations
+/// e.g: Plus, Minus, bitwise Or
 pub fn expr(lexer: &mut Lexer) -> Expr {
     let mut term_expr = term(lexer);
     loop {
@@ -190,6 +266,9 @@ pub fn expr(lexer: &mut Lexer) -> Expr {
     term_expr
 }
 
+/// Parsing Expr
+/// returns second Prioraty operations
+/// e.g: Multi, Devide, Logical And
 pub fn term(lexer: &mut Lexer) -> Expr {
     let mut left = factor(lexer);
     let mut cur_token = lexer.get_token_type();
@@ -224,6 +303,9 @@ pub fn term(lexer: &mut Lexer) -> Expr {
     left
 }
 
+/// Parsing Expr
+/// returns first Prioraty operations
+/// e.g: Unary, Paran, Power
 pub fn factor(lexer: &mut Lexer) -> Expr {
     let loc = lexer.get_current_loc();
     match lexer.get_token_type() {
@@ -336,6 +418,7 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
     }
 }
 
+/// Parsing Array Index
 pub fn array_indexer(lexer: &mut Lexer) -> Expr {
     lexer.match_token(TokenType::OBracket);
     let index = expr(lexer);
@@ -343,6 +426,8 @@ pub fn array_indexer(lexer: &mut Lexer) -> Expr {
     index
 }
 
+/// Parsing Function call
+/// Returns Function call argumets
 pub fn function_call_args(lexer: &mut Lexer) -> Vec<Expr> {
     let mut args = Vec::<Expr>::new();
     lexer.match_token(TokenType::OParen);

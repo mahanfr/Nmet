@@ -9,6 +9,11 @@ use super::{
     variable_decl::{variable_declare, VariableDeclare},
 };
 
+/// Program file information
+/// Ast of the code file
+/// * shebang: NOT IMPLEMENTED YET
+/// * filepath: path of the parsed file
+/// * items: All supported top level Items
 #[derive(Debug, Clone)]
 pub struct ProgramFile {
     pub shebang: String,
@@ -17,13 +22,21 @@ pub struct ProgramFile {
     pub items: Vec<ProgramItem>,
 }
 
+/// Top level program items
+/// e.g: functions, static variables and imports
 #[derive(Debug, Clone)]
 pub enum ProgramItem {
+    /// Function Definitions
     Func(Function),
+    /// Static Variables
     StaticVar(VariableDeclare),
+    /// Import Functions
+    /// filePath, Import names
     Import(String, Vec<String>),
 }
 
+/// Parse Program
+/// Returns Programfile wich is the ast root
 pub fn program(lexer: &mut Lexer) -> ProgramFile {
     lexer.next_token();
     let mut items = Vec::<ProgramItem>::new();
@@ -56,6 +69,8 @@ pub fn program(lexer: &mut Lexer) -> ProgramFile {
     }
 }
 
+/// import Program
+/// Returns Import Program Item
 pub fn import_file(lexer: &mut Lexer) -> ProgramItem {
     lexer.match_token(TokenType::Import);
     let file_path = lexer.get_token().literal;

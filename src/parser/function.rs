@@ -6,12 +6,20 @@ use crate::{
 
 use super::{block::block, types::VariableType};
 
+/// Function Definition Arguments
+/// * ident - name of argument in function name space
+/// * typedef - type of acceptable argument
 #[derive(Debug, Clone)]
 pub struct FunctionArg {
     pub ident: String,
     pub typedef: VariableType,
 }
 
+/// Function Definition
+/// * ident - name of the function
+/// * args - list of all function arguments
+/// * block - function block
+/// * typedef - type of acceptable
 #[derive(Debug, Clone)]
 pub struct Function {
     pub ident: String,
@@ -20,6 +28,7 @@ pub struct Function {
     pub ret_type: VariableType,
 }
 
+/// Parsing Function definition
 pub fn function_def(lexer: &mut Lexer) -> Function {
     let loc = lexer.get_current_loc();
     lexer.match_token(TokenType::Func);
@@ -42,6 +51,8 @@ pub fn function_def(lexer: &mut Lexer) -> Function {
     }
 }
 
+/// Parsing Function definition
+/// returns list of function definition arguments
 pub fn function_def_args(lexer: &mut Lexer) -> Vec<FunctionArg> {
     let loc = lexer.get_current_loc();
     let mut args = Vec::<FunctionArg>::new();

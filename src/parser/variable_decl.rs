@@ -9,6 +9,12 @@ use super::{
     types::VariableType,
 };
 
+/// Variable Declearation
+/// * mutable - if the value of the variable can be changed
+/// * static - if the variable is global
+/// * ident - variable identifier
+/// * v_type - Variable Type
+/// * init_value - Expr of initial value
 #[derive(Debug, Clone)]
 pub struct VariableDeclare {
     pub mutable: bool,
@@ -18,6 +24,7 @@ pub struct VariableDeclare {
     pub init_value: Option<Expr>,
 }
 
+/// Parse Variable Declaration
 pub fn variable_declare(lexer: &mut Lexer) -> VariableDeclare {
     lexer.match_token(TokenType::Var);
     let ident_token = lexer.get_token();
