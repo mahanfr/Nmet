@@ -6,7 +6,6 @@ use std::process::Command;
 mod asm_generator;
 mod command_line;
 mod compiler;
-mod nemet_macros;
 mod error_handeling;
 mod lexer;
 mod parser;
@@ -125,7 +124,7 @@ mod functional {
             .output()
             .expect("Error Executing the program!");
         assert!(output.status.success());
-        let expectation = "1\n1\n1\n1\n0\n";
+        let expectation = "1\n1\n1\n1\n0\n1\n1\n0\n1\n0\n";
         assert_eq!(
             String::from_utf8(output.stdout).unwrap(),
             expectation.to_string()

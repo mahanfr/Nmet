@@ -1,6 +1,6 @@
 use crate::{
     lexer::{Lexer, TokenType},
-    parser::stmt::Stmt, nemet_macros::parse_macro_call,
+    parser::stmt::Stmt,
 };
 
 use super::{
@@ -23,13 +23,6 @@ pub fn block(lexer: &mut Lexer) -> Block {
             break;
         }
         match lexer.get_token_type() {
-            TokenType::Dollar => {
-                let loc = lexer.get_token_loc();
-                stmts.push(Stmt {
-                    stype: StmtType::MacroCall(parse_macro_call(lexer)),
-                    loc,
-                })
-            }
             TokenType::Var => {
                 let loc = lexer.get_current_loc();
                 stmts.push(Stmt {

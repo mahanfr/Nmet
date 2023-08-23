@@ -14,17 +14,17 @@ func sys_write(fd @int, buf @ptr, size @u64) {
     var err @int = 0;
     asm {
         "mov rax, 1"
-        "mov rdi, %fd"
+        "mov edi, %fd"
         "mov rsi, %buf"
         "mov rdx, %size"
         "syscall"
-        "mov %err, rax"
+        "mov %err, eax"
     }
 }
 
 func sys_exit(code @int) {
     asm {
-        "mov rdi, %code"
+        "mov edi, %code"
         "mov rax, 60"
         "syscall"
     }
