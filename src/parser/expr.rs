@@ -31,6 +31,17 @@ impl ExprType {
         )
     }
 
+    pub fn is_logical_op(t_token: TokenType) -> bool {
+        matches!(t_token, TokenType::DoubleOr | TokenType::DoubleAnd)
+    }
+
+    pub fn is_term_op(t_token: TokenType) -> bool {
+        matches!(
+            t_token,
+            TokenType::Multi | TokenType::Devide | TokenType::Mod | TokenType::Rsh | TokenType::Lsh
+        )
+    }
+
     pub fn is_compare_op(t_token: TokenType) -> bool {
         matches!(
             t_token,
@@ -69,6 +80,8 @@ pub enum Op {
     Or,
     Lsh,
     Rsh,
+    LogicalAnd,
+    LogicalOr,
 }
 impl Op {
     pub fn from_token_type(token_type: TokenType) -> Self {
@@ -83,6 +96,8 @@ impl Op {
             TokenType::Or => Self::Or,
             TokenType::Lsh => Self::Lsh,
             TokenType::Rsh => Self::Rsh,
+            TokenType::DoubleAnd => Self::LogicalAnd,
+            TokenType::DoubleOr => Self::LogicalOr,
             _ => {
                 todo!("return Error");
             }
@@ -102,6 +117,8 @@ impl Display for Op {
             Op::Or => write!(f, "|"),
             Op::Lsh => write!(f, "<<"),
             Op::Rsh => write!(f, ">>"),
+            Op::LogicalOr => write!(f, "||"),
+            Op::LogicalAnd => write!(f, "&&"),
         }
     }
 }
@@ -154,24 +171,12 @@ pub fn expr(lexer: &mut Lexer) -> Expr {
     let mut term_expr = term(lexer);
     loop {
         let t_type = lexer.get_token_type();
-        if ExprType::is_binary_op(t_type) {
+        if ExprType::is_binary_op(t_type) || ExprType::is_logical_op(t_type) {
             let op = Op::from_token_type(t_type);
             lexer.next_token();
             let right = term(lexer);
             term_expr = Expr {
                 etype: ExprType::Binary(BinaryExpr {
-                    left: Box::new(term_expr),
-                    op,
-                    right: Box::new(right),
-                }),
-                loc: lexer.get_token_loc(),
-            };
-        } else if ExprType::is_compare_op(t_type) {
-            let op = CompareOp::from_token_type(lexer.get_token_type());
-            lexer.next_token();
-            let right = term(lexer);
-            term_expr = Expr {
-                etype: ExprType::Compare(CompareExpr {
                     left: Box::new(term_expr),
                     op,
                     right: Box::new(right),
@@ -187,23 +192,34 @@ pub fn expr(lexer: &mut Lexer) -> Expr {
 
 pub fn term(lexer: &mut Lexer) -> Expr {
     let mut left = factor(lexer);
-    while lexer.get_token_type() == TokenType::Multi
-        || lexer.get_token_type() == TokenType::Devide
-        || lexer.get_token_type() == TokenType::Mod
-        || lexer.get_token_type() == TokenType::Lsh
-        || lexer.get_token_type() == TokenType::Rsh
-    {
-        let op = Op::from_token_type(lexer.get_token_type());
-        lexer.next_token();
-        let right = factor(lexer);
-        left = Expr {
-            etype: ExprType::Binary(BinaryExpr {
-                left: Box::new(left),
-                op,
-                right: Box::new(right),
-            }),
-            loc: lexer.get_token_loc(),
-        };
+    let mut cur_token = lexer.get_token_type();
+    while ExprType::is_term_op(cur_token) || ExprType::is_compare_op(cur_token) {
+        if ExprType::is_compare_op(cur_token) {
+            let op = CompareOp::from_token_type(lexer.get_token_type());
+            lexer.next_token();
+            let right = term(lexer);
+            left = Expr {
+                etype: ExprType::Compare(CompareExpr {
+                    left: Box::new(left),
+                    op,
+                    right: Box::new(right),
+                }),
+                loc: lexer.get_token_loc(),
+            };
+        } else if ExprType::is_term_op(cur_token) {
+            let op = Op::from_token_type(lexer.get_token_type());
+            lexer.next_token();
+            let right = factor(lexer);
+            left = Expr {
+                etype: ExprType::Binary(BinaryExpr {
+                    left: Box::new(left),
+                    op,
+                    right: Box::new(right),
+                }),
+                loc: lexer.get_token_loc(),
+            };
+        }
+        cur_token = lexer.get_token_type();
     }
     left
 }

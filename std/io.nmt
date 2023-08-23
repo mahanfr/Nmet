@@ -1,6 +1,6 @@
 import "./std/syscalls" :: sys_write
 
-func print_int(x @int) {
+func print_int(x @long) {
      var a = x;
      if a < 0 {
         a = !a + 1;

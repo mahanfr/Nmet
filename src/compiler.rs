@@ -5,7 +5,7 @@ use crate::asm_generator::x86_64_nasm_generator;
 use crate::error_handeling::error;
 use crate::parser::assign::{Assign, AssignOp};
 use crate::parser::block::Block;
-use crate::parser::expr::{CompareOp, Expr, ExprType, FunctionCall, Op, UnaryExpr};
+use crate::parser::expr::{CompareOp, Expr, ExprType, FunctionCall, Op};
 use crate::parser::function::{Function, FunctionArg};
 use crate::parser::parse_file;
 use crate::parser::program::ProgramItem;
@@ -27,7 +27,8 @@ pub fn compile_to_asm(path: String) {
     x86_64_nasm_generator(path, instr_buf, data_buf).unwrap();
 }
 
-pub fn mem_word(size: usize) -> String {
+pub fn mem_word(vtype: &VariableType) -> String {
+    let size = vtype.item_size();
     match size {
         1 => "byte".to_string(),
         2 => "word".to_string(),
@@ -39,7 +40,8 @@ pub fn mem_word(size: usize) -> String {
     }
 }
 
-pub fn rbs(register: &str, size: usize) -> String {
+pub fn rbs(register: &str, vtype: &VariableType) -> String {
+    let size = vtype.item_size();
     match register {
         "a" | "b" | "c" | "d" => match size {
             1 => format!("{register}l"),
@@ -83,14 +85,26 @@ pub fn rbs(register: &str, size: usize) -> String {
     }
 }
 
-pub fn function_args_register(arg_numer: usize, size: usize) -> String {
+pub fn function_args_register_sized(arg_numer: usize, vtype: &VariableType) -> String {
     match arg_numer {
-        0 => rbs("di", size),
-        1 => rbs("si", size),
-        2 => rbs("d", size),
-        3 => rbs("c", size),
-        4 => rbs("r8", size),
-        5 => rbs("r9", size),
+        0 => rbs("di", vtype),
+        1 => rbs("si", vtype),
+        2 => rbs("d", vtype),
+        3 => rbs("c", vtype),
+        4 => rbs("r8", vtype),
+        5 => rbs("r9", vtype),
+        _ => unreachable!(),
+    }
+}
+
+pub fn function_args_register(arg_numer: usize) -> String {
+    match arg_numer {
+        0 => "rdi".to_string(),
+        1 => "rsi".to_string(),
+        2 => "rdx".to_string(),
+        3 => "rcx".to_string(),
+        4 => "r8".to_string(),
+        5 => "r9".to_string(),
         _ => unreachable!(),
     }
 }
@@ -99,8 +113,7 @@ pub fn function_args_register(arg_numer: usize, size: usize) -> String {
 pub struct VariableMap {
     _ident: String,
     offset: usize,
-    size: usize,
-    item_size: usize,
+    vtype: VariableType,
     is_mut: bool,
 }
 
@@ -143,58 +156,44 @@ pub fn find_variable(cc: &CompilerContext, ident: String) -> Option<VariableMap>
     None
 }
 
-pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) {
-    let ident: String;
-    let var_map: VariableMap;
-    let mut size = 8;
-    let mut item_size = 8;
-    if var.v_type.is_some() {
-        let typ = var.v_type.clone().unwrap();
-        if let VariableType::Array(a, s) = typ {
-            match *a.as_ref() {
-                VariableType::Int => {
-                    size = 8 * s;
-                    item_size = 8;
-                }
-                VariableType::Char => {
-                    size = s;
-                    item_size = 1;
-                }
-                _ => {
-                    todo!("Unsuported Array Type");
-                }
+pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Result<(), String> {
+    let ident = format!("{}%{}", var.ident, cc.block_id);
+    let mut vtype = match var.v_type.as_ref() {
+        Some(vt) => vt.clone(),
+        None => VariableType::Any,
+    };
+    if var.init_value.is_some() {
+        let init_value = var.init_value.clone().unwrap();
+        // this pushes result in stack
+        let texpr = compile_expr(cc, &init_value);
+        match vtype.cast(&texpr) {
+            Ok(vt) => {
+                let mem_acss = format!("{} [rbp-{}]", mem_word(&vt), cc.mem_offset + vt.size());
+                cc.instruct_buf.push(asm!("pop rax"));
+                cc.instruct_buf
+                    .push(asm!("mov {mem_acss},{}", rbs("a", &vt)));
+                vtype = vt;
+            }
+            Err(msg) => {
+                error(msg, init_value.loc.clone());
             }
         }
     }
-    if var.is_static {
-        todo!();
-    } else {
-        ident = format!("{}%{}", var.ident, cc.block_id);
-        var_map = VariableMap {
-            _ident: var.ident.clone(),
-            offset: cc.mem_offset,
-            // TODO: Change size
-            size,
-            item_size,
-            is_mut: var.mutable,
-        };
+    if vtype == VariableType::Any {
+        return Err(format!(
+            "Variable ({}) type is not known at compile time",
+            var.ident
+        ));
     }
-    cc.mem_offset += size;
-    if var.init_value.is_some() {
-        // TODO: Type check
-        let init_value = var.init_value.clone().unwrap();
-        // this pushes result in stack
-        compile_expr(cc, &init_value);
-        let mem_acss = format!(
-            "{} [rbp-{}]",
-            mem_word(var_map.item_size),
-            var_map.offset + var_map.size
-        );
-        cc.instruct_buf.push(asm!("pop rax"));
-        cc.instruct_buf
-            .push(asm!("mov {mem_acss},{}", rbs("a", var_map.item_size)));
-    }
+    let var_map = VariableMap {
+        _ident: var.ident.clone(),
+        vtype: vtype.clone(),
+        offset: cc.mem_offset,
+        is_mut: var.mutable,
+    };
+    cc.mem_offset += vtype.size();
     cc.variables_map.insert(ident, var_map);
+    Ok(())
 }
 
 pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
@@ -204,12 +203,15 @@ pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
             _ident: arg.ident.clone(),
             offset: cc.mem_offset,
             is_mut: false,
-            item_size: 8,
-            size: 8,
+            vtype: arg.typedef.clone(),
         };
         if args_count < 6 {
-            let mem_acss = format!("{} [rbp-{}]", mem_word(8), map.offset + map.size);
-            let reg = function_args_register(args_count, 8);
+            let mem_acss = format!(
+                "{} [rbp-{}]",
+                mem_word(&map.vtype),
+                map.offset + map.vtype.size()
+            );
+            let reg = function_args_register_sized(args_count, &map.vtype);
             cc.instruct_buf.push(asm!("mov {},{}", mem_acss, reg));
         } else {
             todo!();
@@ -276,9 +278,9 @@ pub fn compile_lib(
     let program = parse_file(path);
     let is_importable = |ident: &String| {
         if !exports.is_empty() {
-            return exports.contains(&ident);
+            exports.contains(ident)
         } else {
-            return true;
+            true
         }
     };
     for item in program.items {
@@ -382,9 +384,10 @@ fn compile_if_stmt(cc: &mut CompilerContext, ifs: &IFStmt, exit_tag: usize) {
 
 fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) {
     match &stmt.stype {
-        StmtType::VariableDecl(v) => {
-            insert_variable(cc, v);
-        }
+        StmtType::VariableDecl(v) => match insert_variable(cc, v) {
+            Ok(_) => (),
+            Err(msg) => error(msg, stmt.loc.clone()),
+        },
         StmtType::Print(e) => {
             compile_expr(cc, e);
             match e.etype {
@@ -464,7 +467,11 @@ fn compile_inline_asm(cc: &mut CompilerContext, instr: &String) -> Result<(), St
                                 ident.clone()
                             ));
                         };
-                    let mem_acss = format!("{} [rbp-{}]", mem_word(8), v_map.offset + v_map.size);
+                    let mem_acss = format!(
+                        "{} [rbp-{}]",
+                        mem_word(&v_map.vtype),
+                        v_map.offset + v_map.vtype.size()
+                    );
                     let mut temp = String::new();
                     temp.push_str(chars[0..(first_index)].iter().collect::<String>().as_str());
                     temp.push_str(mem_acss.as_str());
@@ -500,21 +507,21 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) {
 }
 
 fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
-    let mem_acss = if v_map.item_size != v_map.size {
+    let mem_acss = if v_map.vtype.item_size() != v_map.vtype.size() {
         format!(
             "{} [rbp-{}+rbx*{}]",
-            mem_word(v_map.item_size),
-            v_map.offset + v_map.size,
-            v_map.item_size
+            mem_word(&v_map.vtype),
+            v_map.offset + v_map.vtype.size(),
+            v_map.vtype.item_size()
         )
     } else {
         format!(
             "{} [rbp-{}]",
-            mem_word(v_map.item_size),
-            v_map.offset + v_map.size
+            mem_word(&v_map.vtype),
+            v_map.offset + v_map.vtype.size()
         )
     };
-    let reg = rbs("a", v_map.item_size);
+    let reg = rbs("a", &v_map.vtype);
     cc.instruct_buf.push(asm!("pop rax"));
     match op {
         AssignOp::Eq => {
@@ -527,13 +534,13 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
             cc.instruct_buf.push(asm!("sub {mem_acss},{reg}"));
         }
         AssignOp::MultiEq => {
-            let b_reg = rbs("b", v_map.item_size);
+            let b_reg = rbs("b", &v_map.vtype);
             cc.instruct_buf.push(asm!("mov {b_reg},{mem_acss}"));
             cc.instruct_buf.push(asm!("imul {reg},{b_reg}"));
             cc.instruct_buf.push(asm!("mov {mem_acss},{reg}"));
         }
         AssignOp::DevideEq => {
-            let b_reg = rbs("b", v_map.item_size);
+            let b_reg = rbs("b", &v_map.vtype);
             cc.instruct_buf.push(asm!("mov {b_reg},{reg}"));
             cc.instruct_buf.push(asm!("mov {reg},{mem_acss}"));
             cc.instruct_buf.push(asm!("cqo"));
@@ -541,12 +548,12 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
             cc.instruct_buf.push(asm!("mov {mem_acss},{reg}"));
         }
         AssignOp::ModEq => {
-            let b_reg = rbs("b", v_map.item_size);
+            let b_reg = rbs("b", &v_map.vtype);
             cc.instruct_buf.push(asm!("mov {b_reg},{reg}"));
             cc.instruct_buf.push(asm!("mov {reg},{mem_acss}"));
             cc.instruct_buf.push(asm!("cqo"));
             cc.instruct_buf.push(asm!("idiv rbx"));
-            let d_reg = rbs("d", v_map.item_size);
+            let d_reg = rbs("d", &v_map.vtype);
             cc.instruct_buf.push(asm!("mov {mem_acss},{d_reg}"));
         }
     }
@@ -586,7 +593,7 @@ fn get_vriable_map(cc: &mut CompilerContext, var_ident: &str) -> Option<Variable
     find_variable(cc, var_ident.to_owned())
 }
 
-fn compile_expr(cc: &mut CompilerContext, expr: &Expr) {
+fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
     // left = compile expr
     // right = compile expr
     // +
@@ -597,54 +604,73 @@ fn compile_expr(cc: &mut CompilerContext, expr: &Expr) {
                 };
             let mem_acss = format!(
                 "{} [rbp-{}]",
-                mem_word(v_map.item_size),
-                v_map.offset + v_map.size
+                mem_word(&v_map.vtype),
+                v_map.offset + v_map.vtype.size()
             );
             cc.instruct_buf
-                .push(asm!("mov {},{mem_acss}", rbs("a", v_map.item_size)));
+                .push(asm!("mov {},{mem_acss}", rbs("a", &v_map.vtype)));
             cc.instruct_buf.push(asm!("push rax"));
+            v_map.vtype
         }
         ExprType::Char(x) => {
             cc.instruct_buf.push(asm!("push {x}"));
+            VariableType::Char
         }
         ExprType::Int(x) => {
             // push x
             cc.instruct_buf.push(asm!("push {x}"));
+            VariableType::Int
         }
         ExprType::Compare(c) => {
             // TODO: Convert exprs to 0 or 1 and push into stack
-            compile_expr(cc, c.left.as_ref());
-            compile_expr(cc, c.right.as_ref());
+            let left_type = compile_expr(cc, c.left.as_ref());
+            let right_type = compile_expr(cc, c.right.as_ref());
             cc.instruct_buf.push(asm!("mov rcx, 0"));
             cc.instruct_buf.push(asm!("mov rdx, 1"));
             cc.instruct_buf.push(asm!("pop rbx"));
             cc.instruct_buf.push(asm!("pop rax"));
-            cc.instruct_buf.push(asm!("cmp rax, rbx"));
             match c.op {
                 CompareOp::Eq => {
+                    cc.instruct_buf.push(asm!("cmp rax, rbx"));
                     cc.instruct_buf.push(asm!("cmove rcx, rdx"));
                 }
                 CompareOp::NotEq => {
+                    cc.instruct_buf.push(asm!("cmp rax, rbx"));
                     cc.instruct_buf.push(asm!("cmovne rcx, rdx"));
                 }
                 CompareOp::Bigger => {
+                    cc.instruct_buf.push(asm!("cmp rax, rbx"));
                     cc.instruct_buf.push(asm!("cmovg rcx, rdx"));
                 }
                 CompareOp::Smaller => {
+                    cc.instruct_buf.push(asm!("cmp rax, rbx"));
                     cc.instruct_buf.push(asm!("cmovl rcx, rdx"));
                 }
                 CompareOp::BiggerEq => {
+                    cc.instruct_buf.push(asm!("cmp rax, rbx"));
                     cc.instruct_buf.push(asm!("cmovge rcx, rdx"));
                 }
                 CompareOp::SmallerEq => {
+                    cc.instruct_buf.push(asm!("cmp rax, rbx"));
                     cc.instruct_buf.push(asm!("cmovle rcx, rdx"));
                 }
             }
             cc.instruct_buf.push(asm!("push rcx"));
+            if (right_type == left_type) || (right_type.is_numeric() && left_type.is_numeric()) {
+                VariableType::Bool
+            } else {
+                error(
+                    format!(
+                        "Invalid Comparison between types: ({}) and ({})",
+                        left_type, right_type
+                    ),
+                    expr.loc.clone(),
+                );
+            }
         }
         ExprType::Binary(b) => {
-            compile_expr(cc, b.left.as_ref());
-            compile_expr(cc, b.right.as_ref());
+            let left_type = compile_expr(cc, b.left.as_ref());
+            let right_type = compile_expr(cc, b.right.as_ref());
             cc.instruct_buf.push(asm!("pop rbx"));
             cc.instruct_buf.push(asm!("pop rax"));
             match b.op {
@@ -688,9 +714,33 @@ fn compile_expr(cc: &mut CompilerContext, expr: &Expr) {
                     cc.instruct_buf.push(asm!("sar rax, cl"));
                     cc.instruct_buf.push(asm!("push rax"));
                 }
+                Op::LogicalOr => {
+                    cc.instruct_buf.push(asm!("or rax, rbx"));
+                    cc.instruct_buf.push(asm!("push rax"));
+                    return VariableType::Bool;
+                }
+                Op::LogicalAnd => {
+                    cc.instruct_buf.push(asm!("and rax, rbx"));
+                    cc.instruct_buf.push(asm!("push rax"));
+                    return VariableType::Bool;
+                }
                 Op::Not => {
                     panic!("Unvalid binary operation");
                 }
+            }
+            if right_type.is_numeric() && left_type.is_numeric() {
+                match left_type.cast(&right_type) {
+                    Ok(t) => t,
+                    Err(msg) => error(msg, expr.loc.clone()),
+                }
+            } else {
+                error(
+                    format!(
+                        "Invalid Operation ({}) on non-numeric types: ({}) and ({})",
+                        b.op, left_type, right_type
+                    ),
+                    expr.loc.clone(),
+                );
             }
         }
         ExprType::String(str) => {
@@ -700,14 +750,20 @@ fn compile_expr(cc: &mut CompilerContext, expr: &Expr) {
             cc.data_buf.push(asm!("len{id} equ $ - data{id}"));
             cc.instruct_buf.push(asm!("push data{id}"));
             cc.instruct_buf.push(asm!("push len{id}"));
+            VariableType::String
         }
         ExprType::Unary(u) => {
-            compile_unary(cc, u);
+            let right_type = compile_expr(cc, &u.right);
             cc.instruct_buf.push(asm!("pop rax"));
             match u.op {
                 Op::Sub => {
                     cc.instruct_buf.push(asm!("neg rax"));
                     cc.instruct_buf.push(asm!("push rax"));
+                    if right_type == VariableType::UInt {
+                        return VariableType::Int;
+                    } else {
+                        return right_type;
+                    }
                 }
                 Op::Plus => {
                     cc.instruct_buf.push(asm!("push rax"));
@@ -720,13 +776,22 @@ fn compile_expr(cc: &mut CompilerContext, expr: &Expr) {
                     unreachable!();
                 }
             }
+            if right_type.is_numeric() {
+                right_type
+            } else {
+                error(
+                    format!("Invalid Operation ({}) for type ({})", u.op, right_type),
+                    expr.loc.clone(),
+                );
+            }
         }
         ExprType::FunctionCall(fc) => match compile_function_call(cc, fc) {
-            Ok(_) => (),
+            Ok(ftype) => ftype,
             Err(msg) => error(msg, expr.loc.clone()),
         },
         ExprType::Ptr(e) => {
             compile_ptr(cc, e);
+            VariableType::Pointer
         }
         ExprType::ArrayIndex(ai) => {
             let v_map = find_variable(cc, ai.ident.clone()).unwrap_or_else(|| {
@@ -743,19 +808,19 @@ fn compile_expr(cc: &mut CompilerContext, expr: &Expr) {
             // TODO: Add Item size to v_map
             let mem_acss = format!(
                 "{} [rbp-{}+rbx*{}]",
-                mem_word(v_map.item_size),
-                v_map.offset + v_map.size,
-                v_map.item_size
+                mem_word(&v_map.vtype),
+                v_map.offset + v_map.vtype.size(),
+                v_map.vtype.item_size()
             );
-            let reg = rbs("a", v_map.item_size);
+            let reg = rbs("a", &v_map.vtype);
             cc.instruct_buf.push(asm!("mov {reg},{mem_acss}"));
-            cc.instruct_buf.push(asm!("push {reg}"));
+            cc.instruct_buf.push(asm!("push rax"));
+            match v_map.vtype {
+                VariableType::Array(t, _) => t.as_ref().clone(),
+                _ => unreachable!(),
+            }
         }
     }
-}
-
-fn compile_unary(cc: &mut CompilerContext, unary: &UnaryExpr) {
-    compile_expr(cc, &unary.right);
 }
 
 fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) {
@@ -766,7 +831,7 @@ fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) {
                 };
             cc.instruct_buf.push(asm!("mov rax, rbp"));
             cc.instruct_buf
-                .push(asm!("sub rax, {}", v_map.offset + v_map.size));
+                .push(asm!("sub rax, {}", v_map.offset + v_map.vtype.size()));
             cc.instruct_buf.push(asm!("push rax"));
         }
         _ => {
@@ -775,18 +840,22 @@ fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) {
     }
 }
 
-fn compile_function_call(cc: &mut CompilerContext, fc: &FunctionCall) -> Result<(), String> {
+fn compile_function_call(
+    cc: &mut CompilerContext,
+    fc: &FunctionCall,
+) -> Result<VariableType, String> {
     for (index, arg) in fc.args.iter().enumerate() {
+        // let argv_type = expr_type(arg);
         compile_expr(cc, arg);
         match arg.etype {
             ExprType::String(_) => {
                 cc.instruct_buf.push(asm!("pop rax"));
                 cc.instruct_buf
-                    .push(asm!("pop {}", function_args_register(index, 8)));
+                    .push(asm!("pop {}", function_args_register(index)));
             }
             _ => {
                 cc.instruct_buf
-                    .push(asm!("pop {}", function_args_register(index, 8)));
+                    .push(asm!("pop {}", function_args_register(index)));
             }
         }
     }
@@ -801,10 +870,10 @@ fn compile_function_call(cc: &mut CompilerContext, fc: &FunctionCall) -> Result<
         };
     cc.instruct_buf.push(asm!("mov rax, 0"));
     cc.instruct_buf.push(asm!("call {}", fc.ident));
-    if fun.ret_type.is_some() {
+    if fun.ret_type != VariableType::Void {
         cc.instruct_buf.push(asm!("push rax"));
     }
-    Ok(())
+    Ok(fun.ret_type.clone())
 }
 
 fn asmfy_string(str: &str) -> String {

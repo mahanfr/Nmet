@@ -6,7 +6,7 @@
  * */
 use std::fmt::Display;
 
-use crate:: error_handeling::{error, Loc};
+use crate::error_handeling::{error, Loc};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenType {
@@ -90,9 +90,13 @@ pub enum TokenType {
     Lsh,
     /// ">>" Shift Right
     Rsh,
-    /// "&" logical And
+    /// "&&" Logical And
+    DoubleAnd,
+    /// "||" Logical or
+    DoubleOr,
+    /// "&" Bitwise And
     And,
-    /// "|" logical or
+    /// "|" Bitwise or
     Or,
     /// "#" NOT DEFINED YET
     Log,
@@ -204,6 +208,8 @@ impl Display for TokenType {
             TokenType::Sof => write!(f, "Sof"),
             TokenType::Import => write!(f, "import"),
             TokenType::Macro => write!(f, "macro"),
+            TokenType::DoubleOr => write!(f, "||"),
+            TokenType::DoubleAnd => write!(f, "&&"),
         }
     }
 }
@@ -642,6 +648,8 @@ impl Lexer {
             "<=" => Some(TokenType::SmallerEq),
             "<<" => Some(TokenType::Lsh),
             ">>" => Some(TokenType::Rsh),
+            "||" => Some(TokenType::DoubleOr),
+            "&&" => Some(TokenType::DoubleAnd),
             _ => None,
         }
     }

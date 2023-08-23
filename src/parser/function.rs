@@ -17,21 +17,21 @@ pub struct Function {
     pub ident: String,
     pub args: Vec<FunctionArg>,
     pub block: Block,
-    pub ret_type: Option<VariableType>,
+    pub ret_type: VariableType,
 }
 
 pub fn function_def(lexer: &mut Lexer) -> Function {
     let loc = lexer.get_current_loc();
     lexer.match_token(TokenType::Func);
     let function_ident_token = lexer.get_token();
-    let mut ret_type: Option<VariableType> = None;
+    let mut ret_type = VariableType::Void;
     if function_ident_token.is_empty() {
         error("Function defenition without identifier", loc);
     }
     lexer.match_token(TokenType::Identifier);
     let args = function_def_args(lexer);
     if lexer.get_token_type() == TokenType::ATSign {
-        ret_type = Some(type_def(lexer));
+        ret_type = type_def(lexer);
     }
     let block = block(lexer);
     Function {

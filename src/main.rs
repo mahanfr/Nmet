@@ -9,7 +9,6 @@ mod compiler;
 mod error_handeling;
 mod lexer;
 mod parser;
-mod type_check;
 mod utils;
 use command_line::{help_command, CliArgs};
 use compiler::compile_to_asm;
