@@ -6,7 +6,7 @@ func main() {
     while i < 28 {
         var j = 0;
         while j < 30 {
-            if board[j] {
+            if board[j] == 1 {
                 print "*";
             } else {
                 print " ";

@@ -32,6 +32,10 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             cc.instruct_buf.push(asm!("push rax"));
             v_map.vtype
         }
+        ExprType::Bool(b) => {
+            cc.instruct_buf.push(asm!("push {b}"));
+            VariableType::Bool
+        }
         ExprType::Char(x) => {
             cc.instruct_buf.push(asm!("push {x}"));
             VariableType::Char
@@ -42,7 +46,6 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             VariableType::Int
         }
         ExprType::Compare(c) => {
-            // TODO: Convert exprs to 0 or 1 and push into stack
             let left_type = compile_expr(cc, c.left.as_ref());
             let right_type = compile_expr(cc, c.right.as_ref());
             cc.instruct_buf.push(asm!("mov rcx, 0"));

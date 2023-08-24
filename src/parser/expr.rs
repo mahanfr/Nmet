@@ -47,6 +47,9 @@ pub enum ExprType {
     /// Array Index
     /// e.g: list[10]
     ArrayIndex(ArrayIndex),
+    /// Bool
+    /// e.g: True, False
+    Bool(u8),
 }
 impl ExprType {
     /// returns true if token type is used in binary operations
@@ -346,14 +349,14 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
         TokenType::True => {
             lexer.match_token(TokenType::True);
             Expr {
-                etype: ExprType::Int(1),
+                etype: ExprType::Bool(1),
                 loc,
             }
         }
         TokenType::False => {
             lexer.match_token(TokenType::False);
             Expr {
-                etype: ExprType::Int(0),
+                etype: ExprType::Bool(0),
                 loc,
             }
         }

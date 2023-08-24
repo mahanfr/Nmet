@@ -1,7 +1,7 @@
 ~ If Conditions and variables example
 func main() {
     var a = 0;
-    if a == true {
+    if a == 1 {
         print 69; ~ dose not print 69
     } else {
         print 420;

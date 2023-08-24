@@ -4,7 +4,7 @@ use crate::{
     parser::{
         assign::{Assign, AssignOp},
         expr::ExprType,
-        stmt::{ElseBlock, IFStmt, Stmt, StmtType, WhileStmt},
+        stmt::{ElseBlock, IFStmt, Stmt, StmtType, WhileStmt}, types::VariableType,
     },
 };
 
@@ -17,7 +17,11 @@ use super::{
 };
 
 fn compile_if_stmt(cc: &mut CompilerContext, ifs: &IFStmt, exit_tag: usize) {
-    compile_expr(cc, &ifs.condition);
+    let condition_type = compile_expr(cc, &ifs.condition);
+    match VariableType::Bool.cast(&condition_type) {
+        Ok(_) => (),
+        Err(msg) => error(msg,ifs.condition.loc.clone())
+    }
     let next_tag = match ifs.else_block.as_ref() {
         ElseBlock::None => exit_tag,
         _ => cc.instruct_buf.len(),
@@ -163,7 +167,11 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) {
     compile_block(cc, &w_stmt.block);
     cc.instruct_buf.push(asm!(".L{}:", cond_tag));
     // Jump after a compare
-    compile_expr(cc, &w_stmt.condition);
+    let condition_type = compile_expr(cc, &w_stmt.condition);
+    match VariableType::Bool.cast(&condition_type) {
+        Ok(_)=> (),
+        Err(msg) => error(msg,w_stmt.condition.loc.clone())
+    }
     cc.instruct_buf.push(asm!("pop rax"));
     cc.instruct_buf.push(asm!("test rax, rax"));
     cc.instruct_buf.push(asm!("jnz .L{}", block_tag));
@@ -231,7 +239,11 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Strin
             if !v_map.is_mut {
                 return Err("Error: Variable is not mutable. Did you forgot to define it with '=' insted of ':=' ?".to_string());
             }
-            compile_expr(cc, &assign.right);
+            let right_type = compile_expr(cc, &assign.right);
+            match v_map.vtype.cast(&right_type) {
+                Ok(_) => (),
+                Err(msg) => return Err(msg),
+            }
             assgin_op(cc, &assign.op, &v_map);
             Ok(())
         }
@@ -242,7 +254,16 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Strin
             if !v_map.is_mut {
                 return Err("Error: Variable is not mutable. Did you forgot to define it with '=' insted of ':=' ?".to_string());
             }
-            compile_expr(cc, &assign.right);
+            let right_type = compile_expr(cc, &assign.right);
+            match &v_map.vtype {
+                VariableType::Array(t, _) => {
+                    match t.cast(&right_type) {
+                        Ok(_) => (),
+                        Err(msg) => return Err(msg),
+                    }
+                }
+                _ => unreachable!()
+            }
             compile_expr(cc, &ai.indexer);
             cc.instruct_buf.push(asm!("pop rbx"));
             assgin_op(cc, &assign.op, &v_map);
