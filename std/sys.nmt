@@ -5,19 +5,19 @@ import "./std/syscalls" :: sys_write
 func main() {
     var args_count @uint = 0;
     var pointer @ptr = 0;
-    var argv @[ptr,10] = [0;10];
+    var argv @[ptr,10] = 0;
     asm {
         "mov ecx, dword [rbp + 8]"
         "mov %args_count, ecx"
         "mov rsi, qword [rbp + 12]"
         "mov %pointer ,rsi"
     }
-    let i = 0;
-    &argv = pointer;
+    var i = 0;
+    argv = &pointer;
     while args_count > i {
-        var arg @[char,10] = [0;10];
+        var arg @[char,10] = 0;
         var size = 0;
-        &arg = argv[i];
+        arg = &argv[i];
         while arg[size+1] != '\0' {
             size += 1;
         }
