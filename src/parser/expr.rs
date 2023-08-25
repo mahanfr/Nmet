@@ -32,8 +32,11 @@ pub enum ExprType {
     /// Character values
     /// e.g: 'a', '\n', 10
     Char(u8),
+    /// derefrence memory ponter
+    /// e.g: *a
+    DeRef(Box<Expr>),
     /// Address of expr in memory
-    /// e.g: ptr a
+    /// e.g: &a
     Ptr(Box<Expr>),
     /// String values
     /// e.g: "Hello\n"
@@ -318,16 +321,32 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
             lexer.match_token(TokenType::CParen);
             value
         }
-        TokenType::Plus | TokenType::Minus | TokenType::Not => {
+        TokenType::Plus | TokenType::Minus | TokenType::Not | TokenType::Multi | TokenType::And => {
             let op = Op::from_token_type(lexer.get_token_type());
             lexer.next_token();
             let value = factor(lexer);
-            Expr {
-                etype: ExprType::Unary(UnaryExpr {
-                    op,
-                    right: Box::new(value),
-                }),
-                loc,
+            match op {
+                Op::Multi => {
+                    Expr {
+                        etype : ExprType::DeRef(Box::new(value)),
+                        loc,
+                    }
+                },
+                Op::And => {
+                    Expr {
+                        etype : ExprType::Ptr(Box::new(value)),
+                        loc,
+                    }
+                }
+                _ => {
+                    Expr {
+                        etype: ExprType::Unary(UnaryExpr {
+                            right: Box::new(value),
+                            op,
+                        }),
+                        loc,
+                    }
+                }
             }
         }
         TokenType::String => {
@@ -335,14 +354,6 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
             lexer.next_token();
             Expr {
                 etype: ExprType::String(str_token.literal),
-                loc,
-            }
-        }
-        TokenType::Ptr => {
-            lexer.match_token(TokenType::Ptr);
-            let value = expr(lexer);
-            Expr {
-                etype: ExprType::Ptr(Box::new(value)),
                 loc,
             }
         }

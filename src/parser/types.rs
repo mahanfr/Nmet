@@ -142,10 +142,6 @@ pub fn type_def(lexer: &mut Lexer) -> VariableType {
     let loc = lexer.get_current_loc();
     lexer.match_token(TokenType::ATSign);
     match lexer.get_token_type() {
-        TokenType::Ptr => {
-            lexer.match_token(TokenType::Ptr);
-            VariableType::Pointer
-        }
         TokenType::Identifier => {
             let ident = lexer.get_token().literal;
             lexer.match_token(TokenType::Identifier);

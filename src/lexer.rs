@@ -22,8 +22,6 @@ pub enum TokenType {
     String,
     /// Inline Asm
     Asm,
-    /// Pointer indicator
-    Ptr,
     /// "+" Plus And Pos
     Plus,
     /// "-" Sub and Neg
@@ -154,7 +152,6 @@ impl Display for TokenType {
             TokenType::Char(char) => write!(f, "{}", char),
             TokenType::String => write!(f, "String Literal"),
             TokenType::Asm => write!(f, "Inline Asm"),
-            TokenType::Ptr => write!(f, "Pointer"),
             TokenType::Plus => write!(f, "+"),
             TokenType::Minus => write!(f, "-"),
             TokenType::Multi => write!(f, "*"),
@@ -580,7 +577,6 @@ impl Lexer {
             "true" => Some(TokenType::True),
             "false" => Some(TokenType::False),
             "asm" => Some(TokenType::Asm),
-            "ptr" => Some(TokenType::Ptr),
             "import" => Some(TokenType::Import),
             "macro" => Some(TokenType::Macro),
             _ => None,

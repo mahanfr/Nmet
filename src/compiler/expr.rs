@@ -216,11 +216,21 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             compile_ptr(cc, e);
             VariableType::Pointer
         }
+        ExprType::DeRef(r) => {
+            let t = compile_expr(cc, r);
+            if t != VariableType::Pointer {
+                error(format!("Expected a Pointer found ({t})"),expr.loc.clone());
+            }
+            cc.instruct_buf.push(asm!("pop rax"));
+            cc.instruct_buf.push(asm!("mov rcx, qword [rax]"));
+            cc.instruct_buf.push(asm!("push rcx"));
+            VariableType::Any
+        }
         ExprType::ArrayIndex(ai) => {
             let v_map = find_variable(cc, ai.ident.clone()).unwrap_or_else(|| {
                 error(
                     format!(
-                        "Error: Trying to access an Undifined variable ({})",
+                        "Trying to access an Undifined variable ({})",
                         ai.ident
                     ),
                     expr.loc.clone(),
