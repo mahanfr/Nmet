@@ -15,7 +15,7 @@
   </a>
 
   <p align="center">
-    A general purpose staticly typed and compiled programming language 
+    A general purpose statically typed and compiled programming language 
     <br />
     <a href="https://github.com/mahanfarzaneh2000/nemet#quick-start"><strong>Explore the docs »</strong></a>
     <br />

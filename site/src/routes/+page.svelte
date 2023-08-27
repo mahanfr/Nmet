@@ -20,7 +20,7 @@
         <p class="font-light">
             <span class="font-bold">Nemet</span>
             <span>is a general purpose</span>
-            <span class="font-bold">staticly typed</span>
+            <span class="font-bold">statically typed</span>
             <span>and</span>
             <span class="font-bold"> compiled </span>
             <span>programming Language that generates x86-64 assembly as Intermediate representation (IR) which can be compiled to binary using nasm. We eventialy will move away from nasm and implement our own loader but the current goal is to become self hosted by writing the compiler in itself!</span>
