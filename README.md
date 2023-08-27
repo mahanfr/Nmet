@@ -11,13 +11,11 @@
 <br />
 <div align="center">
   <a href="https://github.com/mahanfarzaneh2000/nemet">
-    <img src="assets/NEMET.png" alt="NEMET - nemet programming language" height="100">
+    <img src="assets/Nmet.png" alt="Nmet - Nmet programming language" height="100">
   </a>
 
-  <h3 align="center">NeMeT</h3>
-
   <p align="center">
-    A Programming language with a really bad slogan
+    A general purpose staticly typed and compiled programming language 
     <br />
     <a href="https://github.com/mahanfarzaneh2000/nemet#quick-start"><strong>Explore the docs »</strong></a>
     <br />
