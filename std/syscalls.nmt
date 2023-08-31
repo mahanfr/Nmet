@@ -50,3 +50,46 @@ func sys_close(fd @int) {
         "syscall"
     }
 }
+
+func sys_alarm(secound @u32) {
+    asm {
+        "mov rax, 37",
+        "mov rid, %secound"
+        "syscall"
+    }
+}
+
+func sys_rename(oldName @str, newName @string) {
+    asm {
+        "mov rax, 82",
+        "mov rid, %oldName"
+        "mov rsi, %newName"
+        "syscall"
+    }
+}
+
+func sys_mkdir(pathName @str, mode @int) {
+    asm {
+        "mov rax, 83",
+        "mov rid, %pathName"
+        "mov rsi, %mode"
+        "syscall"
+    }
+}
+
+func sys_rmdir(pathName @str) {
+    asm {
+        "mov rax, 84",
+        "mov rid, %pathName"
+        "syscall"
+    }
+}
+
+func sys_create(pathName @str, mode @int) {
+    asm {
+        "mov rax, 85",
+        "mov rid, %pathName"
+        "mov rsi, %mode"
+        "syscall"
+    }
+}
