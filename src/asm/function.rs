@@ -2,11 +2,11 @@ use std::collections::HashMap;
 
 use crate::{
     asm,
-    parser::function::{Function, FunctionArg},
+    parser::function::{Function, FunctionArg}, compiler::VariableMap,
 };
 
 use super::{
-    compile_block, frame_size, function_args_register_sized, mem_word, variables::VariableMap,
+    compile_block, frame_size, function_args_register_sized, mem_word,
     CompilerContext,
 };
 
@@ -39,7 +39,7 @@ pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
     }
 }
 
-pub fn function(cc: &mut CompilerContext, f: &Function) {
+pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
     cc.scoped_blocks = Vec::new();
     cc.block_id = 0;
     cc.scoped_blocks.push(0);

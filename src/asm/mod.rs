@@ -3,23 +3,20 @@ mod function;
 mod stmts;
 mod variables;
 
-use std::collections::HashMap;
 use std::error::Error;
 
-use crate::asm_generator::x86_64_nasm_generator;
-use crate::compiler::function::function;
+use crate::asm::function::compile_function;
+use crate::compiler::CompilerContext;
+use crate::output_generator::x86_64_nasm_generator;
 use crate::parser::block::Block;
-use crate::parser::function::Function;
 use crate::parser::parse_file;
 use crate::parser::program::ProgramItem;
 use crate::parser::types::VariableType;
 
 use self::stmts::compile_stmt;
-use self::variables::VariableMap;
 
 pub fn compile_to_asm(path: String) {
     let mut compiler_context = CompilerContext::new();
-
     let (instr_buf, data_buf) =
         compile(&mut compiler_context, path.clone()).expect("Can not Compile Program");
     x86_64_nasm_generator(path, instr_buf, data_buf).unwrap();
@@ -107,30 +104,6 @@ pub fn function_args_register(arg_numer: usize) -> String {
     }
 }
 
-pub struct CompilerContext {
-    instruct_buf: Vec<String>,
-    data_buf: Vec<String>,
-    scoped_blocks: Vec<usize>,
-    block_id: usize,
-    variables_map: HashMap<String, VariableMap>,
-    functions_map: HashMap<String, Function>,
-    mem_offset: usize,
-}
-
-impl CompilerContext {
-    // TODO: handle Error for Parsing
-    pub fn new() -> Self {
-        Self {
-            instruct_buf: Vec::new(),
-            data_buf: Vec::new(),
-            scoped_blocks: Vec::new(),
-            block_id: 0,
-            variables_map: HashMap::new(),
-            functions_map: HashMap::new(),
-            mem_offset: 0,
-        }
-    }
-}
 fn frame_size(mem_offset: usize) -> usize {
     2 << mem_offset.ilog2() as usize
 }
@@ -195,7 +168,7 @@ pub fn compile(
     }
     let functions = cc.functions_map.clone();
     for f in functions.values() {
-        function(cc, f);
+        compile_function(cc, f);
     }
     assert!(
         cc.scoped_blocks.is_empty(),

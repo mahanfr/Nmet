@@ -3,9 +3,11 @@ use std::env::args;
 use std::error::Error;
 use std::process::Command;
 
-mod asm_generator;
+mod output_generator;
 mod command_line;
+mod asm;
 mod compiler;
+mod llvm;
 mod error_handeling;
 mod lexer;
 mod macros;
