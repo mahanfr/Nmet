@@ -1,7 +1,8 @@
 use crate::{
     asm,
+    compiler::VariableMap,
     error_handeling::error,
-    parser::{types::VariableType, variable_decl::VariableDeclare}, compiler::VariableMap,
+    parser::{types::VariableType, variable_decl::VariableDeclare},
 };
 
 use super::{expr::compile_expr, mem_word, rbs, CompilerContext};

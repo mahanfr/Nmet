@@ -1,11 +1,13 @@
 use crate::{
     asm,
+    compiler::VariableMap,
     error_handeling::error,
     parser::{
         assign::{Assign, AssignOp},
         expr::ExprType,
-        stmt::{ElseBlock, IFStmt, Stmt, StmtType, WhileStmt}, types::VariableType,
-    }, compiler::VariableMap,
+        stmt::{ElseBlock, IFStmt, Stmt, StmtType, WhileStmt},
+        types::VariableType,
+    },
 };
 
 use super::{
@@ -20,9 +22,9 @@ fn compile_if_stmt(cc: &mut CompilerContext, ifs: &IFStmt, exit_tag: usize) {
     let condition_type = compile_expr(cc, &ifs.condition);
     match VariableType::Bool.cast(&condition_type) {
         Ok(_) => (),
-        Err(msg) => error(msg,ifs.condition.loc.clone())
+        Err(msg) => error(msg, ifs.condition.loc.clone()),
     }
-    
+
     let next_tag = match ifs.else_block.as_ref() {
         ElseBlock::None => exit_tag,
         _ => cc.instruct_buf.len(),
@@ -170,8 +172,8 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) {
     // Jump after a compare
     let condition_type = compile_expr(cc, &w_stmt.condition);
     match VariableType::Bool.cast(&condition_type) {
-        Ok(_)=> (),
-        Err(msg) => error(msg,w_stmt.condition.loc.clone())
+        Ok(_) => (),
+        Err(msg) => error(msg, w_stmt.condition.loc.clone()),
     }
     cc.instruct_buf.push(asm!("pop rax"));
     cc.instruct_buf.push(asm!("test rax, rax"));
@@ -257,13 +259,11 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Strin
             }
             let right_type = compile_expr(cc, &assign.right);
             match &v_map.vtype {
-                VariableType::Array(t, _) => {
-                    match t.cast(&right_type) {
-                        Ok(_) => (),
-                        Err(msg) => return Err(msg),
-                    }
-                }
-                _ => unreachable!()
+                VariableType::Array(t, _) => match t.cast(&right_type) {
+                    Ok(_) => (),
+                    Err(msg) => return Err(msg),
+                },
+                _ => unreachable!(),
             }
             compile_expr(cc, &ai.indexer);
             cc.instruct_buf.push(asm!("pop rbx"));

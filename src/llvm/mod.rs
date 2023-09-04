@@ -3,143 +3,23 @@ mod function;
 mod stmts;
 mod variables;
 
-use std::collections::HashMap;
 use std::error::Error;
 
+use crate::compiler::CompilerContext;
 use crate::llvm::function::compile_function;
-use crate::output_generator::x86_64_nasm_generator;
+use crate::output_generator::llvm_generator;
 use crate::parser::block::Block;
-use crate::parser::function::Function;
 use crate::parser::parse_file;
 use crate::parser::program::ProgramItem;
-use crate::parser::types::VariableType;
 
 use self::stmts::compile_stmt;
-use self::variables::VariableMap;
 
-pub fn compile_to_asm(path: String) {
+pub fn compile_to_llvm(path: String) {
     let mut compiler_context = CompilerContext::new();
 
     let (instr_buf, data_buf) =
         compile(&mut compiler_context, path.clone()).expect("Can not Compile Program");
-    x86_64_nasm_generator(path, instr_buf, data_buf).unwrap();
-}
-
-pub fn mem_word(vtype: &VariableType) -> String {
-    let size = vtype.item_size();
-    match size {
-        1 => "byte".to_string(),
-        2 => "word".to_string(),
-        4 => "dword".to_string(),
-        8 => "qword".to_string(),
-        _ => {
-            unreachable!("Incurrect Size")
-        }
-    }
-}
-
-pub fn rbs(register: &str, vtype: &VariableType) -> String {
-    let size = vtype.item_size();
-    match register {
-        "a" | "b" | "c" | "d" => match size {
-            1 => format!("{register}l"),
-            2 => format!("{register}x"),
-            4 => format!("e{register}x"),
-            8 => format!("r{register}x"),
-            _ => {
-                unreachable!("Incurrect Size")
-            }
-        },
-        "sp" | "bp" => match size {
-            1 => format!("{register}l"),
-            2 => register.to_string(),
-            4 => format!("e{register}"),
-            8 => format!("r{register}"),
-            _ => {
-                unreachable!("Incurrect Size")
-            }
-        },
-        "si" | "di" => match size {
-            1 => format!("{register}l"),
-            2 => register.to_string(),
-            4 => format!("e{register}"),
-            8 => format!("r{register}"),
-            _ => {
-                unreachable!("Incurrect Size")
-            }
-        },
-        "r8" | "r9" | "r10" | "r11" => match size {
-            1 => format!("{register}b"),
-            2 => format!("{register}w"),
-            4 => format!("{register}d"),
-            8 => register.to_string(),
-            _ => {
-                unreachable!("Incurrect Size")
-            }
-        },
-        _ => {
-            panic!("Wrong register identifier!");
-        }
-    }
-}
-
-pub fn function_args_register_sized(arg_numer: usize, vtype: &VariableType) -> String {
-    match arg_numer {
-        0 => rbs("di", vtype),
-        1 => rbs("si", vtype),
-        2 => rbs("d", vtype),
-        3 => rbs("c", vtype),
-        4 => rbs("r8", vtype),
-        5 => rbs("r9", vtype),
-        _ => unreachable!(),
-    }
-}
-
-pub fn function_args_register(arg_numer: usize) -> String {
-    match arg_numer {
-        0 => "rdi".to_string(),
-        1 => "rsi".to_string(),
-        2 => "rdx".to_string(),
-        3 => "rcx".to_string(),
-        4 => "r8".to_string(),
-        5 => "r9".to_string(),
-        _ => unreachable!(),
-    }
-}
-
-pub enum OutputFormat {
-    X86_64Linux,
-    LLVM,
-}
-
-pub struct CompilerContext {
-    instruct_buf: Vec<String>,
-    data_buf: Vec<String>,
-    scoped_blocks: Vec<usize>,
-    block_id: usize,
-    variables_map: HashMap<String, VariableMap>,
-    functions_map: HashMap<String, Function>,
-    mem_offset: usize,
-    output_foramt: OutputFormat,
-}
-
-impl CompilerContext {
-    // TODO: handle Error for Parsing
-    pub fn new() -> Self {
-        Self {
-            instruct_buf: Vec::new(),
-            data_buf: Vec::new(),
-            scoped_blocks: Vec::new(),
-            block_id: 0,
-            variables_map: HashMap::new(),
-            functions_map: HashMap::new(),
-            mem_offset: 0,
-            output_foramt: OutputFormat::X86_64Linux,
-        }
-    }
-}
-fn frame_size(mem_offset: usize) -> usize {
-    2 << mem_offset.ilog2() as usize
+    llvm_generator(path, instr_buf, data_buf).unwrap();
 }
 
 pub fn compile_lib(

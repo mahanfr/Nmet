@@ -326,27 +326,21 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
             lexer.next_token();
             let value = factor(lexer);
             match op {
-                Op::Multi => {
-                    Expr {
-                        etype : ExprType::DeRef(Box::new(value)),
-                        loc,
-                    }
+                Op::Multi => Expr {
+                    etype: ExprType::DeRef(Box::new(value)),
+                    loc,
                 },
-                Op::And => {
-                    Expr {
-                        etype : ExprType::Ptr(Box::new(value)),
-                        loc,
-                    }
-                }
-                _ => {
-                    Expr {
-                        etype: ExprType::Unary(UnaryExpr {
-                            right: Box::new(value),
-                            op,
-                        }),
-                        loc,
-                    }
-                }
+                Op::And => Expr {
+                    etype: ExprType::Ptr(Box::new(value)),
+                    loc,
+                },
+                _ => Expr {
+                    etype: ExprType::Unary(UnaryExpr {
+                        right: Box::new(value),
+                        op,
+                    }),
+                    loc,
+                },
             }
         }
         TokenType::String => {
