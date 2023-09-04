@@ -4,6 +4,31 @@ use std::io::{BufWriter, Write};
 
 use crate::utils::get_program_name;
 
+pub fn llvm_generator(
+    path: String,
+    instruct_buf: Vec<String>,
+    data_buf: Vec<String>,
+) -> Result<(), Box<dyn Error>> {
+    fs::create_dir_all("./build").unwrap();
+    let out_name = get_program_name(path);
+    let stream = File::create(format!("./build/{}.ll", out_name)).unwrap();
+    let mut file = BufWriter::new(stream);
+    println!("[info] Generating asm files...");
+    file.write_all(b";; TODO: NOT IMPLEMENTERD YET!\n")?;
+    if !data_buf.is_empty() {
+        file.write_all(b"section .data\n")?;
+        for data in &data_buf {
+            file.write_all(data.as_bytes())?;
+        }
+    }
+    file.write_all(b"\n")?;
+    for instruct in &instruct_buf {
+        file.write_all(instruct.as_bytes())?;
+    }
+    file.flush().unwrap();
+    Ok(())
+}
+
 pub fn x86_64_nasm_generator(
     path: String,
     instruct_buf: Vec<String>,

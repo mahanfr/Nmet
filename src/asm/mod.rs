@@ -7,20 +7,12 @@ use std::error::Error;
 
 use crate::asm::function::compile_function;
 use crate::compiler::CompilerContext;
-use crate::output_generator::x86_64_nasm_generator;
 use crate::parser::block::Block;
 use crate::parser::parse_file;
 use crate::parser::program::ProgramItem;
 use crate::parser::types::VariableType;
 
 use self::stmts::compile_stmt;
-
-pub fn compile_to_asm(path: String) {
-    let mut compiler_context = CompilerContext::new();
-    let (instr_buf, data_buf) =
-        compile(&mut compiler_context, path.clone()).expect("Can not Compile Program");
-    x86_64_nasm_generator(path, instr_buf, data_buf).unwrap();
-}
 
 pub fn mem_word(vtype: &VariableType) -> String {
     let size = vtype.item_size();

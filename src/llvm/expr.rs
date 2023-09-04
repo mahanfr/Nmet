@@ -1,5 +1,4 @@
 use crate::{
-    asm,
     error_handeling::error,
     parser::{
         expr::{CompareOp, Expr, ExprType, FunctionCall, Op},
@@ -8,180 +7,129 @@ use crate::{
 };
 
 use super::{
-    function_args_register, mem_word, rbs,
     variables::{find_variable, get_vriable_map},
     CompilerContext,
 };
 
 pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
-    // left = compile expr
-    // right = compile expr
-    // +
     match &expr.etype {
         ExprType::Variable(v) => {
-            let Some(v_map) = get_vriable_map(cc,v) else {
-                    error("Trying to access an Undifined variable",expr.loc.clone());
-                };
-            let mem_acss = format!(
-                "{} [rbp-{}]",
-                mem_word(&v_map.vtype),
-                v_map.offset + v_map.vtype.size()
-            );
-            cc.instruct_buf
-                .push(asm!("mov {},{mem_acss}", rbs("a", &v_map.vtype)));
-            cc.instruct_buf.push(asm!("push rax"));
-            v_map.vtype
+            todo!();
         }
         ExprType::Bool(b) => {
-            cc.instruct_buf.push(asm!("push {b}"));
-            VariableType::Bool
+            todo!();
+            // VariableType::Bool
         }
         ExprType::Char(x) => {
-            cc.instruct_buf.push(asm!("push {x}"));
-            VariableType::Char
+            todo!();
+            // VariableType::Char
         }
         ExprType::Int(x) => {
-            // push x
-            cc.instruct_buf.push(asm!("push {x}"));
-            VariableType::Int
+            todo!();
+            // VariableType::Int
         }
         ExprType::Compare(c) => {
             let left_type = compile_expr(cc, c.left.as_ref());
             let right_type = compile_expr(cc, c.right.as_ref());
-            cc.instruct_buf.push(asm!("mov rcx, 0"));
-            cc.instruct_buf.push(asm!("mov rdx, 1"));
-            cc.instruct_buf.push(asm!("pop rbx"));
-            cc.instruct_buf.push(asm!("pop rax"));
             match c.op {
                 CompareOp::Eq => {
-                    cc.instruct_buf.push(asm!("cmp rax, rbx"));
-                    cc.instruct_buf.push(asm!("cmove rcx, rdx"));
+                    todo!();
                 }
                 CompareOp::NotEq => {
-                    cc.instruct_buf.push(asm!("cmp rax, rbx"));
-                    cc.instruct_buf.push(asm!("cmovne rcx, rdx"));
+                    todo!();
                 }
                 CompareOp::Bigger => {
-                    cc.instruct_buf.push(asm!("cmp rax, rbx"));
-                    cc.instruct_buf.push(asm!("cmovg rcx, rdx"));
+                    todo!();
                 }
                 CompareOp::Smaller => {
-                    cc.instruct_buf.push(asm!("cmp rax, rbx"));
-                    cc.instruct_buf.push(asm!("cmovl rcx, rdx"));
+                    todo!();
                 }
                 CompareOp::BiggerEq => {
-                    cc.instruct_buf.push(asm!("cmp rax, rbx"));
-                    cc.instruct_buf.push(asm!("cmovge rcx, rdx"));
+                    todo!();
                 }
                 CompareOp::SmallerEq => {
-                    cc.instruct_buf.push(asm!("cmp rax, rbx"));
-                    cc.instruct_buf.push(asm!("cmovle rcx, rdx"));
+                    todo!();
                 }
             }
-            cc.instruct_buf.push(asm!("push rcx"));
-            if (right_type == left_type) || (right_type.is_numeric() && left_type.is_numeric()) {
-                VariableType::Bool
-            } else {
-                error(
-                    format!(
-                        "Invalid Comparison between types: ({}) and ({})",
-                        left_type, right_type
-                    ),
-                    expr.loc.clone(),
-                );
-            }
+            // if (right_type == left_type) || (right_type.is_numeric() && left_type.is_numeric()) {
+            //     VariableType::Bool
+            // } else {
+            //     error(
+            //         format!(
+            //             "Invalid Comparison between types: ({}) and ({})",
+            //             left_type, right_type
+            //         ),
+            //         expr.loc.clone(),
+            //     );
+            // }
         }
         ExprType::Binary(b) => {
             let left_type = compile_expr(cc, b.left.as_ref());
             let right_type = compile_expr(cc, b.right.as_ref());
-            cc.instruct_buf.push(asm!("pop rbx"));
-            cc.instruct_buf.push(asm!("pop rax"));
             match b.op {
                 Op::Plus => {
-                    cc.instruct_buf.push(asm!("add rax, rbx"));
-                    cc.instruct_buf.push(asm!("push rax"));
+                    todo!();
                 }
                 Op::Sub => {
-                    cc.instruct_buf.push(asm!("sub rax, rbx"));
-                    cc.instruct_buf.push(asm!("push rax"));
+                    todo!();
                 }
                 Op::Multi => {
-                    cc.instruct_buf.push(asm!("imul rax, rbx"));
-                    cc.instruct_buf.push(asm!("push rax"));
+                    todo!();
                 }
                 Op::Devide => {
-                    cc.instruct_buf.push(asm!("cqo"));
-                    cc.instruct_buf.push(asm!("idiv rbx"));
-                    cc.instruct_buf.push(asm!("push rax"));
+                    todo!();
                 }
                 Op::Mod => {
-                    cc.instruct_buf.push(asm!("cqo"));
-                    cc.instruct_buf.push(asm!("idiv rbx"));
-                    cc.instruct_buf.push(asm!("push rdx"));
+                    todo!();
                 }
                 Op::Or => {
-                    cc.instruct_buf.push(asm!("or rax, rbx"));
-                    cc.instruct_buf.push(asm!("push rax"));
+                    todo!();
                 }
                 Op::And => {
-                    cc.instruct_buf.push(asm!("and rax, rbx"));
-                    cc.instruct_buf.push(asm!("push rax"));
+                    todo!();
                 }
                 Op::Lsh => {
-                    cc.instruct_buf.push(asm!("mov rcx, rbx"));
-                    cc.instruct_buf.push(asm!("sal rax, cl"));
-                    cc.instruct_buf.push(asm!("push rax"));
+                    todo!();
                 }
                 Op::Rsh => {
-                    cc.instruct_buf.push(asm!("mov rcx, rbx"));
-                    cc.instruct_buf.push(asm!("sar rax, cl"));
-                    cc.instruct_buf.push(asm!("push rax"));
+                    todo!();
                 }
                 Op::LogicalOr => {
-                    cc.instruct_buf.push(asm!("or rax, rbx"));
-                    cc.instruct_buf.push(asm!("push rax"));
-                    return VariableType::Bool;
+                    todo!();
+                    // return VariableType::Bool;
                 }
                 Op::LogicalAnd => {
-                    cc.instruct_buf.push(asm!("and rax, rbx"));
-                    cc.instruct_buf.push(asm!("push rax"));
-                    return VariableType::Bool;
+                    todo!();
+                    // return VariableType::Bool;
                 }
                 Op::Not => {
                     panic!("Unvalid binary operation");
                 }
             }
-            if right_type.is_numeric() && left_type.is_numeric() {
-                match left_type.cast(&right_type) {
-                    Ok(t) => t,
-                    Err(msg) => error(msg, expr.loc.clone()),
-                }
-            } else {
-                error(
-                    format!(
-                        "Invalid Operation ({}) on non-numeric types: ({}) and ({})",
-                        b.op, left_type, right_type
-                    ),
-                    expr.loc.clone(),
-                );
-            }
+            // if right_type.is_numeric() && left_type.is_numeric() {
+            //     match left_type.cast(&right_type) {
+            //         Ok(t) => t,
+            //         Err(msg) => error(msg, expr.loc.clone()),
+            //     }
+            // } else {
+            //     error(
+            //         format!(
+            //             "Invalid Operation ({}) on non-numeric types: ({}) and ({})",
+            //             b.op, left_type, right_type
+            //         ),
+            //         expr.loc.clone(),
+            //     );
+            // }
         }
         ExprType::String(str) => {
-            let id = cc.data_buf.len();
-            let data_array = asmfy_string(str);
-            cc.data_buf.push(asm!("data{id} db {}", data_array));
-            cc.data_buf.push(asm!("len{id} equ $ - data{id}"));
-            cc.instruct_buf.push(asm!("push data{id}"));
-            cc.instruct_buf.push(asm!("push len{id}"));
-            VariableType::String
+            todo!();
+            // VariableType::String
         }
         ExprType::Unary(u) => {
             let right_type = compile_expr(cc, &u.right);
-            cc.instruct_buf.push(asm!("pop rax"));
             match u.op {
                 Op::Sub => {
-                    cc.instruct_buf.push(asm!("neg rax"));
-                    cc.instruct_buf.push(asm!("push rax"));
+                    assert!(false);
                     if right_type == VariableType::UInt {
                         return VariableType::Int;
                     } else {
@@ -189,11 +137,10 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                     }
                 }
                 Op::Plus => {
-                    cc.instruct_buf.push(asm!("push rax"));
+                    assert!(false);
                 }
                 Op::Not => {
-                    cc.instruct_buf.push(asm!("not rax"));
-                    cc.instruct_buf.push(asm!("push rax"));
+                    assert!(false);
                 }
                 _ => {
                     unreachable!();
@@ -219,39 +166,13 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
         ExprType::DeRef(r) => {
             let t = compile_expr(cc, r);
             if t != VariableType::Pointer {
-                error(format!("Expected a Pointer found ({t})"),expr.loc.clone());
+                error(format!("Expected a Pointer found ({t})"), expr.loc.clone());
             }
-            cc.instruct_buf.push(asm!("pop rax"));
-            cc.instruct_buf.push(asm!("mov rcx, qword [rax]"));
-            cc.instruct_buf.push(asm!("push rcx"));
+            assert!(false);
             VariableType::Any
         }
         ExprType::ArrayIndex(ai) => {
-            let v_map = find_variable(cc, ai.ident.clone()).unwrap_or_else(|| {
-                error(
-                    format!(
-                        "Trying to access an Undifined variable ({})",
-                        ai.ident
-                    ),
-                    expr.loc.clone(),
-                );
-            });
-            compile_expr(cc, &ai.indexer);
-            cc.instruct_buf.push(asm!("pop rbx"));
-            // TODO: Add Item size to v_map
-            let mem_acss = format!(
-                "{} [rbp-{}+rbx*{}]",
-                mem_word(&v_map.vtype),
-                v_map.offset + v_map.vtype.size(),
-                v_map.vtype.item_size()
-            );
-            let reg = rbs("a", &v_map.vtype);
-            cc.instruct_buf.push(asm!("mov {reg},{mem_acss}"));
-            cc.instruct_buf.push(asm!("push rax"));
-            match v_map.vtype {
-                VariableType::Array(t, _) => t.as_ref().clone(),
-                _ => unreachable!(),
-            }
+            todo!();
         }
     }
 }
@@ -259,13 +180,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
 fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) {
     match &expr.etype {
         ExprType::Variable(v) => {
-            let Some(v_map) = get_vriable_map(cc,v) else {
-                    error("Trying to access an Undifined variable",expr.loc.clone());
-                };
-            cc.instruct_buf.push(asm!("mov rax, rbp"));
-            cc.instruct_buf
-                .push(asm!("sub rax, {}", v_map.offset + v_map.vtype.size()));
-            cc.instruct_buf.push(asm!("push rax"));
+            assert!(false);
         }
         _ => {
             todo!("Impl Pointers");
@@ -282,13 +197,10 @@ fn compile_function_call(
         compile_expr(cc, arg);
         match arg.etype {
             ExprType::String(_) => {
-                cc.instruct_buf.push(asm!("pop rax"));
-                cc.instruct_buf
-                    .push(asm!("pop {}", function_args_register(index)));
+                todo!();
             }
             _ => {
-                cc.instruct_buf
-                    .push(asm!("pop {}", function_args_register(index)));
+                todo!();
             }
         }
     }
@@ -301,10 +213,9 @@ fn compile_function_call(
                 "Make sure you are calling the correct function"
             ))
         };
-    cc.instruct_buf.push(asm!("mov rax, 0"));
-    cc.instruct_buf.push(asm!("call {}", fc.ident));
+    assert!(false);
     if fun.ret_type != VariableType::Void {
-        cc.instruct_buf.push(asm!("push rax"));
+        todo!();
     }
     Ok(fun.ret_type.clone())
 }

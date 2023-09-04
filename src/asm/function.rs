@@ -2,13 +2,11 @@ use std::collections::HashMap;
 
 use crate::{
     asm,
-    parser::function::{Function, FunctionArg}, compiler::VariableMap,
+    compiler::VariableMap,
+    parser::function::{Function, FunctionArg},
 };
 
-use super::{
-    compile_block, frame_size, function_args_register_sized, mem_word,
-    CompilerContext,
-};
+use super::{compile_block, frame_size, function_args_register_sized, mem_word, CompilerContext};
 
 pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
     for (args_count, arg) in args.iter().enumerate() {
