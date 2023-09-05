@@ -16,9 +16,11 @@ fn compile_if_stmt(cc: &mut CompilerContext, ifs: &IFStmt) {
 
 pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) {
     match &stmt.stype {
-        StmtType::VariableDecl(v) => match insert_variable(cc, v) {
-            Ok(_) => (),
-            Err(msg) => error(msg, stmt.loc.clone()),
+        StmtType::VariableDecl(v) => {
+            match insert_variable(cc, v) {
+                Ok(_) => (),
+                Err(msg) => error(msg, stmt.loc.clone()),
+            }
         },
         StmtType::Print(e) => {
             todo!();
@@ -71,5 +73,15 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
 }
 
 fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), String> {
-    todo!();
+    match assign.left.etype {
+        ExprType::Variable(_) | ExprType::ArrayIndex(_)=> (),
+        _ => {
+            error("Unsupported assgin operation",assign.left.loc.clone())
+        }
+    }
+    let (etag,etype) = compile_expr(cc,&assign.right);
+    let (vtag,vtype) = compile_expr(cc,&assign.left);
+    let code = format!("store {} {}, {} {}, align {}",vtype.to_llvm_type(),vtag,etype.to_llvm_type(),etag,vtype.size());
+    cc.instruct_buf.push(code); 
+    Ok(())
 }

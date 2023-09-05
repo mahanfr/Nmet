@@ -3,18 +3,22 @@ use crate::{
     parser::{
         expr::{CompareOp, Expr, ExprType, FunctionCall, Op},
         types::VariableType,
-    },
+    }, llvm::variables::get_vriable_map,
 };
 
-use super::{
-    variables::{find_variable, get_vriable_map},
-    CompilerContext,
-};
+use super::CompilerContext;
 
-pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
+pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> (String,VariableType) {
     match &expr.etype {
         ExprType::Variable(v) => {
-            todo!();
+            match get_vriable_map(cc,v) {
+                Some(m) => {
+                    return (format!("%{}",m._ident),m.vtype);
+                }
+                None => {
+                    error("Variable has been defined in this scope!",expr.loc.clone());
+                }
+            }
         }
         ExprType::Bool(b) => {
             todo!();
@@ -25,8 +29,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             // VariableType::Char
         }
         ExprType::Int(x) => {
-            todo!();
-            // VariableType::Int
+            (format!("{x}"),VariableType::Int)
         }
         ExprType::Compare(c) => {
             let left_type = compile_expr(cc, c.left.as_ref());
@@ -126,14 +129,14 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             // VariableType::String
         }
         ExprType::Unary(u) => {
-            let right_type = compile_expr(cc, &u.right);
+            let right = compile_expr(cc, &u.right);
             match u.op {
                 Op::Sub => {
                     assert!(false);
-                    if right_type == VariableType::UInt {
-                        return VariableType::Int;
+                    if right.1 == VariableType::UInt {
+                        return (right.0,VariableType::Int);
                     } else {
-                        return right_type;
+                        return right;
                     }
                 }
                 Op::Plus => {
@@ -146,33 +149,61 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                     unreachable!();
                 }
             }
-            if right_type.is_numeric() {
-                right_type
+            if right.1.is_numeric() {
+                right
             } else {
                 error(
-                    format!("Invalid Operation ({}) for type ({})", u.op, right_type),
+                    format!("Invalid Operation ({}) for type ({})", u.op, right.1),
                     expr.loc.clone(),
                 );
             }
         }
         ExprType::FunctionCall(fc) => match compile_function_call(cc, fc) {
-            Ok(ftype) => ftype,
+            Ok(ftype) => todo!(),
             Err(msg) => error(msg, expr.loc.clone()),
         },
         ExprType::Ptr(e) => {
-            compile_ptr(cc, e);
-            VariableType::Pointer
+            todo!();
         }
         ExprType::DeRef(r) => {
-            let t = compile_expr(cc, r);
-            if t != VariableType::Pointer {
-                error(format!("Expected a Pointer found ({t})"), expr.loc.clone());
-            }
-            assert!(false);
-            VariableType::Any
+            todo!();
         }
         ExprType::ArrayIndex(ai) => {
-            todo!();
+            let  (mut tag, mut itype) = compile_expr(cc,&ai.indexer);
+            let mut id = cc.instruct_buf.len();
+            if tag.starts_with('%') {
+                cc.instruct_buf.push(
+                    format!("%{id} = load {}, ptr {tag}, align {}",itype.to_llvm_type(),itype.size())
+                    );
+                tag = id.to_string();
+                id += 1;
+            }
+            match itype.cast(&VariableType::Long) {
+                Ok(t) => {
+                    if itype.size() != 8 {
+                        cc.instruct_buf.push(
+                            format!("%{id} = sext {itype} {tag} to i64")
+                        );
+                        tag = id.to_string();
+                        itype = t;
+                        id += 1;
+                    }
+                },
+                Err(msg) => error(msg,ai.indexer.loc.clone())
+            }
+            let Some(map) = get_vriable_map(cc,&ai.ident) else {
+                error(format!("Undifined variable ({})",ai.ident.clone()),expr.loc.clone());
+            };
+            let code = format!("%{id} = getelementptr inbounds {}, ptr {}, i32 0, {itype} {tag}",map.vtype.to_llvm_type(),map._ident);
+            cc.instruct_buf.push(code);
+            match map.vtype {
+                VariableType::Array(t, _) => {
+                    return (format!("%{id}"),t.as_ref().clone());
+                },
+                _ => {
+                    error(format!("Unable to index variable ({})",map._ident.clone()),expr.loc.clone());
+                }
+            }
         }
     }
 }
