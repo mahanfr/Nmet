@@ -11,6 +11,7 @@ mod lexer;
 mod llvm;
 mod macros;
 mod output_generator;
+mod wasm;
 mod parser;
 #[cfg(test)]
 mod tests;
