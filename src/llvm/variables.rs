@@ -1,4 +1,4 @@
-use crate::{compiler::VariableMap, parser::{variable_decl::VariableDeclare, expr::CompareExpr}, llvm::expr::{self, compile_expr}, error_handeling::error};
+use crate::{compiler::VariableMap, parser::{variable_decl::VariableDeclare, expr::CompareExpr, types::VariableType}, llvm::expr::{self, compile_expr}, error_handeling::error};
 
 use super::CompilerContext;
 
@@ -12,18 +12,25 @@ pub fn find_variable(cc: &CompilerContext, ident: String) -> Option<VariableMap>
 }
 
 pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Result<(), String> {
-    let mut vtype = var.v_type.clone().unwrap();
-    let code = format!("%{} = alloca {}, align {}\n",var.ident,vtype.to_llvm_type(),vtype.size());
-    cc.instruct_buf.push(code);
+    let mut vtype = match var.v_type.clone() {
+        Some(t) => t,
+        None => VariableType::Any,
+    };
+    if vtype != VariableType::Any {
+        let code = format!("%{} = alloca {}, align {}\n",var.ident,vtype.to_llvm_type(),vtype.size());
+        cc.instruct_buf.push(code);
+    }
     match &var.init_value {
         Some(v) => {
             let (tag,ttype) = compile_expr(cc,&v);
-            let code = format!("store {ttype} {tag}, ptr %{}, align {}",var.ident.clone(),ttype.size());
-            cc.instruct_buf.push(code);
+            let store_code = format!("store {ttype} {tag}, ptr %{}, align {}",var.ident.clone(),ttype.size());
             vtype = match vtype.cast(&ttype){
-               Ok(t) => t,
-               Err(msg) => return Err(msg),
-            }
+                Ok(t) => t,
+                Err(msg) => return Err(msg),
+            };
+            let alloca_code = format!("%{} = alloca {}, align {}\n",var.ident,vtype.to_llvm_type(),vtype.size());
+            cc.instruct_buf.push(alloca_code);
+            cc.instruct_buf.push(store_code);
         },
         None => {}
     }

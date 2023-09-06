@@ -8,7 +8,7 @@ use crate::{
     },
 };
 
-use super::{expr::compile_expr, variables::insert_variable, CompilerContext};
+use super::{expr::compile_expr, variables::insert_variable, CompilerContext, compile_block};
 
 fn compile_if_stmt(cc: &mut CompilerContext, ifs: &IFStmt) {
     todo!();
@@ -65,7 +65,16 @@ fn compile_inline_asm(cc: &mut CompilerContext, instr: &String) -> Result<(), St
 }
 
 fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) {
-    todo!();
+    let cond_label = cc.instruct_buf.len();
+    cc.instruct_buf.push(format!("{cond_label}:"));
+    let loop_label = cc.instruct_buf.len();
+    let exit_label = loop_label + 1;
+    let (ctag, _) = compile_expr(cc,&w_stmt.condition);
+    cc.instruct_buf.push(format!("br i1 {ctag}, label {loop_label}, lable {exit_label}"));
+    cc.instruct_buf.push(format!("{loop_label}:"));
+    compile_block(cc,&w_stmt.block);
+    cc.instruct_buf.push(format!("br label {cond_label}, !llvm.loop !{loop_label}"));
+    cc.instruct_buf.push(format!("{exit_label}:"));
 }
 
 fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {

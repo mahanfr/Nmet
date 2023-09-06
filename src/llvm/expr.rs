@@ -32,39 +32,43 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> (String,VariableTy
             (format!("{x}"),VariableType::Int)
         }
         ExprType::Compare(c) => {
-            let left_type = compile_expr(cc, c.left.as_ref());
-            let right_type = compile_expr(cc, c.right.as_ref());
-            match c.op {
-                CompareOp::Eq => {
-                    todo!();
-                }
-                CompareOp::NotEq => {
-                    todo!();
-                }
-                CompareOp::Bigger => {
-                    todo!();
-                }
-                CompareOp::Smaller => {
-                    todo!();
-                }
-                CompareOp::BiggerEq => {
-                    todo!();
-                }
-                CompareOp::SmallerEq => {
-                    todo!();
-                }
+            let (mut ltag,mut ltype) = compile_expr(cc, c.left.as_ref());
+            let (mut rtag,mut rtype) = compile_expr(cc, c.right.as_ref());
+            let mut id = cc.instruct_buf.len();
+            if ltag.starts_with("%") {
+                let code = format!("%{id} = load {ltype}, ptr {ltag}, align {}",ltype.size());
+                ltag = format!("%{id}");
+                cc.instruct_buf.push(code);
+                id += 1;
             }
-            // if (right_type == left_type) || (right_type.is_numeric() && left_type.is_numeric()) {
-            //     VariableType::Bool
-            // } else {
-            //     error(
-            //         format!(
-            //             "Invalid Comparison between types: ({}) and ({})",
-            //             left_type, right_type
-            //         ),
-            //         expr.loc.clone(),
-            //     );
-            // }
+            if rtag.starts_with("%") {
+                let code = format!("%{id} = load {rtype}, ptr {rtag}, align {}",rtype.size());
+                rtag = format!("%{id}");
+                cc.instruct_buf.push(code);
+                id += 1;
+            }
+            let cmp_type = match c.op {
+                CompareOp::Eq => "eq".to_string(),
+                CompareOp::NotEq => "ne".to_string(),
+                CompareOp::Bigger => "sgt".to_string(),
+                CompareOp::Smaller => "slt".to_string(),
+                CompareOp::BiggerEq => "sge".to_string(),
+                CompareOp::SmallerEq => "sle".to_string()
+            };
+            cc.instruct_buf.push(
+                format!("%{id} = icmp {cmp_type} i32 {ltag} {rtag}")
+            );
+            if (rtype == ltype) || (rtype.is_numeric() && ltype.is_numeric()) {
+                (format!("%{id}"),VariableType::Bool)
+            } else {
+                error(
+                    format!(
+                        "Invalid Comparison between types: ({}) and ({})",
+                        ltype, rtype
+                    ),
+                    expr.loc.clone(),
+                );
+            }
         }
         ExprType::Binary(b) => {
             let left_type = compile_expr(cc, b.left.as_ref());
