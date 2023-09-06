@@ -8,7 +8,7 @@ use crate::{
     },
 };
 
-use super::{expr::compile_expr, variables::insert_variable, CompilerContext, compile_block};
+use super::{compile_block, expr::compile_expr, variables::insert_variable, CompilerContext};
 
 fn compile_if_stmt(cc: &mut CompilerContext, ifs: &IFStmt) {
     todo!();
@@ -16,11 +16,9 @@ fn compile_if_stmt(cc: &mut CompilerContext, ifs: &IFStmt) {
 
 pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) {
     match &stmt.stype {
-        StmtType::VariableDecl(v) => {
-            match insert_variable(cc, v) {
-                Ok(_) => (),
-                Err(msg) => error(msg, stmt.loc.clone()),
-            }
+        StmtType::VariableDecl(v) => match insert_variable(cc, v) {
+            Ok(_) => (),
+            Err(msg) => error(msg, stmt.loc.clone()),
         },
         StmtType::Print(e) => {
             todo!();
@@ -69,11 +67,14 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) {
     cc.instruct_buf.push(format!("{cond_label}:"));
     let loop_label = cc.instruct_buf.len();
     let exit_label = loop_label + 1;
-    let (ctag, _) = compile_expr(cc,&w_stmt.condition);
-    cc.instruct_buf.push(format!("br i1 {ctag}, label {loop_label}, lable {exit_label}"));
+    let (ctag, _) = compile_expr(cc, &w_stmt.condition);
+    cc.instruct_buf.push(format!(
+        "br i1 {ctag}, label {loop_label}, lable {exit_label}"
+    ));
     cc.instruct_buf.push(format!("{loop_label}:"));
-    compile_block(cc,&w_stmt.block);
-    cc.instruct_buf.push(format!("br label {cond_label}, !llvm.loop !{loop_label}"));
+    compile_block(cc, &w_stmt.block);
+    cc.instruct_buf
+        .push(format!("br label {cond_label}, !llvm.loop !{loop_label}"));
     cc.instruct_buf.push(format!("{exit_label}:"));
 }
 
@@ -83,14 +84,19 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
 
 fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), String> {
     match assign.left.etype {
-        ExprType::Variable(_) | ExprType::ArrayIndex(_)=> (),
-        _ => {
-            error("Unsupported assgin operation",assign.left.loc.clone())
-        }
+        ExprType::Variable(_) | ExprType::ArrayIndex(_) => (),
+        _ => error("Unsupported assgin operation", assign.left.loc.clone()),
     }
-    let (etag,etype) = compile_expr(cc,&assign.right);
-    let (vtag,vtype) = compile_expr(cc,&assign.left);
-    let code = format!("store {} {}, {} {}, align {}",vtype.to_llvm_type(),vtag,etype.to_llvm_type(),etag,vtype.size());
-    cc.instruct_buf.push(code); 
+    let (etag, etype) = compile_expr(cc, &assign.right);
+    let (vtag, vtype) = compile_expr(cc, &assign.left);
+    let code = format!(
+        "store {} {}, {} {}, align {}",
+        vtype.to_llvm_type(),
+        vtag,
+        etype.to_llvm_type(),
+        etag,
+        vtype.size()
+    );
+    cc.instruct_buf.push(code);
     Ok(())
 }

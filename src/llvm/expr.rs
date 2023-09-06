@@ -1,25 +1,24 @@
 use crate::{
     error_handeling::error,
+    llvm::variables::get_vriable_map,
     parser::{
         expr::{CompareOp, Expr, ExprType, FunctionCall, Op},
         types::VariableType,
-    }, llvm::variables::get_vriable_map,
+    },
 };
 
 use super::CompilerContext;
 
-pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> (String,VariableType) {
+pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> (String, VariableType) {
     match &expr.etype {
-        ExprType::Variable(v) => {
-            match get_vriable_map(cc,v) {
-                Some(m) => {
-                    return (format!("%{}",m._ident),m.vtype);
-                }
-                None => {
-                    error("Variable has been defined in this scope!",expr.loc.clone());
-                }
+        ExprType::Variable(v) => match get_vriable_map(cc, v) {
+            Some(m) => {
+                return (format!("%{}", m._ident), m.vtype);
             }
-        }
+            None => {
+                error("Variable has been defined in this scope!", expr.loc.clone());
+            }
+        },
         ExprType::Bool(b) => {
             todo!();
             // VariableType::Bool
@@ -28,21 +27,19 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> (String,VariableTy
             todo!();
             // VariableType::Char
         }
-        ExprType::Int(x) => {
-            (format!("{x}"),VariableType::Int)
-        }
+        ExprType::Int(x) => (format!("{x}"), VariableType::Int),
         ExprType::Compare(c) => {
-            let (mut ltag,mut ltype) = compile_expr(cc, c.left.as_ref());
-            let (mut rtag,mut rtype) = compile_expr(cc, c.right.as_ref());
+            let (mut ltag, mut ltype) = compile_expr(cc, c.left.as_ref());
+            let (mut rtag, mut rtype) = compile_expr(cc, c.right.as_ref());
             let mut id = cc.instruct_buf.len();
             if ltag.starts_with("%") {
-                let code = format!("%{id} = load {ltype}, ptr {ltag}, align {}",ltype.size());
+                let code = format!("%{id} = load {ltype}, ptr {ltag}, align {}", ltype.size());
                 ltag = format!("%{id}");
                 cc.instruct_buf.push(code);
                 id += 1;
             }
             if rtag.starts_with("%") {
-                let code = format!("%{id} = load {rtype}, ptr {rtag}, align {}",rtype.size());
+                let code = format!("%{id} = load {rtype}, ptr {rtag}, align {}", rtype.size());
                 rtag = format!("%{id}");
                 cc.instruct_buf.push(code);
                 id += 1;
@@ -53,13 +50,12 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> (String,VariableTy
                 CompareOp::Bigger => "sgt".to_string(),
                 CompareOp::Smaller => "slt".to_string(),
                 CompareOp::BiggerEq => "sge".to_string(),
-                CompareOp::SmallerEq => "sle".to_string()
+                CompareOp::SmallerEq => "sle".to_string(),
             };
-            cc.instruct_buf.push(
-                format!("%{id} = icmp {cmp_type} i32 {ltag} {rtag}")
-            );
+            cc.instruct_buf
+                .push(format!("%{id} = icmp {cmp_type} i32 {ltag} {rtag}"));
             if (rtype == ltype) || (rtype.is_numeric() && ltype.is_numeric()) {
-                (format!("%{id}"),VariableType::Bool)
+                (format!("%{id}"), VariableType::Bool)
             } else {
                 error(
                     format!(
@@ -138,7 +134,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> (String,VariableTy
                 Op::Sub => {
                     assert!(false);
                     if right.1 == VariableType::UInt {
-                        return (right.0,VariableType::Int);
+                        return (right.0, VariableType::Int);
                     } else {
                         return right;
                     }
@@ -173,39 +169,47 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> (String,VariableTy
             todo!();
         }
         ExprType::ArrayIndex(ai) => {
-            let  (mut tag, mut itype) = compile_expr(cc,&ai.indexer);
+            let (mut tag, mut itype) = compile_expr(cc, &ai.indexer);
             let mut id = cc.instruct_buf.len();
             if tag.starts_with('%') {
-                cc.instruct_buf.push(
-                    format!("%{id} = load {}, ptr {tag}, align {}",itype.to_llvm_type(),itype.size())
-                    );
+                cc.instruct_buf.push(format!(
+                    "%{id} = load {}, ptr {tag}, align {}",
+                    itype.to_llvm_type(),
+                    itype.size()
+                ));
                 tag = id.to_string();
                 id += 1;
             }
             match itype.cast(&VariableType::Long) {
                 Ok(t) => {
                     if itype.size() != 8 {
-                        cc.instruct_buf.push(
-                            format!("%{id} = sext {itype} {tag} to i64")
-                        );
+                        cc.instruct_buf
+                            .push(format!("%{id} = sext {itype} {tag} to i64"));
                         tag = id.to_string();
                         itype = t;
                         id += 1;
                     }
-                },
-                Err(msg) => error(msg,ai.indexer.loc.clone())
+                }
+                Err(msg) => error(msg, ai.indexer.loc.clone()),
             }
             let Some(map) = get_vriable_map(cc,&ai.ident) else {
                 error(format!("Undifined variable ({})",ai.ident.clone()),expr.loc.clone());
             };
-            let code = format!("%{id} = getelementptr inbounds {}, ptr {}, i32 0, {itype} {tag}",map.vtype.to_llvm_type(),map._ident);
+            let code = format!(
+                "%{id} = getelementptr inbounds {}, ptr {}, i32 0, {itype} {tag}",
+                map.vtype.to_llvm_type(),
+                map._ident
+            );
             cc.instruct_buf.push(code);
             match map.vtype {
                 VariableType::Array(t, _) => {
-                    return (format!("%{id}"),t.as_ref().clone());
-                },
+                    return (format!("%{id}"), t.as_ref().clone());
+                }
                 _ => {
-                    error(format!("Unable to index variable ({})",map._ident.clone()),expr.loc.clone());
+                    error(
+                        format!("Unable to index variable ({})", map._ident.clone()),
+                        expr.loc.clone(),
+                    );
                 }
             }
         }

@@ -1,4 +1,9 @@
-use crate::{compiler::VariableMap, parser::{variable_decl::VariableDeclare, expr::CompareExpr, types::VariableType}, llvm::expr::{self, compile_expr}, error_handeling::error};
+use crate::{
+    compiler::VariableMap,
+    error_handeling::error,
+    llvm::expr::{self, compile_expr},
+    parser::{expr::CompareExpr, types::VariableType, variable_decl::VariableDeclare},
+};
 
 use super::CompilerContext;
 
@@ -17,29 +22,46 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
         None => VariableType::Any,
     };
     if vtype != VariableType::Any {
-        let code = format!("%{} = alloca {}, align {}\n",var.ident,vtype.to_llvm_type(),vtype.size());
+        let code = format!(
+            "%{} = alloca {}, align {}\n",
+            var.ident,
+            vtype.to_llvm_type(),
+            vtype.size()
+        );
         cc.instruct_buf.push(code);
     }
     match &var.init_value {
         Some(v) => {
-            let (tag,ttype) = compile_expr(cc,&v);
-            let store_code = format!("store {ttype} {tag}, ptr %{}, align {}",var.ident.clone(),ttype.size());
-            vtype = match vtype.cast(&ttype){
+            let (tag, ttype) = compile_expr(cc, &v);
+            let store_code = format!(
+                "store {ttype} {tag}, ptr %{}, align {}",
+                var.ident.clone(),
+                ttype.size()
+            );
+            vtype = match vtype.cast(&ttype) {
                 Ok(t) => t,
                 Err(msg) => return Err(msg),
             };
-            let alloca_code = format!("%{} = alloca {}, align {}\n",var.ident,vtype.to_llvm_type(),vtype.size());
+            let alloca_code = format!(
+                "%{} = alloca {}, align {}\n",
+                var.ident,
+                vtype.to_llvm_type(),
+                vtype.size()
+            );
             cc.instruct_buf.push(alloca_code);
             cc.instruct_buf.push(store_code);
-        },
+        }
         None => {}
     }
-    cc.variables_map.insert(var.ident.clone(),VariableMap {
-        _ident: var.ident.clone(),
-        is_mut: var.mutable,
-        offset: cc.mem_offset,
-        vtype,
-    });
+    cc.variables_map.insert(
+        var.ident.clone(),
+        VariableMap {
+            _ident: var.ident.clone(),
+            is_mut: var.mutable,
+            offset: cc.mem_offset,
+            vtype,
+        },
+    );
     Ok(())
 }
 
