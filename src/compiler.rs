@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use crate::{
-    asm, llvm,
-    output_generator::{llvm_generator, x86_64_nasm_generator},
+    asm,
+    output_generator::x86_64_nasm_generator,
     parser::{function::Function, types::VariableType},
 };
 
@@ -46,9 +46,9 @@ pub fn compile_to_asm(path: String) {
     x86_64_nasm_generator(path, instr_buf, data_buf).unwrap();
 }
 
-pub fn compile_to_llvm(path: String) {
-    let mut compiler_context = CompilerContext::new();
-    let (instr_buf, data_buf) =
-        llvm::compile(&mut compiler_context, path.clone()).expect("Can not Compile Program");
-    llvm_generator(path, instr_buf, data_buf).unwrap();
-}
+// pub fn compile_to_llvm(path: String) {
+//     let mut compiler_context = CompilerContext::new();
+//     let (instr_buf, data_buf) =
+//         llvm::compile(&mut compiler_context, path.clone()).expect("Can not Compile Program");
+//     llvm_generator(path, instr_buf, data_buf).unwrap();
+// }

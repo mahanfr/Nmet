@@ -8,7 +8,7 @@ mod command_line;
 mod compiler;
 mod error_handeling;
 mod lexer;
-mod llvm;
+// mod llvm;
 mod macros;
 mod output_generator;
 mod parser;
