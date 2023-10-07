@@ -118,22 +118,22 @@ impl VariableType {
         )
     }
 
-    pub fn to_llvm_type(&self) -> String {
-        match self {
-            VariableType::Any => unreachable!(),
-            VariableType::Custom(s) => format!("{}", s),
-            VariableType::Array(t, s) => format!("[{} x {}]", s, t),
-            VariableType::String => todo!(),
-            VariableType::Long => "i64".to_string(),
-            VariableType::ULong => "u64".to_string(),
-            VariableType::Int => "i32".to_string(),
-            VariableType::Pointer => "ptr".to_string(),
-            VariableType::UInt => "u32".to_string(),
-            VariableType::Bool => todo!(),
-            VariableType::Char => todo!(),
-            VariableType::Void => todo!(),
-        }
-    }
+    // pub fn to_llvm_type(&self) -> String {
+    //     match self {
+    //         VariableType::Any => unreachable!(),
+    //         VariableType::Custom(s) => format!("{}", s),
+    //         VariableType::Array(t, s) => format!("[{} x {}]", s, t),
+    //         VariableType::String => todo!(),
+    //         VariableType::Long => "i64".to_string(),
+    //         VariableType::ULong => "u64".to_string(),
+    //         VariableType::Int => "i32".to_string(),
+    //         VariableType::Pointer => "ptr".to_string(),
+    //         VariableType::UInt => "u32".to_string(),
+    //         VariableType::Bool => todo!(),
+    //         VariableType::Char => todo!(),
+    //         VariableType::Void => todo!(),
+    //     }
+    // }
 }
 impl Display for VariableType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

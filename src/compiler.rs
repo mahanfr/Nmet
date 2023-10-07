@@ -17,6 +17,7 @@ pub struct VariableMap {
 pub struct CompilerContext {
     pub instruct_buf: Vec<String>,
     pub data_buf: Vec<String>,
+    pub bss_buf: Vec<String>,
     pub scoped_blocks: Vec<usize>,
     pub block_id: usize,
     pub variables_map: HashMap<String, VariableMap>,
@@ -29,6 +30,7 @@ impl CompilerContext {
         Self {
             instruct_buf: Vec::new(),
             data_buf: Vec::new(),
+            bss_buf: Vec::new(),
             scoped_blocks: Vec::new(),
             block_id: 0,
             variables_map: HashMap::new(),

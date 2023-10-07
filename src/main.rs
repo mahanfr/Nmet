@@ -16,7 +16,7 @@ mod parser;
 mod tests;
 mod utils;
 use command_line::{help_command, CliArgs};
-use compiler::{compile_to_asm, compile_to_llvm};
+use compiler::compile_to_asm;
 
 // --- Static Compiler Defenition
 pub static VERSION: &str = "v0.0.1-Beta";
@@ -27,11 +27,11 @@ pub static DEBUG: bool = true;
 fn compile_command(arg: &mut CliArgs) {
     if arg.get().starts_with("--") {
         match arg.get().as_str() {
-            "--llvm" => {
-                arg.next();
-                compile_to_llvm(arg.get());
-                return;
-            }
+            // "--llvm" => {
+            //     arg.next();
+            //     compile_to_llvm(arg.get());
+            //     return;
+            // }
             "--linux" => {
                 arg.next();
             }

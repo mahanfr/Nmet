@@ -28,6 +28,14 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
         let init_value = var.init_value.clone().unwrap();
         // this pushes result in stack
         let texpr = compile_expr(cc, &init_value);
+        // TODO: Strings should include size
+        match &texpr {
+            VariableType::Array(t,_) => {
+                cc.bss_buf.push(format!("add{}: resb {}", cc.bss_buf.len(), t.size()));
+            },
+            VariableType::String => {},
+            _ => (),
+        }
         match vtype.cast(&texpr) {
             Ok(vt) => {
                 let mem_acss = format!("{} [rbp-{}]", mem_word(&vt), cc.mem_offset + vt.size());
