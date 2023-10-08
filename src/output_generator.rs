@@ -32,6 +32,7 @@ use crate::utils::get_program_name;
 pub fn x86_64_nasm_generator(
     path: String,
     instruct_buf: Vec<String>,
+    bss_buf: Vec<String>,
     data_buf: Vec<String>,
 ) -> Result<(), Box<dyn Error>> {
     fs::create_dir_all("./build").unwrap();
@@ -103,6 +104,14 @@ pub fn x86_64_nasm_generator(
 
     for instruct in &instruct_buf {
         file.write_all(instruct.as_bytes())?;
+    }
+
+    if bss_buf.len() > 0 {
+        file.write_all(b"\nsection .bss\n")?;
+        for bss in bss_buf {
+            file.write_all(bss.as_bytes())?;
+            file.write_all(b"\n")?;
+        }
     }
 
     file.flush().unwrap();

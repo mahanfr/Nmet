@@ -43,9 +43,9 @@ impl CompilerContext {
 pub fn compile_to_asm(path: String) {
     let mut compiler_context = CompilerContext::new();
 
-    let (instr_buf, data_buf) =
+    let (instr_buf, bss_buf, data_buf) =
         asm::compile(&mut compiler_context, path.clone()).expect("Can not Compile Program");
-    x86_64_nasm_generator(path, instr_buf, data_buf).unwrap();
+    x86_64_nasm_generator(path, instr_buf, bss_buf, data_buf).unwrap();
 }
 
 // pub fn compile_to_llvm(path: String) {

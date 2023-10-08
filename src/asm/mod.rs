@@ -139,7 +139,7 @@ pub fn compile_lib(
 pub fn compile(
     cc: &mut CompilerContext,
     path: String,
-) -> Result<(Vec<String>, Vec<String>), Box<dyn Error>> {
+) -> Result<(Vec<String>, Vec<String>, Vec<String>), Box<dyn Error>> {
     let program = parse_file(path);
     for item in program.items {
         match item {
@@ -166,7 +166,7 @@ pub fn compile(
         cc.scoped_blocks.is_empty(),
         "Somting went wrong: Scope has not been cleared"
     );
-    Ok((cc.instruct_buf.clone(), cc.data_buf.clone()))
+    Ok((cc.instruct_buf.clone(), cc.bss_buf.clone(), cc.data_buf.clone()))
 }
 
 /*

@@ -24,18 +24,23 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
         Some(vt) => vt.clone(),
         None => VariableType::Any,
     };
+    // Declare variable memory
+    match &vtype {
+        VariableType::Array(t,_) => {
+            let bss_tag = format!("arr{}",cc.bss_buf.len());
+            cc.bss_buf.push(format!("{}: resb {}", bss_tag, t.size()));
+            let mem_acss = format!("{} [rbp-{}]", mem_word(&VariableType::Pointer), cc.mem_offset + 8);
+            cc.instruct_buf.push(asm!("mov {mem_acss},{}", bss_tag));
+        },
+        VariableType::String => {},
+        _ => (),
+    }
+    // compile initial value
     if var.init_value.is_some() {
         let init_value = var.init_value.clone().unwrap();
         // this pushes result in stack
         let texpr = compile_expr(cc, &init_value);
         // TODO: Strings should include size
-        match &texpr {
-            VariableType::Array(t,_) => {
-                cc.bss_buf.push(format!("add{}: resb {}", cc.bss_buf.len(), t.size()));
-            },
-            VariableType::String => {},
-            _ => (),
-        }
         match vtype.cast(&texpr) {
             Ok(vt) => {
                 let mem_acss = format!("{} [rbp-{}]", mem_word(&vt), cc.mem_offset + vt.size());
@@ -49,6 +54,7 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
             }
         }
     }
+    // Type checking
     if vtype == VariableType::Any {
         return Err(format!(
             "Variable ({}) type is not known at compile time",
