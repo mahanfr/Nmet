@@ -182,12 +182,19 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) {
 
 fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
     let mem_acss = if v_map.vtype.item_size() != v_map.vtype.size() {
+        cc.instruct_buf.push(asm!("mov rdx, [rbp-{}]",v_map.offset + v_map.vtype.size()));
+        cc.instruct_buf.push(asm!("imul rbx, {}",v_map.vtype.item_size()));
+        cc.instruct_buf.push(asm!("add rdx, rbx"));
         format!(
-            "{} [rbp-{}+rbx*{}]",
-            mem_word(&v_map.vtype),
-            v_map.offset + v_map.vtype.size(),
-            v_map.vtype.item_size()
-        )
+            "{} [rdx]",
+            mem_word(&v_map.vtype)
+            )
+        // format!(
+        //     "{} [rbp-{}+rbx*{}]",
+        //     mem_word(&v_map.vtype),
+        //     v_map.offset + v_map.vtype.size(),
+        //     v_map.vtype.item_size()
+        // )
     } else {
         format!(
             "{} [rbp-{}]",

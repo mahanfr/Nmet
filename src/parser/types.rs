@@ -71,7 +71,7 @@ impl VariableType {
             Self::Char => 1,
             Self::String => 16,
             Self::Void => 0,
-            Self::Array(v, s) => v.size() * s,
+            Self::Array(_, _) => 8,
             _ => unreachable!(),
         }
     }

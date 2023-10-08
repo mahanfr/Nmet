@@ -1,6 +1,6 @@
 ~~ Rule 110 Cellular Automaton
 func main() {
-    var board @[int,30];
+    var board @[char,30];
     board[28] = 1;
     var i @int = 0;
     while i < 28 {

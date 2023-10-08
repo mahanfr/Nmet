@@ -236,11 +236,12 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             compile_expr(cc, &ai.indexer);
             cc.instruct_buf.push(asm!("pop rbx"));
             // TODO: Add Item size to v_map
+            cc.instruct_buf.push(asm!("mov rdx, [rbp-{}]",v_map.offset + v_map.vtype.size()));
+            cc.instruct_buf.push(asm!("imul rbx, {}",v_map.vtype.item_size()));
+            cc.instruct_buf.push(asm!("add rdx, rbx"));
             let mem_acss = format!(
-                "{} [rbp-{}+rbx*{}]",
-                mem_word(&v_map.vtype),
-                v_map.offset + v_map.vtype.size(),
-                v_map.vtype.item_size()
+                "{} [rdx]",
+                mem_word(&v_map.vtype)
             );
             let reg = rbs("a", &v_map.vtype);
             cc.instruct_buf.push(asm!("mov {reg},{mem_acss}"));
