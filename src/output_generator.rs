@@ -106,7 +106,7 @@ pub fn x86_64_nasm_generator(
         file.write_all(instruct.as_bytes())?;
     }
 
-    if bss_buf.len() > 0 {
+    if !bss_buf.is_empty() {
         file.write_all(b"\nsection .bss\n")?;
         for bss in bss_buf {
             file.write_all(bss.as_bytes())?;

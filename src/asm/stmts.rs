@@ -131,12 +131,12 @@ fn compile_inline_asm(cc: &mut CompilerContext, instr: &String) -> Result<(), St
                     index += 1;
                 }
                 if !ident.is_empty() {
-                    let Some(v_map) = find_variable(cc,ident.clone()) else {
-                            return Err(format!(
-                                "Could not find variable {} in this scope",
-                                ident.clone()
-                            ));
-                        };
+                    let Some(v_map) = find_variable(cc, ident.clone()) else {
+                        return Err(format!(
+                            "Could not find variable {} in this scope",
+                            ident.clone()
+                        ));
+                    };
                     let mem_acss = format!(
                         "{} [rbp-{}]",
                         mem_word(&v_map.vtype),
@@ -182,19 +182,12 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) {
 
 fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
     let mem_acss = if v_map.vtype.item_size() != v_map.vtype.size() {
-        cc.instruct_buf.push(asm!("mov rdx, [rbp-{}]",v_map.offset + v_map.vtype.size()));
-        cc.instruct_buf.push(asm!("imul rbx, {}",v_map.vtype.item_size()));
+        cc.instruct_buf
+            .push(asm!("mov rdx, [rbp-{}]", v_map.offset + v_map.vtype.size()));
+        cc.instruct_buf
+            .push(asm!("imul rbx, {}", v_map.vtype.item_size()));
         cc.instruct_buf.push(asm!("add rdx, rbx"));
-        format!(
-            "{} [rdx]",
-            mem_word(&v_map.vtype)
-            )
-        // format!(
-        //     "{} [rbp-{}+rbx*{}]",
-        //     mem_word(&v_map.vtype),
-        //     v_map.offset + v_map.vtype.size(),
-        //     v_map.vtype.item_size()
-        // )
+        format!("{} [rdx]", mem_word(&v_map.vtype))
     } else {
         format!(
             "{} [rbp-{}]",
@@ -243,9 +236,9 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
 fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), String> {
     match &assign.left.etype {
         ExprType::Variable(v) => {
-            let Some(v_map) = get_vriable_map(cc,v) else {
-                    return Err("Trying to access an Undifined variable".to_string());
-                };
+            let Some(v_map) = get_vriable_map(cc, v) else {
+                return Err("Trying to access an Undifined variable".to_string());
+            };
             if !v_map.is_mut {
                 return Err("Error: Variable is not mutable. Did you forgot to define it with '=' insted of ':=' ?".to_string());
             }
@@ -258,9 +251,9 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Strin
             Ok(())
         }
         ExprType::ArrayIndex(ai) => {
-            let Some(v_map) = get_vriable_map(cc,&ai.ident) else {
-                    return Err("Trying to access an Undifined variable".to_string());
-                };
+            let Some(v_map) = get_vriable_map(cc, &ai.ident) else {
+                return Err("Trying to access an Undifined variable".to_string());
+            };
             if !v_map.is_mut {
                 return Err("Error: Variable is not mutable. Did you forgot to define it with '=' insted of ':=' ?".to_string());
             }

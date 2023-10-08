@@ -103,10 +103,10 @@ impl VariableType {
                 Ok(cmp.0.clone())
             }
         } else {
-            return Err(format!(
+            Err(format!(
                 "Types ({}) and ({}) can not be casted to eachother for this operation",
                 cmp.0, cmp.1
-            ));
+            ))
         }
     }
 

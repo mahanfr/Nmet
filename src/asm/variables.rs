@@ -26,13 +26,18 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
     };
     // Declare variable memory
     match &vtype {
-        VariableType::Array(t,s) => {
-            let bss_tag = format!("arr{}",cc.bss_buf.len());
-            cc.bss_buf.push(format!("{}: resb {}", bss_tag, t.item_size() * s));
-            let mem_acss = format!("{} [rbp-{}]", mem_word(&VariableType::Pointer), cc.mem_offset + 8);
+        VariableType::Array(t, s) => {
+            let bss_tag = format!("arr{}", cc.bss_buf.len());
+            cc.bss_buf
+                .push(format!("{}: resb {}", bss_tag, t.item_size() * s));
+            let mem_acss = format!(
+                "{} [rbp-{}]",
+                mem_word(&VariableType::Pointer),
+                cc.mem_offset + 8
+            );
             cc.instruct_buf.push(asm!("mov {mem_acss},{}", bss_tag));
-        },
-        VariableType::String => {},
+        }
+        VariableType::String => {}
         _ => (),
     }
     // compile initial value

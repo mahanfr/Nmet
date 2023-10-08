@@ -19,9 +19,9 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
     // +
     match &expr.etype {
         ExprType::Variable(v) => {
-            let Some(v_map) = get_vriable_map(cc,v) else {
-                    error("Trying to access an Undifined variable",expr.loc.clone());
-                };
+            let Some(v_map) = get_vriable_map(cc, v) else {
+                error("Trying to access an Undifined variable", expr.loc.clone());
+            };
             let mem_acss = format!(
                 "{} [rbp-{}]",
                 mem_word(&v_map.vtype),
@@ -236,13 +236,12 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             compile_expr(cc, &ai.indexer);
             cc.instruct_buf.push(asm!("pop rbx"));
             // TODO: Add Item size to v_map
-            cc.instruct_buf.push(asm!("mov rdx, [rbp-{}]",v_map.offset + v_map.vtype.size()));
-            cc.instruct_buf.push(asm!("imul rbx, {}",v_map.vtype.item_size()));
+            cc.instruct_buf
+                .push(asm!("mov rdx, [rbp-{}]", v_map.offset + v_map.vtype.size()));
+            cc.instruct_buf
+                .push(asm!("imul rbx, {}", v_map.vtype.item_size()));
             cc.instruct_buf.push(asm!("add rdx, rbx"));
-            let mem_acss = format!(
-                "{} [rdx]",
-                mem_word(&v_map.vtype)
-            );
+            let mem_acss = format!("{} [rdx]", mem_word(&v_map.vtype));
             let reg = rbs("a", &v_map.vtype);
             cc.instruct_buf.push(asm!("mov {reg},{mem_acss}"));
             cc.instruct_buf.push(asm!("push rax"));
@@ -257,9 +256,9 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
 fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) {
     match &expr.etype {
         ExprType::Variable(v) => {
-            let Some(v_map) = get_vriable_map(cc,v) else {
-                    error("Trying to access an Undifined variable",expr.loc.clone());
-                };
+            let Some(v_map) = get_vriable_map(cc, v) else {
+                error("Trying to access an Undifined variable", expr.loc.clone());
+            };
             cc.instruct_buf.push(asm!("mov rax, rbp"));
             cc.instruct_buf
                 .push(asm!("sub rax, {}", v_map.offset + v_map.vtype.size()));
@@ -292,13 +291,11 @@ fn compile_function_call(
     }
     // TODO: Setup a unresolved function table
     let Some(fun) = cc.functions_map.get(&fc.ident) else {
-            return Err(
-            format!(
-                "Error: Function {} is not avaliable in this scope. {}",
-                &fc.ident,
-                "Make sure you are calling the correct function"
-            ))
-        };
+        return Err(format!(
+            "Error: Function {} is not avaliable in this scope. {}",
+            &fc.ident, "Make sure you are calling the correct function"
+        ));
+    };
     cc.instruct_buf.push(asm!("mov rax, 0"));
     cc.instruct_buf.push(asm!("call {}", fc.ident));
     if fun.ret_type != VariableType::Void {
