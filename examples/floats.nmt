@@ -1,0 +1,4 @@
+
+func main() {
+    print 3.1;
+}

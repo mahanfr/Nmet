@@ -29,6 +29,9 @@ pub enum ExprType {
     /// Integer values
     /// e.g: 10
     Int(i32),
+    /// Floating Number Values
+    /// e.g: 3.5 0.1 1.0 PI
+    Float(f64),
     /// Character values
     /// e.g: 'a', '\n', 10
     Char(u8),
@@ -376,6 +379,13 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
             lexer.next_token();
             Expr {
                 etype: ExprType::Int(val),
+                loc,
+            }
+        }
+        TokenType::Float(f) => {
+            lexer.next_token();
+            Expr {
+                etype: ExprType::Float(f),
                 loc,
             }
         }

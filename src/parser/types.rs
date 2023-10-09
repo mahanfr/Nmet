@@ -16,6 +16,8 @@ pub enum VariableType {
     Any,
     /// 4 byte integer
     Int,
+    /// 64bit float
+    Float,
     /// 4 byte unsigned integer
     UInt,
     /// 8 byte long
@@ -49,6 +51,7 @@ impl VariableType {
             "bool" => Self::Bool,
             "str" => Self::String,
             "ptr" => Self::Pointer,
+            "float" | "f" => Self::Float,
             _ => Self::Custom(literal),
         }
     }
@@ -72,7 +75,8 @@ impl VariableType {
             Self::String => 16,
             Self::Void => 0,
             Self::Array(_, _) => 8,
-            _ => unreachable!(),
+            Self::Float => 8,
+            Self::Any | Self::Custom(_) => todo!(),
         }
     }
 
@@ -97,6 +101,9 @@ impl VariableType {
             return Ok(Self::Pointer);
         }
         if cmp.0.is_numeric() && cmp.1.is_numeric() {
+            if cmp.0 == &Self::Float || cmp.1 == &Self::Float {
+                return Ok(Self::Float);
+            }
             if cmp.0.size() < cmp.1.size() {
                 Ok(cmp.1.clone())
             } else {
@@ -114,7 +121,7 @@ impl VariableType {
     pub fn is_numeric(&self) -> bool {
         matches!(
             self,
-            Self::Int | Self::Char | Self::UInt | Self::Pointer | Self::Long | Self::ULong
+            Self::Int | Self::Char | Self::UInt | Self::Pointer | Self::Long | Self::ULong | Self::Float
         )
     }
 
@@ -150,6 +157,7 @@ impl Display for VariableType {
             VariableType::Bool => write!(f, "@bool"),
             VariableType::Char => write!(f, "@char"),
             VariableType::Void => write!(f, "@void"),
+            VariableType::Float => write!(f, "@float"),
         }
     }
 }

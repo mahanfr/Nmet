@@ -15,7 +15,7 @@ pub enum TokenType {
     /// Numeric value e.g: 12 ,0xf3, 0b110
     Int(i32),
     /// Floating value e.g: 0.5
-    Float(f32),
+    Float(f64),
     /// Character Literal e.g: 'A', '9', '\n'
     Char(char),
     /// String Literal e.g: "Hello world", "hi\nhello"
@@ -689,7 +689,7 @@ impl Lexer {
             }
             TokenType::Int(value)
         } else if literal.contains('.') {
-            let value: f32 = literal.parse::<f32>().unwrap();
+            let value: f64 = literal.parse::<f64>().unwrap();
             TokenType::Float(value)
         } else {
             let value: i32 = literal.parse::<i32>().unwrap();

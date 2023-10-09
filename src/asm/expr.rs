@@ -45,6 +45,10 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             cc.instruct_buf.push(asm!("push {x}"));
             VariableType::Int
         }
+        ExprType::Float(f) => {
+            cc.instruct_buf.push(asm!("push __float64__({f})"));
+            VariableType::Float
+        }
         ExprType::Compare(c) => {
             let left_type = compile_expr(cc, c.left.as_ref());
             let right_type = compile_expr(cc, c.right.as_ref());
