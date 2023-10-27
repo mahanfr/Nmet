@@ -1,0 +1,76 @@
+func sys_exit(code @int) {
+    asm {
+        "mov edi, %code"
+        "mov rax, 60"
+        "syscall"
+    }
+}
+
+func socket(domain @int, type @int, protocol @int) @int {
+    ~ socket file descriptor
+    var sfd @int = 0;
+    asm {
+        "mov rax, 0x29"
+        "mov edi, %domain"
+        "mov esi, %type"
+        "mov edx, %protocol"
+        "syscall"
+        "mov %sfd, eax"
+    }
+    if sfd < 0 {
+        print "Error: opening up a socket connection\n";
+        sys_exit(-1);
+    } else {
+        return sfd;
+    }
+}
+
+func bind(socket_fd @int, sockaddr @ptr, size @long) {
+    var res @int = 0;
+    asm {
+        "mov rax, 0x31"
+        "mov edi, %socket_fd"
+        "mov rsi, %sockaddr"
+        "mov rdx, %size"
+        "syscall"
+        "mov %res ,eax"
+    }
+    if res < 0 {
+        print "Error: binding failed!\n";
+        sys_exit(-1);
+    }
+}
+
+func listen(socket_fd @int, backlog @int) {
+    var res @int = 0;
+    asm {
+        "mov rax, 0x32"
+        "mov edi, %socket_fd"
+        "mov esi, %backlog"
+        "syscall"
+        "mov %res, eax"
+    }
+    if res < 0 {
+        print "Error: Listen Failed!\n";
+        sys_exit(-1);
+    }
+}
+
+func main() {
+    var sfd = socket(2,1,0);
+    var server_addr @[char,16];
+    ~ AF_INET = 2 in u16
+    server_addr[0] = 0;
+    server_addr[1] = 2;
+    ~ port 8000 
+    server_addr[2] = 0x40;
+    server_addr[3] = 0x1f;
+    ~ sin_addr 0
+    server_addr[4] = 0;
+    server_addr[5] = 0;
+    server_addr[6] = 0;
+    server_addr[7] = 0;
+    bind(sfd, server_addr, 16);
+    listen(sfd, 10);
+    print "Hello World!\n";
+}
