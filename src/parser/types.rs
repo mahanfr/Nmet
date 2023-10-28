@@ -85,6 +85,25 @@ impl VariableType {
         matches!(self, Self::Any)
     }
 
+    pub fn cast_to_smaller(&self, other: &Self) -> Result<Self, String> {
+        let cmp = (self, other);
+        if cmp.0.is_numeric() && cmp.1.is_numeric() {
+            if cmp.0 == &Self::Float || cmp.1 == &Self::Float {
+                return Ok(Self::Float);
+            }
+            if cmp.0.size() > cmp.1.size() {
+                Ok(cmp.1.clone())
+            } else {
+                Ok(cmp.0.clone())
+            }
+        } else {
+            Err(format!(
+                "Types ({}) and ({}) can not be casted to eachother for this operation",
+                cmp.0, cmp.1
+            ))
+        }
+    }
+
     /// Cast two types into a single type
     pub fn cast(&self, other: &Self) -> Result<Self, String> {
         let cmp = (self, other);

@@ -6,6 +6,14 @@ func sys_exit(code @int) {
     }
 }
 
+func sys_close(fd @int) {
+    asm {
+        "mov rax, 3"
+        "mov edi, %fd"
+        "syscall"
+    }
+}
+
 func socket(domain @int, type @int, protocol @int) @int {
     ~ socket file descriptor
     var sfd @int = 0;
@@ -35,6 +43,8 @@ func bind(socket_fd @int, sockaddr @ptr, size @long) {
         "syscall"
         "mov %res ,eax"
     }
+    print "res of bind: ";
+    print res;
     if res < 0 {
         print "Error: binding failed!\n";
         sys_exit(-1);
@@ -56,21 +66,61 @@ func listen(socket_fd @int, backlog @int) {
     }
 }
 
+func accept(socket_fd @int, addr @ptr, addrlen @ptr) @int {
+    var res @int = 0;
+    asm {
+        "mov rax, 0x11d"
+        "mov rdi, %addr"
+        "mov rsi, %addrlen"
+        "syscall"
+        "mov %res, eax"
+    }
+    if res < 0 {
+        print "Error: cannot accept user request!\n";
+        sys_exit(-1);
+    }
+    return res;
+}
+
+func sys_write(fd @int, buf @ptr, size @u64) {
+    var err @int = 0;
+    asm {
+        "mov rax, 1"
+        "mov edi, %fd"
+        "mov rsi, %buf"
+        "mov rdx, %size"
+        "syscall"
+        "mov %err, eax"
+    }
+}
+
 func main() {
     var sfd = socket(2,1,0);
     var server_addr @[char,16];
     ~ AF_INET = 2 in u16
-    server_addr[0] = 0;
-    server_addr[1] = 2;
+    server_addr[0] = 2;
+    server_addr[1] = 0;
     ~ port 8000 
-    server_addr[2] = 0x40;
-    server_addr[3] = 0x1f;
+    server_addr[2] = 0x39;
+    server_addr[3] = 0x1B;
     ~ sin_addr 0
-    server_addr[4] = 0;
-    server_addr[5] = 0;
-    server_addr[6] = 0;
-    server_addr[7] = 0;
-    bind(sfd, server_addr, 16);
+    server_addr[4] = 0x00;
+    server_addr[5] = 0x00;
+    server_addr[6] = 0x00;
+    server_addr[7] = 0x00;
+    bind(sfd, 0, 0);
     listen(sfd, 10);
-    print "Hello World!\n";
+    var addr @[char,16];
+    var client_fd @int = 16;
+    client_fd = accept(sfd, &addr, &client_fd);
+    if client_fd < 0 {
+        print "Error: cannot accept user request!\n";
+        sys_exit(-1);
+    } else {
+        print client_fd;
+        print "Client Connected!\n";
+        sys_write(client_fd, "Hello world!\n", 12);
+        sys_close(client_fd);
+    }
+    sys_close(sfd);
 }

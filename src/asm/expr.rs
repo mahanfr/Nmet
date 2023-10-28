@@ -54,46 +54,50 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             let right_type = compile_expr(cc, c.right.as_ref());
             cc.instruct_buf.push(asm!("mov rcx, 0"));
             cc.instruct_buf.push(asm!("mov rdx, 1"));
+            let mut reg_type = left_type.clone();
+            if right_type != left_type {
+                if right_type.is_numeric() && left_type.is_numeric() {
+                    if left_type.size() < right_type.size() {
+                        reg_type = left_type;
+                    } else {
+                        reg_type = right_type;
+                    }
+                } else {
+                    error(
+                        format!(
+                            "Invalid Comparison between types: ({}) and ({})",
+                            left_type, right_type
+                        ),
+                            expr.loc.clone(),
+                    );
+                }
+            }
+            // Make sure rbx is first so the order is correct
             cc.instruct_buf.push(asm!("pop rbx"));
             cc.instruct_buf.push(asm!("pop rax"));
+            cc.instruct_buf.push(asm!("cmp {}, {}",rbs("a", &reg_type),rbs("b", &reg_type)));
             match c.op {
                 CompareOp::Eq => {
-                    cc.instruct_buf.push(asm!("cmp rax, rbx"));
                     cc.instruct_buf.push(asm!("cmove rcx, rdx"));
                 }
                 CompareOp::NotEq => {
-                    cc.instruct_buf.push(asm!("cmp rax, rbx"));
                     cc.instruct_buf.push(asm!("cmovne rcx, rdx"));
                 }
                 CompareOp::Bigger => {
-                    cc.instruct_buf.push(asm!("cmp rax, rbx"));
                     cc.instruct_buf.push(asm!("cmovg rcx, rdx"));
                 }
                 CompareOp::Smaller => {
-                    cc.instruct_buf.push(asm!("cmp rax, rbx"));
                     cc.instruct_buf.push(asm!("cmovl rcx, rdx"));
                 }
                 CompareOp::BiggerEq => {
-                    cc.instruct_buf.push(asm!("cmp rax, rbx"));
                     cc.instruct_buf.push(asm!("cmovge rcx, rdx"));
                 }
                 CompareOp::SmallerEq => {
-                    cc.instruct_buf.push(asm!("cmp rax, rbx"));
                     cc.instruct_buf.push(asm!("cmovle rcx, rdx"));
                 }
             }
             cc.instruct_buf.push(asm!("push rcx"));
-            if (right_type == left_type) || (right_type.is_numeric() && left_type.is_numeric()) {
-                VariableType::Bool
-            } else {
-                error(
-                    format!(
-                        "Invalid Comparison between types: ({}) and ({})",
-                        left_type, right_type
-                    ),
-                    expr.loc.clone(),
-                );
-            }
+            VariableType::Bool
         }
         ExprType::Binary(b) => {
             let left_type = compile_expr(cc, b.left.as_ref());
