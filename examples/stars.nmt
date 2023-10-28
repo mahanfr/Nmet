@@ -1,4 +1,4 @@
-import "./std/syscalls" :: sys_write
+import "./std/syscalls/file" :: syscall_write
 
 func main() {
     var line @[char,30];

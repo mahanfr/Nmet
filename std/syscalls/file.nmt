@@ -1,5 +1,4 @@
-
-func sys_read(fd @int, buf @ptr, size @u64) @ptr {
+func syscall_read(fd @int, buf @ptr, size @u64) @ptr {
     asm {
         "mov rax, 0"
         "mov rdi, %fd"
@@ -10,7 +9,7 @@ func sys_read(fd @int, buf @ptr, size @u64) @ptr {
     return buf;
 }
 
-func sys_write(fd @int, buf @ptr, size @u64) {
+func syscall_write(fd @int, buf @ptr, size @u64) {
     var err @int = 0;
     asm {
         "mov rax, 1"
@@ -22,15 +21,8 @@ func sys_write(fd @int, buf @ptr, size @u64) {
     }
 }
 
-func sys_exit(code @int) {
-    asm {
-        "mov edi, %code"
-        "mov rax, 60"
-        "syscall"
-    }
-}
 
-func sys_open(filename @str, flags @int, mode @int) @u32 {
+func syscall_open(filename @str, flags @int, mode @int) @u32 {
     var fd @u32 = 0;
     asm {
         "mov rax, 2"
@@ -43,23 +35,15 @@ func sys_open(filename @str, flags @int, mode @int) @u32 {
     return fd;
 }
 
-func sys_close(fd @int) {
+func syscall_close(fd @int) {
     asm {
         "mov rax, 3"
-        "mov rdi, %fd"
+        "mov edi, %fd"
         "syscall"
     }
 }
 
-func sys_alarm(secound @u32) {
-    asm {
-        "mov rax, 37"
-        "mov rid, %secound"
-        "syscall"
-    }
-}
-
-func sys_rename(oldName @str, newName @string) {
+func syscall_rename(oldName @str, newName @string) {
     asm {
         "mov rax, 82"
         "mov rid, %oldName"
@@ -68,7 +52,7 @@ func sys_rename(oldName @str, newName @string) {
     }
 }
 
-func sys_mkdir(pathName @str, mode @int) {
+func syscall_mkdir(pathName @str, mode @int) {
     asm {
         "mov rax, 83"
         "mov rid, %pathName"
@@ -77,7 +61,7 @@ func sys_mkdir(pathName @str, mode @int) {
     }
 }
 
-func sys_rmdir(pathName @str) {
+func syscall_rmdir(pathName @str) {
     asm {
         "mov rax, 84"
         "mov rid, %pathName"
@@ -85,7 +69,7 @@ func sys_rmdir(pathName @str) {
     }
 }
 
-func sys_create(pathName @str, mode @int) {
+func syscall_create(pathName @str, mode @int) {
     asm {
         "mov rax, 85"
         "mov rid, %pathName"
@@ -94,16 +78,7 @@ func sys_create(pathName @str, mode @int) {
     }
 }
 
-func sys_kill(pid @int, intSig @int) {
-    asm {
-        "mov rax, 62"
-        "mov rdi, %pid"
-        "mov rdi, %intSig"
-        "syscall"
-    }
-}
-
-func sys_access(fileName @char, mode @int) {
+func syscall_access(fileName @char, mode @int) {
     asm {
         "mov rax, 21"
         "mov rdi, %fileName"

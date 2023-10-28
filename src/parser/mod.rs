@@ -21,7 +21,10 @@ use crate::parser::program::*;
 ///
 /// Can panic if file dose not exists
 pub fn parse_file(path: String) -> ProgramFile {
-    let source = fs::read_to_string(path.clone()).expect("Can not Read the file");
+    let source = fs::read_to_string(path.clone()).unwrap_or_else(|_| {
+        eprintln!("Error reading file \"{}\"",path.clone());
+        panic!("Can not open file!");
+    });
     let mut lexer = Lexer::new(path, source);
     program(&mut lexer)
 }

@@ -1,3 +1,4 @@
+#include <asm-generic/errno-base.h>
 #include <bits/sockaddr.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,7 +29,17 @@ int main(void) {
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     server_addr.sin_port = htons(8000);
-    if(bind(socket_fd, (struct sockaddr*) 0, 0) < 0) {
+    char* s = (char*) &server_addr;
+    printf("%d\n\n",EACCES);
+    printf("%X,%X\n",s[0],s[1]);
+    // **
+    char addr[16] = {0};
+    addr[0] = 2;
+    addr[1] = 0;
+    addr[2] = 0x39;
+    addr[3] = 0x1b;
+    if(bind(socket_fd, (struct sockaddr*) &addr, 16) < 0) {
+        perror("Bind Failed");
         exit(45);
     }
     if ((listen(socket_fd, 5)) < 0) { 

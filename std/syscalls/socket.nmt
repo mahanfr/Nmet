@@ -1,0 +1,69 @@
+import "./std/core" :: print_int
+import "./std/syscalls/proc" :: syscall_exit
+
+func syscall_socket(domain @int, type @int, protocol @int) @int {
+    ~ socket file descriptor
+    var sfd @int = 0;
+    asm {
+        "mov rax, 0x29"
+        "mov edi, %domain"
+        "mov esi, %type"
+        "mov edx, %protocol"
+        "syscall"
+        "mov %sfd, eax"
+    }
+    if sfd < 0 {
+        print "Error: opening up a socket connection\n";
+        syscall_exit(-1);
+    } else {
+        return sfd;
+    }
+}
+
+func syscall_bind(socket_fd @int, sockaddr @ptr, size @long) {
+    var res @int = 0;
+    asm {
+        "mov rax, 0x31"
+        "mov edi, %socket_fd"
+        "mov rsi, %sockaddr"
+        "mov rdx, %size"
+        "syscall"
+        "mov %res ,eax"
+    }
+    if res < 0 {
+        ~print_int(res);
+        print "Error: binding failed!\n";
+        syscall_exit(-1);
+    }
+}
+
+func syscall_listen(socket_fd @int, backlog @int) {
+    var res @int = 0;
+    asm {
+        "mov rax, 0x32"
+        "mov edi, %socket_fd"
+        "mov esi, %backlog"
+        "syscall"
+        "mov %res, eax"
+    }
+    if res < 0 {
+        print "Error: Listen Failed!\n";
+        syscall_exit(-1);
+    }
+}
+
+func syscall_accept(socket_fd @int, addr @ptr, addrlen @ptr) @int {
+    var res @int = 0;
+    asm {
+        "mov rax, 0x11d"
+        "mov rdi, %addr"
+        "mov rsi, %addrlen"
+        "syscall"
+        "mov %res, eax"
+    }
+    if res < 0 {
+        print "Error: cannot accept user request!\n";
+        syscall_exit(-1);
+    }
+    return res;
+}

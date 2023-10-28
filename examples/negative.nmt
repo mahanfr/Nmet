@@ -1,5 +1,5 @@
-import "./std/io" :: print_int
-import "./std/syscalls" :: sys_write
+import "./std/core" :: print_int
+import "./std/syscalls/file" :: syscall_write
 
 func main() {
     hello();

@@ -1,4 +1,4 @@
-import "./std/syscalls" :: sys_write
+import "./std/syscalls/file" :: syscall_write
 
 func print_int(x @long) {
      var a = x;
@@ -17,7 +17,7 @@ func print_int(x @long) {
          a /= 10;
      }
      if x < 0 {
-         sys_write(1,"-", 1);
+         syscall_write(1,"-", 1);
      }
-     sys_write(1,&buffer + 32 - buf_sz , buf_sz);
+     syscall_write(1,&buffer + 32 - buf_sz , buf_sz);
 }
