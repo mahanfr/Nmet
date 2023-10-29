@@ -226,12 +226,16 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
         }
         ExprType::DeRef(r) => {
             let t = compile_expr(cc, r);
-            if t != VariableType::Pointer {
-                error(format!("Expected a Pointer found ({t})"), expr.loc.clone());
+            match t {
+                VariableType::Array(_,_) | VariableType::Pointer => {
+                    cc.instruct_buf.push(asm!("pop rax"));
+                    cc.instruct_buf.push(asm!("mov rcx, qword [rax]"));
+                    cc.instruct_buf.push(asm!("push rcx"));
+                },
+                _ => {
+                    error(format!("Expected a Pointer found ({t})"), expr.loc.clone());
+                }
             }
-            cc.instruct_buf.push(asm!("pop rax"));
-            cc.instruct_buf.push(asm!("mov rcx, qword [rax]"));
-            cc.instruct_buf.push(asm!("push rcx"));
             VariableType::Any
         }
         ExprType::ArrayIndex(ai) => {
@@ -267,10 +271,19 @@ fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) {
             let Some(v_map) = get_vriable_map(cc, v) else {
                 error("Trying to access an Undifined variable", expr.loc.clone());
             };
-            cc.instruct_buf.push(asm!("mov rax, rbp"));
-            cc.instruct_buf
-                .push(asm!("sub rax, {}", v_map.offset + v_map.vtype.size()));
-            cc.instruct_buf.push(asm!("push rax"));
+            match v_map.vtype {
+               VariableType::Array(_,_) => {
+                   let mov_addr = format!("qword [rbp - {}]", v_map.offset + v_map.vtype.size());
+                   cc.instruct_buf.push(asm!("mov rax, {mov_addr}"));
+                   cc.instruct_buf.push(asm!("push rax"));
+               },
+                _ => {
+                    cc.instruct_buf.push(asm!("mov rax, rbp"));
+                    cc.instruct_buf
+                        .push(asm!("sub rax, {}", v_map.offset + v_map.vtype.size()));
+                    cc.instruct_buf.push(asm!("push rax"));
+                }
+            }
         }
         _ => {
             todo!("Impl Pointers");

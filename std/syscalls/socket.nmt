@@ -31,7 +31,6 @@ func syscall_bind(socket_fd @int, sockaddr @ptr, size @long) {
         "mov %res ,eax"
     }
     if res < 0 {
-        ~print_int(res);
         print "Error: binding failed!\n";
         syscall_exit(-1);
     }

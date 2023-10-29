@@ -6,8 +6,9 @@ func main() {
     var index = 0;
     while index < 20 {
         index += 1;
-        sys_write(1, &line, index);
-        sys_write(1, "\n", 1);
+        syscall_write(1, &line, index);
+        syscall_write(1, "\n", 1);
         line[index] = '*';
     }
+    print line[4];
 }

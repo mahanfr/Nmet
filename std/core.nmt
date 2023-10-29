@@ -19,5 +19,5 @@ func print_int(x @long) {
      if x < 0 {
          syscall_write(1,"-", 1);
      }
-     syscall_write(1,&buffer + 32 - buf_sz , buf_sz);
+     syscall_write(1, &buffer + 32 - buf_sz, buf_sz);
 }
