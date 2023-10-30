@@ -54,15 +54,18 @@ func syscall_listen(socket_fd @int, backlog @int) {
 func syscall_accept(socket_fd @int, addr @ptr, addrlen @ptr) @int {
     var res @int = 0;
     asm {
-        "mov rax, 0x11d"
-        "mov rdi, %addr"
-        "mov rsi, %addrlen"
+        "mov rax, 43"
+        "mov edi, %socket_fd"
+        "mov rsi, %addr"
+        "mov rdx, %addrlen"
         "syscall"
         "mov %res, eax"
     }
-    if res < 0 {
-        print "Error: cannot accept user request!\n";
-        syscall_exit(-1);
+    if res == -9 {
+        print "Warning: sockfd is not an open file descriptor\n";
+    }
+    if res == -22 {
+        print "Socket is not listening for connections, or addrlen is invalid\n";
     }
     return res;
 }
