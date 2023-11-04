@@ -5,11 +5,14 @@ mod variables;
 
 use std::error::Error;
 
+use crate::asm;
 use crate::asm::function::compile_function;
 use crate::compiler::CompilerContext;
-use crate::parser::block::Block;
+use crate::error_handeling::error;
+use crate::parser::block::{Block, BlockType};
 use crate::parser::parse_file;
 use crate::parser::program::ProgramItem;
+use crate::parser::stmt::StmtType;
 use crate::parser::types::VariableType;
 
 use self::stmts::compile_stmt;
@@ -176,11 +179,31 @@ pub fn compile(cc: &mut CompilerContext, path: String) -> Result<CompileRes, Box
  *  keep in mind there could be a problem when a variable wants to access
  *  somthing that added after in code but it could be a feature too :)
  */
-fn compile_block(cc: &mut CompilerContext, block: &Block) {
+fn compile_block(cc: &mut CompilerContext, block: &Block, block_loc: Option<(usize,usize)>) {
     cc.block_id += 1;
     cc.scoped_blocks.push(cc.block_id);
     for stmt in &block.stmts {
-        compile_stmt(cc, stmt);
+        match stmt.stype {
+            StmtType::Break => {
+                if block.btype != BlockType::Function || 
+                    block.btype != BlockType::Condition {
+                    cc.instruct_buf.push(asm!("jmp .L{}",block_loc.unwrap().1));
+                } else {
+                    error("unsupported statement \"break\" for block",stmt.loc.clone());
+                }
+            },
+            StmtType::Continue => {
+                if block.btype != BlockType::Function || 
+                    block.btype != BlockType::Condition {
+                    cc.instruct_buf.push(asm!("jmp .L{}",block_loc.unwrap().0));
+                } else {
+                    error("unsupported statement \"continue\" for block",stmt.loc.clone());
+                }
+            },
+            _ => {
+                compile_stmt(cc, stmt);
+            }
+        }
     }
     cc.block_id -= 1;
     cc.scoped_blocks.pop().unwrap();

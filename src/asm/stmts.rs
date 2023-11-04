@@ -33,7 +33,7 @@ fn compile_if_stmt(cc: &mut CompilerContext, ifs: &IFStmt, exit_tag: usize) {
     cc.instruct_buf.push(asm!("test rax, rax"));
     cc.instruct_buf.push(asm!("jz .L{}", next_tag));
 
-    compile_block(cc, &ifs.then_block);
+    compile_block(cc, &ifs.then_block,None);
     match ifs.else_block.as_ref() {
         ElseBlock::None => {
             cc.instruct_buf.push(asm!(".L{}:", next_tag));
@@ -41,7 +41,7 @@ fn compile_if_stmt(cc: &mut CompilerContext, ifs: &IFStmt, exit_tag: usize) {
         ElseBlock::Else(b) => {
             cc.instruct_buf.push(asm!("jmp .L{}", exit_tag));
             cc.instruct_buf.push(asm!(".L{}:", next_tag));
-            compile_block(cc, b);
+            compile_block(cc, b, None);
             cc.instruct_buf.push(asm!(".L{}:", exit_tag));
         }
         ElseBlock::Elif(iff) => {
@@ -167,7 +167,7 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) {
     cc.instruct_buf.push(asm!("jmp .L{}", cond_tag));
     let block_tag = cond_tag + 1;
     cc.instruct_buf.push(asm!(".L{}:", block_tag));
-    compile_block(cc, &w_stmt.block);
+    compile_block(cc, &w_stmt.block, Some((cond_tag,block_tag)));
     cc.instruct_buf.push(asm!(".L{}:", cond_tag));
     // Jump after a compare
     let condition_type = compile_expr(cc, &w_stmt.condition);

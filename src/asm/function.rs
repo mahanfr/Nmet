@@ -58,7 +58,7 @@ pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
     cc.instruct_buf.push(String::new());
 
     function_args(cc, &f.args);
-    compile_block(cc, &f.block);
+    compile_block(cc, &f.block, None);
     cc.scoped_blocks.pop();
     // Call Exit Syscall
     if !cc.variables_map.is_empty() {

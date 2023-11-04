@@ -10,10 +10,19 @@ use super::{
     variable_decl::variable_declare,
 };
 
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum BlockType {
+    Condition,
+    Loop,
+    Function
+}
+
 /// Block Stmt
 /// Holds a list of stmt in a block of code
 #[derive(Debug, Clone)]
 pub struct Block {
+    pub btype: BlockType,
     pub stmts: Vec<Stmt>,
 }
 
@@ -21,7 +30,7 @@ pub struct Block {
 /// # Argumenrs
 /// * lexer - address of mutable lexer
 /// Returns a Block
-pub fn block(lexer: &mut Lexer) -> Block {
+pub fn block(lexer: &mut Lexer, btype: BlockType) -> Block {
     lexer.match_token(TokenType::OCurly);
     let mut stmts = Vec::<Stmt>::new();
     loop {
@@ -113,5 +122,5 @@ pub fn block(lexer: &mut Lexer) -> Block {
         }
     }
     lexer.match_token(TokenType::CCurly);
-    Block { stmts }
+    Block { stmts, btype }
 }
