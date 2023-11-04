@@ -7,7 +7,7 @@ use std::error::Error;
 
 use crate::asm;
 use crate::asm::function::compile_function;
-use crate::compiler::CompilerContext;
+use crate::compiler::{CompilerContext, ScopeBlock, BLocation};
 use crate::error_handeling::error;
 use crate::parser::block::{Block, BlockType};
 use crate::parser::parse_file;
@@ -179,9 +179,9 @@ pub fn compile(cc: &mut CompilerContext, path: String) -> Result<CompileRes, Box
  *  keep in mind there could be a problem when a variable wants to access
  *  somthing that added after in code but it could be a feature too :)
  */
-fn compile_block(cc: &mut CompilerContext, block: &Block, block_loc: Option<(usize,usize)>) {
+fn compile_block(cc: &mut CompilerContext, block: &Block, block_loc: Option<BLocation>) {
     cc.block_id += 1;
-    cc.scoped_blocks.push(cc.block_id);
+    cc.scoped_blocks.push(ScopeBlock::new(cc.block_id,block.btype.clone(),block_loc));
     for stmt in &block.stmts {
         match stmt.stype {
             StmtType::Break => {

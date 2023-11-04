@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     asm,
     output_generator::x86_64_nasm_generator,
-    parser::{function::Function, types::VariableType},
+    parser::{function::Function, types::VariableType, block::BlockType},
 };
 
 #[derive(Debug, Clone)]
@@ -14,11 +14,28 @@ pub struct VariableMap {
     pub is_mut: bool,
 }
 
+pub type BLocation = (usize,usize);
+
+pub struct ScopeBlock {
+    pub id: usize,
+    pub btype: BlockType,
+    pub location: Option<BLocation>,
+}
+impl ScopeBlock {
+    pub fn new(id: usize, btype: BlockType, location: Option<BLocation>) -> Self {
+        Self {
+            id,
+            btype,
+            location
+        }
+    }
+}
+
 pub struct CompilerContext {
     pub instruct_buf: Vec<String>,
     pub data_buf: Vec<String>,
     pub bss_buf: Vec<String>,
-    pub scoped_blocks: Vec<usize>,
+    pub scoped_blocks: Vec<ScopeBlock>,
     pub block_id: usize,
     pub variables_map: HashMap<String, VariableMap>,
     pub functions_map: HashMap<String, Function>,

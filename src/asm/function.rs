@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use crate::{
     asm,
-    compiler::VariableMap,
-    parser::function::{Function, FunctionArg},
+    compiler::{VariableMap, ScopeBlock},
+    parser::{function::{Function, FunctionArg}, block::BlockType},
 };
 
 use super::{compile_block, frame_size, function_args_register_sized, mem_word, CompilerContext};
@@ -40,7 +40,7 @@ pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
 pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
     cc.scoped_blocks = Vec::new();
     cc.block_id = 0;
-    cc.scoped_blocks.push(0);
+    cc.scoped_blocks.push(ScopeBlock::new(0,BlockType::Function,None));
     cc.mem_offset = 0;
     cc.variables_map = HashMap::new();
     if f.ident == "main" {

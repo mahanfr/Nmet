@@ -8,8 +8,8 @@ use crate::{
 use super::{expr::compile_expr, mem_word, rbs, CompilerContext};
 
 pub fn find_variable(cc: &CompilerContext, ident: String) -> Option<VariableMap> {
-    for block_id in &cc.scoped_blocks {
-        let map_ident = format!("{ident}%{}", block_id);
+    for scoped_block in &cc.scoped_blocks {
+        let map_ident = format!("{ident}%{}", scoped_block.id);
         let map = cc.variables_map.get(&map_ident);
         if let Some(map) = map {
             return Some(map.clone());
