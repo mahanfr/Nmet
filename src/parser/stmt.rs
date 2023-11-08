@@ -4,7 +4,7 @@ use crate::parser::block::Block;
 use crate::parser::expr::Expr;
 
 use super::assign::Assign;
-use super::block::{block, BlockType};
+use super::block::block;
 use super::expr::expr;
 use super::variable_decl::VariableDeclare;
 
@@ -80,7 +80,7 @@ pub struct WhileStmt {
 pub fn if_stmt(lexer: &mut Lexer) -> IFStmt {
     lexer.match_token(TokenType::If);
     let condition = expr(lexer);
-    let then_block = block(lexer,BlockType::Condition);
+    let then_block = block(lexer);
     if lexer.get_token_type() == TokenType::Else {
         lexer.match_token(TokenType::Else);
         if lexer.get_token_type() == TokenType::If {
@@ -91,7 +91,7 @@ pub fn if_stmt(lexer: &mut Lexer) -> IFStmt {
                 else_block,
             }
         } else {
-            let else_block = Box::new(ElseBlock::Else(block(lexer,BlockType::Condition)));
+            let else_block = Box::new(ElseBlock::Else(block(lexer)));
             IFStmt {
                 condition,
                 then_block,
@@ -111,6 +111,6 @@ pub fn if_stmt(lexer: &mut Lexer) -> IFStmt {
 pub fn while_stmt(lexer: &mut Lexer) -> WhileStmt {
     lexer.match_token(TokenType::While);
     let condition = expr(lexer);
-    let block = block(lexer,BlockType::Loop);
+    let block = block(lexer);
     WhileStmt { condition, block }
 }

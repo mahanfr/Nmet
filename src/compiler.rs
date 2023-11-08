@@ -18,15 +18,13 @@ pub type BLocation = (usize,usize);
 
 pub struct ScopeBlock {
     pub id: usize,
-    pub btype: BlockType,
-    pub location: Option<BLocation>,
+    pub block_type: BlockType,
 }
 impl ScopeBlock {
-    pub fn new(id: usize, btype: BlockType, location: Option<BLocation>) -> Self {
+    pub fn new(id: usize, block_type: BlockType) -> Self {
         Self {
             id,
-            btype,
-            location
+            block_type,
         }
     }
 }

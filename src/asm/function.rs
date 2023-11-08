@@ -40,7 +40,7 @@ pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
 pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
     cc.scoped_blocks = Vec::new();
     cc.block_id = 0;
-    cc.scoped_blocks.push(ScopeBlock::new(0,BlockType::Function,None));
+    cc.scoped_blocks.push(ScopeBlock::new(0, BlockType::Function));
     cc.mem_offset = 0;
     cc.variables_map = HashMap::new();
     if f.ident == "main" {
@@ -58,7 +58,7 @@ pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
     cc.instruct_buf.push(String::new());
 
     function_args(cc, &f.args);
-    compile_block(cc, &f.block, None);
+    compile_block(cc, &f.block, BlockType::Function);
     cc.scoped_blocks.pop();
     // Call Exit Syscall
     if !cc.variables_map.is_empty() {

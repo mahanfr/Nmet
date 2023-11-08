@@ -6,7 +6,7 @@ use crate::{
         assign::{Assign, AssignOp},
         expr::ExprType,
         stmt::{ElseBlock, IFStmt, Stmt, StmtType, WhileStmt},
-        types::VariableType,
+        types::VariableType, block::BlockType,
     },
 };
 
@@ -33,7 +33,7 @@ fn compile_if_stmt(cc: &mut CompilerContext, ifs: &IFStmt, exit_tag: usize) {
     cc.instruct_buf.push(asm!("test rax, rax"));
     cc.instruct_buf.push(asm!("jz .L{}", next_tag));
 
-    compile_block(cc, &ifs.then_block,None);
+    compile_block(cc, &ifs.then_block, BlockType::Condition);
     match ifs.else_block.as_ref() {
         ElseBlock::None => {
             cc.instruct_buf.push(asm!(".L{}:", next_tag));
@@ -41,7 +41,7 @@ fn compile_if_stmt(cc: &mut CompilerContext, ifs: &IFStmt, exit_tag: usize) {
         ElseBlock::Else(b) => {
             cc.instruct_buf.push(asm!("jmp .L{}", exit_tag));
             cc.instruct_buf.push(asm!(".L{}:", next_tag));
-            compile_block(cc, b, None);
+            compile_block(cc, b, BlockType::Condition);
             cc.instruct_buf.push(asm!(".L{}:", exit_tag));
         }
         ElseBlock::Elif(iff) => {
@@ -167,7 +167,7 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) {
     cc.instruct_buf.push(asm!("jmp .L{}", cond_tag));
     let block_tag = cond_tag + 1;
     cc.instruct_buf.push(asm!(".L{}:", block_tag));
-    compile_block(cc, &w_stmt.block, Some((cond_tag,block_tag)));
+    compile_block(cc, &w_stmt.block, BlockType::Loop((cond_tag,block_tag)));
     cc.instruct_buf.push(asm!(".L{}:", cond_tag));
     // Jump after a compare
     let condition_type = compile_expr(cc, &w_stmt.condition);
@@ -178,6 +178,7 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) {
     cc.instruct_buf.push(asm!("pop rax"));
     cc.instruct_buf.push(asm!("test rax, rax"));
     cc.instruct_buf.push(asm!("jnz .L{}", block_tag));
+    cc.instruct_buf.push(asm!(".LE{}:", block_tag));
 }
 
 fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {

@@ -7,7 +7,7 @@ use std::error::Error;
 
 use crate::asm;
 use crate::asm::function::compile_function;
-use crate::compiler::{CompilerContext, ScopeBlock, BLocation};
+use crate::compiler::{CompilerContext, ScopeBlock};
 use crate::error_handeling::error;
 use crate::parser::block::{Block, BlockType};
 use crate::parser::parse_file;
@@ -179,25 +179,41 @@ pub fn compile(cc: &mut CompilerContext, path: String) -> Result<CompileRes, Box
  *  keep in mind there could be a problem when a variable wants to access
  *  somthing that added after in code but it could be a feature too :)
  */
-fn compile_block(cc: &mut CompilerContext, block: &Block, block_loc: Option<BLocation>) {
+fn compile_block(cc: &mut CompilerContext, block: &Block, block_type: BlockType) {
     cc.block_id += 1;
-    cc.scoped_blocks.push(ScopeBlock::new(cc.block_id,block.btype.clone(),block_loc));
+    cc.scoped_blocks.push(ScopeBlock::new(cc.block_id, block_type));
     for stmt in &block.stmts {
         match stmt.stype {
             StmtType::Break => {
-                if block.btype != BlockType::Function || 
-                    block.btype != BlockType::Condition {
-                    cc.instruct_buf.push(asm!("jmp .L{}",block_loc.unwrap().1));
-                } else {
-                    error("unsupported statement \"break\" for block",stmt.loc.clone());
+                let mut did_break: bool = false;
+                for s_block in cc.scoped_blocks.iter().rev() {
+                    match s_block.block_type {
+                        BlockType::Loop(loc) => {
+                            cc.instruct_buf.push(asm!("jmp .LE{}",loc.1));
+                            did_break = true;
+                            break;
+                        },
+                        _ => ()
+                    }
+                }
+                if !did_break {
+                    error("Can not break out of non-loop blocks!",stmt.loc.clone());   
                 }
             },
             StmtType::Continue => {
-                if block.btype != BlockType::Function || 
-                    block.btype != BlockType::Condition {
-                    cc.instruct_buf.push(asm!("jmp .L{}",block_loc.unwrap().0));
-                } else {
-                    error("unsupported statement \"continue\" for block",stmt.loc.clone());
+                let mut did_cont: bool = false;
+                for s_block in cc.scoped_blocks.iter().rev() {
+                    match s_block.block_type {
+                        BlockType::Loop(loc) => {
+                            cc.instruct_buf.push(asm!("jmp .L{}",loc.0));
+                            did_cont = true;
+                            break;
+                        },
+                        _ => ()
+                    }
+                }
+                if !did_cont {
+                    error("Can not continue in non-loop blocks!",stmt.loc.clone());   
                 }
             },
             _ => {

@@ -4,7 +4,7 @@ use crate::{
     parser::{block::Block, types::type_def},
 };
 
-use super::{block::{block, BlockType}, types::VariableType};
+use super::{block::block, types::VariableType};
 
 /// Function Definition Arguments
 /// * ident - name of argument in function name space
@@ -42,7 +42,7 @@ pub fn function_def(lexer: &mut Lexer) -> Function {
     if lexer.get_token_type() == TokenType::ATSign {
         ret_type = type_def(lexer);
     }
-    let block = block(lexer,BlockType::Function);
+    let block = block(lexer);
     Function {
         ident: function_ident_token.literal,
         ret_type,
