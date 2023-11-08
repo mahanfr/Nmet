@@ -25,6 +25,21 @@ fn binary_expr_test() {
 }
 
 #[test]
+fn cont_break_test() {
+    generate_asm("./tests/cont_break.nmt");
+    let output = Command::new("./build/cont_break")
+        .output()
+        .expect("Error Executing the program!");
+    assert!(output.status.success());
+    let expectation = "5\n";
+    assert_eq!(
+        String::from_utf8(output.stdout).unwrap(),
+        expectation.to_string()
+    );
+    remove_file("./build/cont_break").unwrap_or_else(|_| ());
+}
+
+#[test]
 fn compare_expr_test() {
     generate_asm("./tests/compare_expr.nmt");
     let output = Command::new("./build/compare_expr")
