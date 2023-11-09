@@ -6,6 +6,7 @@ pub mod program;
 pub mod stmt;
 pub mod types;
 pub mod variable_decl;
+pub mod structs;
 use std::fs;
 
 use crate::lexer::Lexer;

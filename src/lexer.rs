@@ -38,6 +38,8 @@ pub enum TokenType {
     Bigger,
     /// "<" Smaller Compare Operation
     Smaller,
+    /// Keyword Struct
+    Struct,
     /// Keyword func
     Func,
     /// Keyword if
@@ -161,6 +163,7 @@ impl Display for TokenType {
             TokenType::Bigger => write!(f, ">"),
             TokenType::Smaller => write!(f, "<"),
             TokenType::Func => write!(f, "func"),
+            TokenType::Struct => write!(f, "struct"),
             TokenType::If => write!(f, "if"),
             TokenType::Var => write!(f, "var"),
             TokenType::Else => write!(f, "else"),
@@ -568,6 +571,7 @@ impl Lexer {
             "if" => Some(TokenType::If),
             "else" => Some(TokenType::Else),
             "func" => Some(TokenType::Func),
+            "struct" => Some(TokenType::Struct),
             "var" => Some(TokenType::Var),
             "return" => Some(TokenType::Return),
             "while" => Some(TokenType::While),

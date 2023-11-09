@@ -1,4 +1,3 @@
-
 struct Animal {
     name @str,
     sound @str,
