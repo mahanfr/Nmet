@@ -9,6 +9,7 @@ mod compiler;
 mod error_handeling;
 mod lexer;
 // mod llvm;
+mod common;
 mod macros;
 mod output_generator;
 mod parser;

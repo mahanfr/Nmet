@@ -1,0 +1,13 @@
+
+struct Animal {
+    name @str,
+    sound @str,
+}
+
+func main() {
+    var a @Animal = {
+        name: "dog",
+        sound: "bark",
+    };
+    print a.name;
+}

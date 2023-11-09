@@ -32,6 +32,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             cc.instruct_buf.push(asm!("push rax"));
             v_map.vtype
         }
+        ExprType::Access(_, _) => todo!(),
         ExprType::Bool(b) => {
             cc.instruct_buf.push(asm!("push {b}"));
             VariableType::Bool

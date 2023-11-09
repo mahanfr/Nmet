@@ -34,6 +34,9 @@ pub enum VariableType {
     Pointer,
     /// const sized array
     Array(Box<VariableType>, usize),
+    /// Struct Pointer
+    /// Named Types????
+    Struct(String,Vec<(String,VariableType)>),
     /// user defined types
     Custom(String),
 }
@@ -76,6 +79,8 @@ impl VariableType {
             Self::Void => 0,
             Self::Array(_, _) => 8,
             Self::Float => 8,
+            Self::Struct(_,ts) => ts.iter().map(|(_,t)| t.size()).sum(),
+            
             Self::Any | Self::Custom(_) => todo!(),
         }
     }
@@ -146,6 +151,7 @@ impl Display for VariableType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             VariableType::Any => write!(f, "@?"),
+            VariableType::Struct(name, _) => write!(f, "@{name}"),
             VariableType::Custom(s) => write!(f, "@{}", s),
             VariableType::Array(t, s) => write!(f, "@[{},{}]", t, s),
             VariableType::String => write!(f, "@str"),

@@ -41,6 +41,9 @@ pub enum ExprType {
     /// Address of expr in memory
     /// e.g: &a
     Ptr(Box<Expr>),
+    /// Member Access Operator
+    /// e.g: fridge.milk
+    Access(String, Box<Expr>),
     /// String values
     /// e.g: "Hello\n"
     String(String),
@@ -418,6 +421,13 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
                         loc,
                     }
                 }
+                TokenType::Dot => {
+                    let access_expr = memeber_access(lexer);
+                    Expr {
+                        etype: ExprType::Access(ident_name,Box::new(access_expr)),
+                        loc,
+                    }
+                },
                 _ => Expr {
                     etype: ExprType::Variable(ident_name),
                     loc,
@@ -433,6 +443,16 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
                 loc,
             );
         }
+    }
+}
+
+/// Parsing direct Member Access
+pub fn memeber_access(lexer: &mut Lexer) -> Expr {
+    lexer.match_token(TokenType::Dot);
+    if lexer.get_token_type() != TokenType::Identifier {
+        error("TODO: Invalid Access Operation for struct",lexer.get_current_loc());
+    } else {
+        return expr(lexer);
     }
 }
 
