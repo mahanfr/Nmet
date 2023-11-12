@@ -6,7 +6,7 @@ use crate::{
 
 use super::{
     function::function_def,
-    variable_decl::{variable_declare, VariableDeclare},
+    variable_decl::{variable_declare, VariableDeclare}, structs::{StructDef, struct_def},
 };
 
 /// Program file information
@@ -26,6 +26,8 @@ pub struct ProgramFile {
 /// e.g: functions, static variables and imports
 #[derive(Debug, Clone)]
 pub enum ProgramItem {
+    /// Struct Defenition
+    Struct(StructDef),
     /// Function Definitions
     Func(Function),
     /// Static Variables
@@ -46,6 +48,9 @@ pub fn program(lexer: &mut Lexer) -> ProgramFile {
         }
         let loc = lexer.get_token_loc();
         match lexer.get_token_type() {
+            TokenType::Struct => {
+                items.push(ProgramItem::Struct(struct_def(lexer)));
+            },
             TokenType::Func => {
                 items.push(ProgramItem::Func(function_def(lexer)));
             }

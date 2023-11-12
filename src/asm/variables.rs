@@ -37,6 +37,19 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
             );
             cc.instruct_buf.push(asm!("mov {mem_acss},{}", bss_tag));
         }
+        VariableType::Custom(s) => {
+            let Some(struct_map) = cc.structs_map.get(s) else {
+                return Err("Type dose not exists in the current scope".to_string());
+            };
+            let size: usize = struct_map.items.iter().map(|(_,v)| v.size()).sum();
+            let struct_tag = format!("{}{}",struct_map.ident.clone(),cc.bss_buf.len());
+            cc.bss_buf.push(format!("{struct_tag}: resb {}", size));
+            let mem_acss = format!("{} [rbp-{}]",
+                mem_word(&VariableType::Pointer),
+                cc.mem_offset + 8
+            );
+            cc.instruct_buf.push(asm!("mov {mem_acss},{struct_tag}"));
+        }
         VariableType::String => {}
         _ => (),
     }

@@ -118,6 +118,9 @@ pub fn compile_lib(
     };
     for item in program.items {
         match item {
+            ProgramItem::Struct(_) => {
+                todo!();
+            }
             ProgramItem::StaticVar(_s) => {
                 todo!();
                 // self.insert_variable(&s);
@@ -145,6 +148,9 @@ pub fn compile(cc: &mut CompilerContext, path: String) -> Result<CompileRes, Box
     let program = parse_file(path);
     for item in program.items {
         match item {
+            ProgramItem::Struct(s) => {
+               cc.structs_map.insert(s.ident.clone(), s.clone()); 
+            }
             ProgramItem::StaticVar(_s) => {
                 todo!();
                 // self.insert_variable(&s);

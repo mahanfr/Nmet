@@ -4,9 +4,11 @@ struct Animal {
 }
 
 func main() {
-    var a @Animal = {
-        name: "dog",
-        sound: "bark",
-    };
+    ~ var a @Animal = {
+    ~     name: "dog",
+    ~     sound: "bark",
+    ~ };
+    var a @Animal;
+    a.name = "dog";
     print a.name;
 }

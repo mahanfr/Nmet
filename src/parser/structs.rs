@@ -1,12 +1,13 @@
-use crate::{lexer::{Lexer, TokenType}, error_handeling::error};
+use crate::lexer::{Lexer, TokenType};
 
 use super::types::{VariableType, type_def};
 
 pub type StructItem = (String, VariableType);
 
+#[derive(Debug, Clone)]
 pub struct StructDef {
-    ident: String,
-    items: Vec<StructItem>,
+    pub ident: String,
+    pub items: Vec<StructItem>,
 }
 
 pub fn struct_def(lexer: &mut Lexer) -> StructDef {
@@ -16,6 +17,7 @@ pub fn struct_def(lexer: &mut Lexer) -> StructDef {
     let mut items = Vec::<StructItem>::new();
     loop {
         if lexer.get_token_type() == TokenType::CCurly {
+            lexer.match_token(TokenType::CCurly);
             break;
         }
         let ident = lexer.get_token().literal;

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     asm,
     output_generator::x86_64_nasm_generator,
-    parser::{function::Function, types::VariableType, block::BlockType},
+    parser::{function::Function, types::VariableType, block::BlockType, structs::StructDef},
 };
 
 #[derive(Debug, Clone)]
@@ -37,6 +37,7 @@ pub struct CompilerContext {
     pub block_id: usize,
     pub variables_map: HashMap<String, VariableMap>,
     pub functions_map: HashMap<String, Function>,
+    pub structs_map: HashMap<String, StructDef>,
     pub mem_offset: usize,
 }
 
@@ -50,6 +51,7 @@ impl CompilerContext {
             block_id: 0,
             variables_map: HashMap::new(),
             functions_map: HashMap::new(),
+            structs_map: HashMap::new(),
             mem_offset: 0,
         }
     }
