@@ -9,10 +9,12 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct VariableMap {
     pub _ident: String,
+    pub beg_tag: String,
     pub offset: usize,
     pub vtype: VariableType,
     pub is_mut: bool,
 }
+
 
 pub type BLocation = (usize,usize);
 

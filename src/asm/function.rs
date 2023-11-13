@@ -14,6 +14,7 @@ pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
         let map = VariableMap {
             _ident: arg.ident.clone(),
             offset: cc.mem_offset,
+            beg_tag: String::new(),
             is_mut: false,
             vtype: arg.typedef.clone(),
         };
