@@ -12,7 +12,8 @@ pub struct StructDef {
 
 pub fn struct_def(lexer: &mut Lexer) -> StructDef {
     lexer.match_token(TokenType::Struct);
-    let struct_ident_token = lexer.next_token();
+    let struct_ident_token = lexer.get_token();
+    lexer.match_token(TokenType::Identifier);
     lexer.match_token(TokenType::OCurly);
     let mut items = Vec::<StructItem>::new();
     loop {
