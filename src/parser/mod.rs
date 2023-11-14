@@ -4,9 +4,9 @@ pub mod expr;
 pub mod function;
 pub mod program;
 pub mod stmt;
+pub mod structs;
 pub mod types;
 pub mod variable_decl;
-pub mod structs;
 use std::fs;
 
 use crate::lexer::Lexer;
@@ -23,7 +23,7 @@ use crate::parser::program::*;
 /// Can panic if file dose not exists
 pub fn parse_file(path: String) -> ProgramFile {
     let source = fs::read_to_string(path.clone()).unwrap_or_else(|_| {
-        eprintln!("Error reading file \"{}\"",path.clone());
+        eprintln!("Error reading file \"{}\"", path.clone());
         panic!("Can not open file!");
     });
     let mut lexer = Lexer::new(path, source);

@@ -1,6 +1,7 @@
 use crate::{
+    compiler::BLocation,
     lexer::{Lexer, TokenType},
-    parser::stmt::Stmt, compiler::BLocation,
+    parser::stmt::Stmt,
 };
 
 use super::{
@@ -10,12 +11,11 @@ use super::{
     variable_decl::variable_declare,
 };
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum BlockType {
     Condition,
     Loop(BLocation),
-    Function
+    Function,
 }
 
 /// Block Stmt

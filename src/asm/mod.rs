@@ -149,7 +149,7 @@ pub fn compile(cc: &mut CompilerContext, path: String) -> Result<CompileRes, Box
     for item in program.items {
         match item {
             ProgramItem::Struct(s) => {
-               cc.structs_map.insert(s.ident.clone(), s.clone()); 
+                cc.structs_map.insert(s.ident.clone(), s.clone());
             }
             ProgramItem::StaticVar(_s) => {
                 todo!();
@@ -187,41 +187,36 @@ pub fn compile(cc: &mut CompilerContext, path: String) -> Result<CompileRes, Box
  */
 fn compile_block(cc: &mut CompilerContext, block: &Block, block_type: BlockType) {
     cc.block_id += 1;
-    cc.scoped_blocks.push(ScopeBlock::new(cc.block_id, block_type));
+    cc.scoped_blocks
+        .push(ScopeBlock::new(cc.block_id, block_type));
     for stmt in &block.stmts {
         match stmt.stype {
             StmtType::Break => {
                 let mut did_break: bool = false;
                 for s_block in cc.scoped_blocks.iter().rev() {
-                    match s_block.block_type {
-                        BlockType::Loop(loc) => {
-                            cc.instruct_buf.push(asm!("jmp .LE{}",loc.1));
-                            did_break = true;
-                            break;
-                        },
-                        _ => ()
+                    if let BlockType::Loop(loc) = s_block.block_type {
+                        cc.instruct_buf.push(asm!("jmp .LE{}", loc.1));
+                        did_break = true;
+                        break;
                     }
                 }
                 if !did_break {
-                    error("Can not break out of non-loop blocks!",stmt.loc.clone());   
+                    error("Can not break out of non-loop blocks!", stmt.loc.clone());
                 }
-            },
+            }
             StmtType::Continue => {
                 let mut did_cont: bool = false;
                 for s_block in cc.scoped_blocks.iter().rev() {
-                    match s_block.block_type {
-                        BlockType::Loop(loc) => {
-                            cc.instruct_buf.push(asm!("jmp .L{}",loc.0));
-                            did_cont = true;
-                            break;
-                        },
-                        _ => ()
+                    if let BlockType::Loop(loc) = s_block.block_type {
+                        cc.instruct_buf.push(asm!("jmp .L{}", loc.0));
+                        did_cont = true;
+                        break;
                     }
                 }
                 if !did_cont {
-                    error("Can not continue in non-loop blocks!",stmt.loc.clone());   
+                    error("Can not continue in non-loop blocks!", stmt.loc.clone());
                 }
-            },
+            }
             _ => {
                 compile_stmt(cc, stmt);
             }

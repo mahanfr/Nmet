@@ -6,7 +6,8 @@ use crate::{
 
 use super::{
     function::function_def,
-    variable_decl::{variable_declare, VariableDeclare}, structs::{StructDef, struct_def},
+    structs::{struct_def, StructDef},
+    variable_decl::{variable_declare, VariableDeclare},
 };
 
 /// Program file information
@@ -50,7 +51,7 @@ pub fn program(lexer: &mut Lexer) -> ProgramFile {
         match lexer.get_token_type() {
             TokenType::Struct => {
                 items.push(ProgramItem::Struct(struct_def(lexer)));
-            },
+            }
             TokenType::Func => {
                 items.push(ProgramItem::Func(function_def(lexer)));
             }

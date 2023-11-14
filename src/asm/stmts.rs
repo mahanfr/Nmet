@@ -4,9 +4,10 @@ use crate::{
     error_handeling::error,
     parser::{
         assign::{Assign, AssignOp},
+        block::BlockType,
         expr::ExprType,
         stmt::{ElseBlock, IFStmt, Stmt, StmtType, WhileStmt},
-        types::VariableType, block::BlockType,
+        types::VariableType,
     },
 };
 
@@ -167,7 +168,7 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) {
     cc.instruct_buf.push(asm!("jmp .L{}", cond_tag));
     let block_tag = cond_tag + 1;
     cc.instruct_buf.push(asm!(".L{}:", block_tag));
-    compile_block(cc, &w_stmt.block, BlockType::Loop((cond_tag,block_tag)));
+    compile_block(cc, &w_stmt.block, BlockType::Loop((cond_tag, block_tag)));
     cc.instruct_buf.push(asm!(".L{}:", cond_tag));
     // Jump after a compare
     let condition_type = compile_expr(cc, &w_stmt.condition);
@@ -182,7 +183,7 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) {
 }
 
 fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
-    let reg : String;
+    let reg: String;
     let mem_acss = match v_map.vtype {
         VariableType::Array(_, _) => {
             cc.instruct_buf
@@ -194,8 +195,10 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
             format!("{} [rdx]", mem_word(&v_map.vtype))
         }
         VariableType::Custom(_) => {
-            cc.instruct_buf.push(asm!("mov rdx, [rbp - {}]", v_map.offset + 8));
-            cc.instruct_buf.push(asm!("add rdx, {}",v_map.offset_inner));
+            cc.instruct_buf
+                .push(asm!("mov rdx, [rbp - {}]", v_map.offset + 8));
+            cc.instruct_buf
+                .push(asm!("add rdx, {}", v_map.offset_inner));
             reg = rbs("a", &v_map.vtype_inner);
             format!("{} [rdx]", mem_word(&v_map.vtype_inner))
         }
@@ -205,7 +208,7 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
                 "{} [rbp-{}]",
                 mem_word(&v_map.vtype),
                 v_map.offset + v_map.vtype.size()
-                )
+            )
         }
     };
     cc.instruct_buf.push(asm!("pop rax"));
@@ -283,11 +286,11 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Strin
             Ok(())
         }
         ExprType::Access(ident, expr) => {
-            let Some(v_map) = get_vriable_map(cc, &ident) else {
+            let Some(v_map) = get_vriable_map(cc, ident) else {
                 return Err("Trying to access an Undifined variable".to_string());
             };
             let VariableType::Custom(struct_ident) = v_map.vtype.clone() else {
-               unreachable!();
+                unreachable!();
             };
             let Some(struc) = cc.structs_map.get(&struct_ident) else {
                 return Err("Structure type is not defined".to_string());
@@ -315,15 +318,15 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Strin
                     item_map.offset_inner = offset_inner;
                     item_map.vtype_inner = vtype;
                     assgin_op(cc, &assign.op, &item_map);
-                },
+                }
                 ExprType::ArrayIndex(_) => todo!(),
-                ExprType::Access(_,_) => todo!(),
+                ExprType::Access(_, _) => todo!(),
                 _ => {
                     return Err("Unexpected Type for structure".to_string());
                 }
             }
-            
-            Ok(()) 
+
+            Ok(())
         }
         _ => Err("Error: Expected a Variable type expression found Value".to_string()),
     }

@@ -424,10 +424,10 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
                 TokenType::Dot => {
                     let access_expr = memeber_access(lexer);
                     Expr {
-                        etype: ExprType::Access(ident_name,Box::new(access_expr)),
+                        etype: ExprType::Access(ident_name, Box::new(access_expr)),
                         loc,
                     }
-                },
+                }
                 _ => Expr {
                     etype: ExprType::Variable(ident_name),
                     loc,
@@ -450,9 +450,12 @@ pub fn factor(lexer: &mut Lexer) -> Expr {
 pub fn memeber_access(lexer: &mut Lexer) -> Expr {
     lexer.match_token(TokenType::Dot);
     if lexer.get_token_type() != TokenType::Identifier {
-        error("TODO: Invalid Access Operation for struct",lexer.get_current_loc());
+        error(
+            "TODO: Invalid Access Operation for struct",
+            lexer.get_current_loc(),
+        );
     } else {
-        return expr(lexer);
+        expr(lexer)
     }
 }
 

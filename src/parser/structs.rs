@@ -1,6 +1,6 @@
 use crate::lexer::{Lexer, TokenType};
 
-use super::types::{VariableType, type_def};
+use super::types::{type_def, VariableType};
 
 pub type StructItem = (String, VariableType);
 
@@ -25,7 +25,7 @@ pub fn struct_def(lexer: &mut Lexer) -> StructDef {
         lexer.match_token(TokenType::Identifier);
         if lexer.get_token_type() == TokenType::ATSign {
             let ttype = type_def(lexer);
-            items.push((ident,ttype));
+            items.push((ident, ttype));
         }
         if lexer.get_token_type() != TokenType::CCurly {
             lexer.match_token(TokenType::Comma);

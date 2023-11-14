@@ -76,7 +76,7 @@ impl VariableType {
             Self::Void => 0,
             Self::Array(_, _) => 8,
             Self::Float => 8,
-            Self::Custom(_)  => 8,
+            Self::Custom(_) => 8,
             Self::Any => todo!(),
         }
     }
@@ -122,7 +122,13 @@ impl VariableType {
     pub fn is_numeric(&self) -> bool {
         matches!(
             self,
-            Self::Int | Self::Char | Self::UInt | Self::Pointer | Self::Long | Self::ULong | Self::Float
+            Self::Int
+                | Self::Char
+                | Self::UInt
+                | Self::Pointer
+                | Self::Long
+                | Self::ULong
+                | Self::Float
         )
     }
 

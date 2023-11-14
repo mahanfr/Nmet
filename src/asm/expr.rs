@@ -42,7 +42,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             let Some(struc) = cc.structs_map.get(&struct_ident) else {
                 error("Trying to access an Undifined Structure", expr.loc.clone());
             };
-            let mut offset : usize = 0;
+            let mut offset: usize = 0;
             let mut actype = VariableType::Any;
             match &ac.etype {
                 ExprType::Variable(v) => {
@@ -50,22 +50,29 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                         offset += item.1.size();
                         if &item.0 == v {
                             actype = item.1.clone();
-                            break; 
-                        } 
+                            break;
+                        }
                     }
-                },
+                }
                 _ => todo!(),
             }
             if actype.is_any() {
-                error("Trying to access unknown item from the list",expr.loc.clone());
+                error(
+                    "Trying to access unknown item from the list",
+                    expr.loc.clone(),
+                );
             }
             cc.instruct_buf
                 .push(asm!("mov rdx, [rbp-{}]", v_map.offset + v_map.vtype.size()));
             cc.instruct_buf.push(asm!("add rdx, {}", offset));
-            cc.instruct_buf.push(asm!("mov {}, {} [rdx]", rbs("a", &actype), mem_word(&actype)));
+            cc.instruct_buf.push(asm!(
+                "mov {}, {} [rdx]",
+                rbs("a", &actype),
+                mem_word(&actype)
+            ));
             cc.instruct_buf.push(asm!("push rax"));
             actype
-        },
+        }
         ExprType::Bool(b) => {
             cc.instruct_buf.push(asm!("push {b}"));
             VariableType::Bool
@@ -102,14 +109,15 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                             "Invalid Comparison between types: ({}) and ({})",
                             left_type, right_type
                         ),
-                            expr.loc.clone(),
+                        expr.loc.clone(),
                     );
                 }
             }
             // Make sure rbx is first so the order is correct
             cc.instruct_buf.push(asm!("pop rbx"));
             cc.instruct_buf.push(asm!("pop rax"));
-            cc.instruct_buf.push(asm!("cmp {}, {}",rbs("a", &reg_type),rbs("b", &reg_type)));
+            cc.instruct_buf
+                .push(asm!("cmp {}, {}", rbs("a", &reg_type), rbs("b", &reg_type)));
             match c.op {
                 CompareOp::Eq => {
                     cc.instruct_buf.push(asm!("cmove rcx, rdx"));
@@ -261,11 +269,11 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
         ExprType::DeRef(r) => {
             let t = compile_expr(cc, r);
             match t {
-                VariableType::Array(_,_) | VariableType::Pointer => {
+                VariableType::Array(_, _) | VariableType::Pointer => {
                     cc.instruct_buf.push(asm!("pop rax"));
                     cc.instruct_buf.push(asm!("mov rcx, qword [rax]"));
                     cc.instruct_buf.push(asm!("push rcx"));
-                },
+                }
                 _ => {
                     error(format!("Expected a Pointer found ({t})"), expr.loc.clone());
                 }
@@ -281,14 +289,15 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             });
             compile_expr(cc, &ai.indexer);
             cc.instruct_buf.push(asm!("pop rbx"));
-            // TODO: Add Item size to v_map
             cc.instruct_buf
                 .push(asm!("mov rdx, [rbp-{}]", v_map.offset + v_map.vtype.size()));
             cc.instruct_buf
                 .push(asm!("imul rbx, {}", v_map.vtype.item_size()));
             cc.instruct_buf.push(asm!("add rdx, rbx"));
+
             let mem_acss = format!("{} [rdx]", mem_word(&v_map.vtype));
             let reg = rbs("a", &v_map.vtype);
+
             cc.instruct_buf.push(asm!("mov {reg},{mem_acss}"));
             cc.instruct_buf.push(asm!("push rax"));
             match v_map.vtype {
@@ -306,11 +315,11 @@ fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) {
                 error("Trying to access an Undifined variable", expr.loc.clone());
             };
             match v_map.vtype {
-               VariableType::Array(_,_) => {
-                   let mov_addr = format!("qword [rbp - {}]", v_map.offset + v_map.vtype.size());
-                   cc.instruct_buf.push(asm!("mov rax, {mov_addr}"));
-                   cc.instruct_buf.push(asm!("push rax"));
-               },
+                VariableType::Array(_, _) => {
+                    let mov_addr = format!("qword [rbp - {}]", v_map.offset + v_map.vtype.size());
+                    cc.instruct_buf.push(asm!("mov rax, {mov_addr}"));
+                    cc.instruct_buf.push(asm!("push rax"));
+                }
                 _ => {
                     cc.instruct_buf.push(asm!("mov rax, rbp"));
                     cc.instruct_buf

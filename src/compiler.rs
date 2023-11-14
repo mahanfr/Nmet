@@ -3,20 +3,19 @@ use std::collections::HashMap;
 use crate::{
     asm,
     output_generator::x86_64_nasm_generator,
-    parser::{function::Function, types::VariableType, block::BlockType, structs::StructDef},
+    parser::{block::BlockType, function::Function, structs::StructDef, types::VariableType},
 };
 
 #[derive(Debug, Clone)]
 pub struct VariableMap {
-    pub offset_inner: usize, 
+    pub offset_inner: usize,
     pub offset: usize,
     pub vtype: VariableType,
     pub vtype_inner: VariableType,
     pub is_mut: bool,
 }
 
-
-pub type BLocation = (usize,usize);
+pub type BLocation = (usize, usize);
 
 pub struct ScopeBlock {
     pub id: usize,
@@ -24,10 +23,7 @@ pub struct ScopeBlock {
 }
 impl ScopeBlock {
     pub fn new(id: usize, block_type: BlockType) -> Self {
-        Self {
-            id,
-            block_type,
-        }
+        Self { id, block_type }
     }
 }
 
