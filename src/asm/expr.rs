@@ -32,7 +32,37 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             cc.instruct_buf.push(asm!("push rax"));
             v_map.vtype
         }
-        ExprType::Access(_, _) => todo!(),
+        ExprType::Access(ident, ac) => {
+            let Some(v_map) = get_vriable_map(cc, ident) else {
+                error("Trying to access an Undifined variable", expr.loc.clone());
+            };
+            let VariableType::Custom(struct_ident) = v_map.vtype.clone() else {
+                error("Trying to access an Undifined Structure", expr.loc.clone());
+            };
+            let Some(struc) = cc.structs_map.get(&struct_ident) else {
+                error("Trying to access an Undifined Structure", expr.loc.clone());
+            };
+            let mut offset : usize = 0;
+            let mut actype = VariableType::Any;
+            match &ac.etype {
+                ExprType::Variable(v) => {
+                    for item in struc.items.iter() {
+                        offset += item.1.size();
+                        if &item.0 == v {
+                            actype = item.1.clone();
+                            break; 
+                        } 
+                    }
+                },
+                _ => todo!(),
+            }
+            cc.instruct_buf
+                .push(asm!("mov rdx, [rbp-{}]", v_map.offset + v_map.vtype.size()));
+            cc.instruct_buf.push(asm!("add rdx, {}", offset));
+            cc.instruct_buf.push(asm!("mov {}, {} [rdx]", rbs("a", &actype), mem_word(&actype)));
+            cc.instruct_buf.push(asm!("push rax"));
+            actype
+        },
         ExprType::Bool(b) => {
             cc.instruct_buf.push(asm!("push {b}"));
             VariableType::Bool

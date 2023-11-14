@@ -192,7 +192,9 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
             format!("{} [rdx]", mem_word(&v_map.vtype))
         }
         VariableType::Custom(_) => {
-            todo!("Not Yet Mate!");
+            cc.instruct_buf.push(asm!("mov rdx, [{}]",v_map.beg_tag));
+            cc.instruct_buf.push(asm!("add rdx, {}",v_map.offset));
+            format!("{} [rdx]", mem_word(&v_map.vtype))
         }
         _ => {
             format!(
