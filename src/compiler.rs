@@ -8,10 +8,10 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct VariableMap {
-    pub _ident: String,
-    pub beg_tag: String,
+    pub offset_inner: usize, 
     pub offset: usize,
     pub vtype: VariableType,
+    pub vtype_inner: VariableType,
     pub is_mut: bool,
 }
 

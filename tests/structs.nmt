@@ -1,6 +1,6 @@
-struct Animal {
-    name @str,
-    sound @str,
+struct Human {
+    age @int,
+    height @int,
 }
 
 func main() {
@@ -8,7 +8,8 @@ func main() {
     ~     name: "dog",
     ~     sound: "bark",
     ~ };
-    var a @Animal;
-    a.name = "dog";
-    print a.name;
+    var a @Human;
+    a.age = 69;
+    a.height = 65;
+    print a.height;
 }

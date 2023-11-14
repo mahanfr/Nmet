@@ -24,12 +24,10 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
         Some(vt) => vt.clone(),
         None => VariableType::Any,
     };
-    let mut beg_tag = String::new();
     // Declare variable memory
     match &vtype {
         VariableType::Array(t, s) => {
             let bss_tag = format!("arr{}", cc.bss_buf.len());
-            beg_tag = bss_tag.clone();
             cc.bss_buf
                 .push(format!("{}: resb {}", bss_tag, t.item_size() * s));
             let mem_acss = format!(
@@ -45,7 +43,6 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
             };
             let size: usize = struct_map.items.iter().map(|(_,v)| v.size()).sum();
             let struct_tag = format!("{}{}",struct_map.ident.clone(),cc.bss_buf.len());
-            beg_tag = struct_tag.clone();
             cc.bss_buf.push(format!("{struct_tag}: resb {}", size));
             let mem_acss = format!("{} [rbp-{}]",
                 mem_word(&VariableType::Pointer),
@@ -83,11 +80,11 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
         ));
     }
     let var_map = VariableMap {
-        _ident: var.ident.clone(),
         vtype: vtype.clone(),
+        vtype_inner: VariableType::Any,
         offset: cc.mem_offset,
         is_mut: var.mutable,
-        beg_tag
+        offset_inner: 0,
     };
     cc.mem_offset += vtype.size();
     cc.variables_map.insert(ident, var_map);

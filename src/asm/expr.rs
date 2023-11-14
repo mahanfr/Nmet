@@ -56,6 +56,9 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                 },
                 _ => todo!(),
             }
+            if actype.is_any() {
+                error("Trying to access unknown item from the list",expr.loc.clone());
+            }
             cc.instruct_buf
                 .push(asm!("mov rdx, [rbp-{}]", v_map.offset + v_map.vtype.size()));
             cc.instruct_buf.push(asm!("add rdx, {}", offset));

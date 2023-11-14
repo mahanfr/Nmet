@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     asm,
     compiler::{VariableMap, ScopeBlock},
-    parser::{function::{Function, FunctionArg}, block::BlockType},
+    parser::{function::{Function, FunctionArg}, block::BlockType, types::VariableType},
 };
 
 use super::{compile_block, frame_size, function_args_register_sized, mem_word, CompilerContext};
@@ -12,11 +12,11 @@ pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
     for (args_count, arg) in args.iter().enumerate() {
         let ident = format!("{}%{}", arg.ident, cc.block_id);
         let map = VariableMap {
-            _ident: arg.ident.clone(),
             offset: cc.mem_offset,
-            beg_tag: String::new(),
+            offset_inner: 0,
             is_mut: false,
             vtype: arg.typedef.clone(),
+            vtype_inner: VariableType::Any,
         };
         if args_count < 6 {
             let mem_acss = format!(
