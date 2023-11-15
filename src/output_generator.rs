@@ -48,6 +48,7 @@ pub fn x86_64_nasm_generator(
         file.write_all(b"section .data\n")?;
         for data in &data_buf {
             file.write_all(data.as_bytes())?;
+            file.write_all(b"\n")?;
         }
     }
     file.write_all(b"\n")?;
@@ -104,6 +105,7 @@ pub fn x86_64_nasm_generator(
 
     for instruct in &instruct_buf {
         file.write_all(instruct.as_bytes())?;
+        file.write_all(b"\n")?;
     }
 
     if !bss_buf.is_empty() {

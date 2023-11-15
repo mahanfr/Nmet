@@ -1,6 +1,6 @@
 #[macro_export]
 macro_rules! asm {
     ($($arg:tt)+) => (
-        format!("    {}\n",format_args!($($arg)+))
+        format!("    {}",format_args!($($arg)+))
     );
 }

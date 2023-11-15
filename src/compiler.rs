@@ -58,14 +58,32 @@ impl CompilerContext {
 pub fn compile_to_asm(path: String) {
     let mut compiler_context = CompilerContext::new();
 
-    let (instr_buf, bss_buf, data_buf) =
+    let (mut instr_buf, bss_buf, data_buf) =
         asm::compile(&mut compiler_context, path.clone()).expect("Can not Compile Program");
+    x86_64_nasm_cleanup(&mut instr_buf);
     x86_64_nasm_generator(path, instr_buf, bss_buf, data_buf).unwrap();
 }
 
-// pub fn compile_to_llvm(path: String) {
-//     let mut compiler_context = CompilerContext::new();
-//     let (instr_buf, data_buf) =
-//         llvm::compile(&mut compiler_context, path.clone()).expect("Can not Compile Program");
-//     llvm_generator(path, instr_buf, data_buf).unwrap();
-// }
+
+fn x86_64_nasm_cleanup(instr_buf: &mut Vec<String>) {
+    for i in 0..(instr_buf.len() - 2) {
+        if instr_buf[i].trim_start().starts_with("push") {
+            if instr_buf[i+1].trim_start().starts_with("pop") {
+                let merged : String = merge_instr(&instr_buf[i], &instr_buf[i+1]);
+                instr_buf[i].clear();
+                instr_buf[i+1] = merged;
+            }
+        }
+    }
+    instr_buf.retain(|x| !x.is_empty());
+}
+
+fn merge_instr(ins1: &String, inst2: &String) -> String {
+    let data1 = ins1.split(' ').last().unwrap();
+    let data2 = inst2.split(' ').last().unwrap();
+    if data1 == data2 {
+        String::new()
+    } else {
+        format!("    mov {data2}, {data1}")
+    }
+}
