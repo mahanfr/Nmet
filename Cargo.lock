@@ -3,5 +3,5 @@
 version = 3
 
 [[package]]
-name = "nemet"
+name = "nmet"
 version = "0.1.0"
