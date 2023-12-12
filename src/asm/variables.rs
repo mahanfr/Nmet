@@ -18,6 +18,18 @@ pub fn find_variable(cc: &CompilerContext, ident: String) -> Option<VariableMap>
     None
 }
 
+fn _insert_global_variable(cc: &mut CompilerContext, atype: &VariableType, asize: &usize) {
+    let bss_tag = format!("arr{}", cc.bss_buf.len());
+    cc.bss_buf
+        .push(format!("{}: resb {}", bss_tag, atype.item_size() * asize));
+    let mem_acss = format!(
+        "{} [rbp-{}]",
+        mem_word(&VariableType::Pointer),
+        cc.mem_offset + 8
+        );
+    cc.instruct_buf.push(asm!("mov {mem_acss},{}", bss_tag));
+}
+
 pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Result<(), String> {
     let ident = format!("{}%{}", var.ident, cc.block_id);
     let mut vtype = match var.v_type.as_ref() {
@@ -25,18 +37,9 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
         None => VariableType::Any,
     };
     // Declare variable memory
+    // No need to do any thing if variable is on the stack
     match &vtype {
-        VariableType::Array(t, s) => {
-            let bss_tag = format!("arr{}", cc.bss_buf.len());
-            cc.bss_buf
-                .push(format!("{}: resb {}", bss_tag, t.item_size() * s));
-            let mem_acss = format!(
-                "{} [rbp-{}]",
-                mem_word(&VariableType::Pointer),
-                cc.mem_offset + 8
-            );
-            cc.instruct_buf.push(asm!("mov {mem_acss},{}", bss_tag));
-        }
+        VariableType::Array(_, _) => (),
         VariableType::Custom(s) => {
             let Some(struct_map) = cc.structs_map.get(s) else {
                 return Err("Type dose not exists in the current scope".to_string());

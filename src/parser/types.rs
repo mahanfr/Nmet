@@ -74,7 +74,7 @@ impl VariableType {
             Self::Char => 1,
             Self::String => 16,
             Self::Void => 0,
-            Self::Array(_, _) => 8,
+            Self::Array(t, s) => t.item_size() * s,
             Self::Float => 8,
             Self::Custom(_) => 8,
             Self::Any => todo!(),
