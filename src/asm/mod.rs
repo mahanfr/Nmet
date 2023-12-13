@@ -5,8 +5,8 @@ mod variables;
 
 use std::error::Error;
 
-use crate::asm;
 use crate::asm::function::compile_function;
+use crate::codegen::Codegen;
 use crate::compiler::{CompilerContext, ScopeBlock};
 use crate::error_handeling::error;
 use crate::parser::block::{Block, BlockType};
@@ -107,7 +107,7 @@ pub fn compile_lib(
     cc: &mut CompilerContext,
     path: String,
     exports: Vec<String>,
-) -> Result<(Vec<String>, Vec<String>), Box<dyn Error>> {
+) -> Result<Codegen, Box<dyn Error>> {
     let program = parse_file(path);
     let is_importable = |ident: &String| {
         if !exports.is_empty() {
@@ -138,13 +138,11 @@ pub fn compile_lib(
             }
         }
     }
-    Ok((cc.instruct_buf.clone(), cc.data_buf.clone()))
+    Ok(cc.codegen.clone())
 }
 
-pub type CompileRes = (Vec<String>, Vec<String>, Vec<String>);
-
 // TODO: Handle Compilation Error
-pub fn compile(cc: &mut CompilerContext, path: String) -> Result<CompileRes, Box<dyn Error>> {
+pub fn compile(cc: &mut CompilerContext, path: String) -> Result<Codegen, Box<dyn Error>> {
     let program = parse_file(path);
     for item in program.items {
         match item {
@@ -174,11 +172,7 @@ pub fn compile(cc: &mut CompilerContext, path: String) -> Result<CompileRes, Box
         cc.scoped_blocks.is_empty(),
         "Somting went wrong: Scope has not been cleared"
     );
-    Ok((
-        cc.instruct_buf.clone(),
-        cc.bss_buf.clone(),
-        cc.data_buf.clone(),
-    ))
+    Ok(cc.codegen.clone())
 }
 
 /*
@@ -195,7 +189,7 @@ fn compile_block(cc: &mut CompilerContext, block: &Block, block_type: BlockType)
                 let mut did_break: bool = false;
                 for s_block in cc.scoped_blocks.iter().rev() {
                     if let BlockType::Loop(loc) = s_block.block_type {
-                        cc.instruct_buf.push(asm!("jmp .LE{}", loc.1));
+                        cc.codegen.jmp(format!(".LE{}", loc.1));
                         did_break = true;
                         break;
                     }
@@ -208,7 +202,7 @@ fn compile_block(cc: &mut CompilerContext, block: &Block, block_type: BlockType)
                 let mut did_cont: bool = false;
                 for s_block in cc.scoped_blocks.iter().rev() {
                     if let BlockType::Loop(loc) = s_block.block_type {
-                        cc.instruct_buf.push(asm!("jmp .L{}", loc.0));
+                        cc.codegen.jmp(format!(".L{}", loc.0));
                         did_cont = true;
                         break;
                     }

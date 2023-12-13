@@ -4,12 +4,12 @@ use std::process::Command;
 use std::{env::args, process::exit};
 
 mod asm;
+mod codegen;
 mod command_line;
+mod common;
 mod compiler;
 mod error_handeling;
 mod lexer;
-// mod llvm;
-mod common;
 mod macros;
 mod output_generator;
 mod parser;

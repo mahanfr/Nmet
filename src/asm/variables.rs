@@ -1,5 +1,4 @@
 use crate::{
-    asm,
     compiler::VariableMap,
     error_handeling::error,
     parser::{types::VariableType, variable_decl::VariableDeclare},
@@ -19,15 +18,13 @@ pub fn find_variable(cc: &CompilerContext, ident: String) -> Option<VariableMap>
 }
 
 fn _insert_global_variable(cc: &mut CompilerContext, atype: &VariableType, asize: &usize) {
-    let bss_tag = format!("arr{}", cc.bss_buf.len());
-    cc.bss_buf
-        .push(format!("{}: resb {}", bss_tag, atype.item_size() * asize));
+    let bss_tag = cc.codegen.add_bss_seg(atype.item_size() * asize);
     let mem_acss = format!(
         "{} [rbp-{}]",
         mem_word(&VariableType::Pointer),
         cc.mem_offset + 8
-        );
-    cc.instruct_buf.push(asm!("mov {mem_acss},{}", bss_tag));
+    );
+    cc.codegen.mov(mem_acss, bss_tag);
 }
 
 pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Result<(), String> {
@@ -45,14 +42,13 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
                 return Err("Type dose not exists in the current scope".to_string());
             };
             let size: usize = struct_map.items.iter().map(|(_, v)| v.size()).sum();
-            let struct_tag = format!("{}{}", struct_map.ident.clone(), cc.bss_buf.len());
-            cc.bss_buf.push(format!("{struct_tag}: resb {}", size));
+            let struct_tag = cc.codegen.add_bss_seg(size);
             let mem_acss = format!(
                 "{} [rbp-{}]",
                 mem_word(&VariableType::Pointer),
                 cc.mem_offset + 8
             );
-            cc.instruct_buf.push(asm!("mov {mem_acss}, {struct_tag}"));
+            cc.codegen.mov(mem_acss, struct_tag);
         }
         VariableType::String => {}
         _ => (),
@@ -66,9 +62,8 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
         match vtype.cast(&texpr) {
             Ok(vt) => {
                 let mem_acss = format!("{} [rbp-{}]", mem_word(&vt), cc.mem_offset + vt.size());
-                cc.instruct_buf.push(asm!("pop rax"));
-                cc.instruct_buf
-                    .push(asm!("mov {mem_acss},{}", rbs("a", &vt)));
+                cc.codegen.pop("rax");
+                cc.codegen.mov(mem_acss, rbs("a", &vt));
                 vtype = vt;
             }
             Err(msg) => {

@@ -29,7 +29,7 @@ pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
                 map.offset + map.vtype.size()
             );
             let reg = function_args_register_sized(args_count, &map.vtype);
-            cc.instruct_buf.push(asm!("mov {},{}", mem_acss, reg));
+            cc.codegen.mov(mem_acss, reg);
         } else {
             todo!();
             // let mem_overload = format!("{} [rbp+{}]", mem_word(8), 16 + (args_count - 6) * 8);
@@ -50,40 +50,43 @@ pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
     cc.mem_offset = 0;
     cc.variables_map = HashMap::new();
     if f.ident == "main" {
-        cc.instruct_buf.push("_start:\n".to_string());
+        cc.codegen.tag("_start");
     } else {
-        cc.instruct_buf.push(format!("{}:\n", f.ident));
+        cc.codegen.tag(f.ident.clone());
     }
 
     // set rbp to stack pointer for this block
-    let index_1 = cc.instruct_buf.len();
-    cc.instruct_buf.push(String::new());
-    let index_2 = cc.instruct_buf.len();
-    cc.instruct_buf.push(String::new());
-    let index_3 = cc.instruct_buf.len();
-    cc.instruct_buf.push(String::new());
+    let index_1 = cc.codegen.place_holder();
+    let index_2 = cc.codegen.place_holder();
+    let index_3 = cc.codegen.place_holder();
 
     function_args(cc, &f.args);
     compile_block(cc, &f.block, BlockType::Function);
     cc.scoped_blocks.pop();
     // Call Exit Syscall
     if !cc.variables_map.is_empty() {
-        cc.instruct_buf[index_1] = asm!("push rbp");
-        cc.instruct_buf[index_2] = asm!("mov rbp, rsp");
-        cc.instruct_buf[index_3] = asm!("sub rsp, {}", frame_size(cc.mem_offset));
+        cc.codegen
+            .insert_into_raw(index_1, asm!("push rbp"))
+            .unwrap();
+        cc.codegen
+            .insert_into_raw(index_2, asm!("mov rbp, rsp"))
+            .unwrap();
+        cc.codegen
+            .insert_into_raw(index_3, asm!("sub rsp, {}", frame_size(cc.mem_offset)))
+            .unwrap();
     }
     if f.ident == "main" {
-        cc.instruct_buf.push(asm!("mov rax, 60"));
-        cc.instruct_buf.push(asm!("mov rdi, 0"));
-        cc.instruct_buf.push(asm!("syscall"));
+        cc.codegen.mov("rax", 60);
+        cc.codegen.mov("rdi", 0);
+        cc.codegen.syscall();
     } else {
         // revert rbp
         if !cc.variables_map.is_empty() {
             //cc.instruct_buf.push(asm!("pop rbp"));
-            cc.instruct_buf.push(asm!("leave"));
-            cc.instruct_buf.push(asm!("ret"));
+            cc.codegen.leave();
+            cc.codegen.ret();
         } else {
-            cc.instruct_buf.push(asm!("ret"));
+            cc.codegen.ret();
         }
     }
 }

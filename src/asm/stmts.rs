@@ -1,5 +1,4 @@
 use crate::{
-    asm,
     compiler::VariableMap,
     error_handeling::error,
     parser::{
@@ -28,26 +27,26 @@ fn compile_if_stmt(cc: &mut CompilerContext, ifs: &IFStmt, exit_tag: usize) {
 
     let next_tag = match ifs.else_block.as_ref() {
         ElseBlock::None => exit_tag,
-        _ => cc.instruct_buf.len(),
+        _ => cc.codegen.get_id(),
     };
-    cc.instruct_buf.push(asm!("pop rax"));
-    cc.instruct_buf.push(asm!("test rax, rax"));
-    cc.instruct_buf.push(asm!("jz .L{}", next_tag));
+    cc.codegen.pop("rax");
+    cc.codegen.test("rax", "rax");
+    cc.codegen.jz(format!(".L{next_tag}"));
 
     compile_block(cc, &ifs.then_block, BlockType::Condition);
     match ifs.else_block.as_ref() {
         ElseBlock::None => {
-            cc.instruct_buf.push(asm!(".L{}:", next_tag));
+            cc.codegen.tag(format!(".L{next_tag}"));
         }
         ElseBlock::Else(b) => {
-            cc.instruct_buf.push(asm!("jmp .L{}", exit_tag));
-            cc.instruct_buf.push(asm!(".L{}:", next_tag));
+            cc.codegen.jmp(format!(".L{exit_tag}"));
+            cc.codegen.tag(format!(".L{next_tag}"));
             compile_block(cc, b, BlockType::Condition);
-            cc.instruct_buf.push(asm!(".L{}:", exit_tag));
+            cc.codegen.tag(format!(".L{exit_tag}"));
         }
         ElseBlock::Elif(iff) => {
-            cc.instruct_buf.push(asm!("jmp .L{}", exit_tag));
-            cc.instruct_buf.push(asm!(".L{}:", next_tag));
+            cc.codegen.jmp(format!(".L{exit_tag}"));
+            cc.codegen.tag(format!(".L{next_tag}"));
             compile_if_stmt(cc, iff, exit_tag);
         }
     }
@@ -63,22 +62,22 @@ pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) {
             compile_expr(cc, e);
             match e.etype {
                 ExprType::String(_) => {
-                    cc.instruct_buf.push(asm!("mov rax, 1"));
-                    cc.instruct_buf.push(asm!("mov rdi, 1"));
-                    cc.instruct_buf.push(asm!("pop rbx"));
-                    cc.instruct_buf.push(asm!("pop rcx"));
-                    cc.instruct_buf.push(asm!("mov rsi, rcx"));
-                    cc.instruct_buf.push(asm!("mov rdx, rbx"));
-                    cc.instruct_buf.push(asm!("syscall"));
+                    cc.codegen.mov("rax", 1);
+                    cc.codegen.mov("rdi", 1);
+                    cc.codegen.pop("rbx");
+                    cc.codegen.pop("rcx");
+                    cc.codegen.mov("rsi", "rcx");
+                    cc.codegen.mov("rdx", "rbx");
+                    cc.codegen.syscall();
                 }
                 _ => {
-                    cc.instruct_buf.push(asm!("pop rdi"));
-                    cc.instruct_buf.push(asm!("call print"));
+                    cc.codegen.pop("rdi");
+                    cc.codegen.call("print");
                 }
             }
         }
         StmtType::If(ifs) => {
-            let exit_tag = cc.instruct_buf.len();
+            let exit_tag = cc.codegen.get_id();
             compile_if_stmt(cc, ifs, exit_tag);
         }
         StmtType::Assign(a) => match compile_assgin(cc, a) {
@@ -98,9 +97,9 @@ pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) {
         },
         StmtType::Return(e) => {
             compile_expr(cc, e);
-            cc.instruct_buf.push(asm!("pop rax"));
-            cc.instruct_buf.push(asm!("leave"));
-            cc.instruct_buf.push(asm!("ret"));
+            cc.codegen.pop("rax");
+            cc.codegen.leave();
+            cc.codegen.ret();
         }
         StmtType::InlineAsm(instructs) => {
             for instr in instructs {
@@ -156,30 +155,30 @@ fn compile_inline_asm(cc: &mut CompilerContext, instr: &String) -> Result<(), St
                 index += 1;
             }
         }
-        cc.instruct_buf.push(asm!("{}", final_instr));
+        cc.codegen.insert_raw(final_instr);
     } else {
-        cc.instruct_buf.push(asm!("{}", instr));
+        cc.codegen.insert_raw(instr.into());
     }
     Ok(())
 }
 
 fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) {
-    let cond_tag = cc.instruct_buf.len();
-    cc.instruct_buf.push(asm!("jmp .L{}", cond_tag));
+    let cond_tag = cc.codegen.get_id();
+    cc.codegen.jmp(format!(".L{cond_tag}"));
     let block_tag = cond_tag + 1;
-    cc.instruct_buf.push(asm!(".L{}:", block_tag));
+    cc.codegen.tag(format!(".L{block_tag}"));
     compile_block(cc, &w_stmt.block, BlockType::Loop((cond_tag, block_tag)));
-    cc.instruct_buf.push(asm!(".L{}:", cond_tag));
+    cc.codegen.tag(format!(".L{cond_tag}"));
     // Jump after a compare
     let condition_type = compile_expr(cc, &w_stmt.condition);
     match VariableType::Bool.cast(&condition_type) {
         Ok(_) => (),
         Err(msg) => error(msg, w_stmt.condition.loc.clone()),
     }
-    cc.instruct_buf.push(asm!("pop rax"));
-    cc.instruct_buf.push(asm!("test rax, rax"));
-    cc.instruct_buf.push(asm!("jnz .L{}", block_tag));
-    cc.instruct_buf.push(asm!(".LE{}:", block_tag));
+    cc.codegen.pop("rax");
+    cc.codegen.test("rax", "rax");
+    cc.codegen.jnz(format!(".L{block_tag}"));
+    cc.codegen.tag(format!(".LE{block_tag}"));
 }
 
 fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
@@ -201,10 +200,9 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
             )
         }
         VariableType::Custom(_) => {
-            cc.instruct_buf
-                .push(asm!("mov rdx, [rbp - {}]", v_map.offset + 8));
-            cc.instruct_buf
-                .push(asm!("add rdx, {}", v_map.offset_inner));
+            cc.codegen
+                .mov("rdx", format!("[rbp - {}]", v_map.offset + 8));
+            cc.codegen.add("rdx", v_map.offset_inner);
             reg = rbs("a", &v_map.vtype_inner);
             format!("{} [rdx]", mem_word(&v_map.vtype_inner))
         }
@@ -217,39 +215,39 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
             )
         }
     };
-    cc.instruct_buf.push(asm!("pop rax"));
+    cc.codegen.pop("rax");
     match op {
         AssignOp::Eq => {
-            cc.instruct_buf.push(asm!("mov {mem_acss},{reg}"));
+            cc.codegen.mov(mem_acss, reg);
         }
         AssignOp::PlusEq => {
-            cc.instruct_buf.push(asm!("add {mem_acss},{reg}"));
+            cc.codegen.add(mem_acss, reg);
         }
         AssignOp::SubEq => {
-            cc.instruct_buf.push(asm!("sub {mem_acss},{reg}"));
+            cc.codegen.sub(mem_acss, reg);
         }
         AssignOp::MultiEq => {
             let b_reg = rbs("b", &v_map.vtype);
-            cc.instruct_buf.push(asm!("mov {b_reg},{mem_acss}"));
-            cc.instruct_buf.push(asm!("imul {reg},{b_reg}"));
-            cc.instruct_buf.push(asm!("mov {mem_acss},{reg}"));
+            cc.codegen.mov(&b_reg, &mem_acss);
+            cc.codegen.imul(&reg, &b_reg);
+            cc.codegen.mov(&mem_acss, &reg);
         }
         AssignOp::DevideEq => {
             let b_reg = rbs("b", &v_map.vtype);
-            cc.instruct_buf.push(asm!("mov {b_reg},{reg}"));
-            cc.instruct_buf.push(asm!("mov {reg},{mem_acss}"));
-            cc.instruct_buf.push(asm!("cqo"));
-            cc.instruct_buf.push(asm!("idiv rbx"));
-            cc.instruct_buf.push(asm!("mov {mem_acss},{reg}"));
+            cc.codegen.mov(b_reg, &reg);
+            cc.codegen.mov(&reg, &mem_acss);
+            cc.codegen.cqo();
+            cc.codegen.idiv("rbx");
+            cc.codegen.mov(&mem_acss, &reg);
         }
         AssignOp::ModEq => {
             let b_reg = rbs("b", &v_map.vtype);
-            cc.instruct_buf.push(asm!("mov {b_reg},{reg}"));
-            cc.instruct_buf.push(asm!("mov {reg},{mem_acss}"));
-            cc.instruct_buf.push(asm!("cqo"));
-            cc.instruct_buf.push(asm!("idiv rbx"));
+            cc.codegen.mov(b_reg, &reg);
+            cc.codegen.mov(&reg, &mem_acss);
+            cc.codegen.cqo();
+            cc.codegen.idiv("rbx");
             let d_reg = rbs("d", &v_map.vtype);
-            cc.instruct_buf.push(asm!("mov {mem_acss},{d_reg}"));
+            cc.codegen.mov(&mem_acss, d_reg);
         }
     }
 }
@@ -287,7 +285,7 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Strin
                 _ => unreachable!(),
             }
             compile_expr(cc, &ai.indexer);
-            cc.instruct_buf.push(asm!("pop rbx"));
+            cc.codegen.pop("rbx");
             assgin_op(cc, &assign.op, &v_map);
             Ok(())
         }
