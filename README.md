@@ -10,7 +10,7 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/mahanfarzaneh2000/Nmet">
+  <a href="https://github.com/mahanfr/Nmet">
     <img src="assets/Nmet.png" alt="Nmet - Nmet programming language" height="100">
   </a>
 
@@ -18,9 +18,9 @@
   <p align="center">
     A general purpose statically typed and compiled programming language 
     <br />
-    <a href="https://github.com/mahanfarzaneh2000/nemet/issues">Report Bug</a>
+    <a href="https://github.com/mahanfr/nemet/issues">Report Bug</a>
     ·
-    <a href="https://mahanfarzaneh2000.github.io/Nmet/">Documentaion</a>
+    <a href="https://mahanfr.github.io/Nmet/">Documentaion</a>
   </p>
 </div>
 
@@ -160,16 +160,16 @@ Don't forget to give the project a star! Thanks again!
 Distributed under the MIT License. See `LICENSE.txt` for more information.
 
 
-[contributors-shield]: https://img.shields.io/github/contributors/mahanfarzaneh2000/Nmet.svg?style=for-the-badge
-[contributors-url]: https://github.com/mahanfarzaneh2000/Nmet/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/mahanfarzaneh2000/Nmet.svg?style=for-the-badge
-[forks-url]: https://github.com/mahanfarzaneh2000/Nmet/network/members
-[stars-shield]: https://img.shields.io/github/stars/mahanfarzaneh2000/Nmet.svg?style=for-the-badge
-[stars-url]: https://github.com/mahanfarzaneh2000/Nmet/stargazers
-[issues-shield]: https://img.shields.io/github/issues/mahanfarzaneh2000/Nmet.svg?style=for-the-badge
-[issues-url]: https://github.com/mahanfarzaneh2000/Nmet/issues
-[license-shield]: https://img.shields.io/github/license/mahanfarzaneh2000/Nmet.svg?style=for-the-badge
-[license-url]: https://github.com/mahanfarzaneh2000/Nmet/blob/master/LICENSE.txt
+[contributors-shield]: https://img.shields.io/github/contributors/mahanfr/Nmet.svg?style=for-the-badge
+[contributors-url]: https://github.com/mahanfr/Nmet/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/mahanfr/Nmet.svg?style=for-the-badge
+[forks-url]: https://github.com/mahanfr/Nmet/network/members
+[stars-shield]: https://img.shields.io/github/stars/mahanfr/Nmet.svg?style=for-the-badge
+[stars-url]: https://github.com/mahanfr/Nmet/stargazers
+[issues-shield]: https://img.shields.io/github/issues/mahanfr/Nmet.svg?style=for-the-badge
+[issues-url]: https://github.com/mahanfr/Nmet/issues
+[license-shield]: https://img.shields.io/github/license/mahanfr/Nmet.svg?style=for-the-badge
+[license-url]: https://github.com/mahanfr/Nmet/blob/master/LICENSE.txt
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://linkedin.com/in/mahanfarzaneh
 [product-screenshot]: assets/nemet.png
