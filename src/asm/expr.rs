@@ -270,7 +270,10 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
         ExprType::DeRef(r) => {
             let t = compile_expr(cc, r);
             match t {
-                VariableType::Array(_, _) | VariableType::Pointer => {
+                VariableType::Array(_, _) => {
+                    todo!("Changed!");
+                },
+                VariableType::Pointer => {
                     cc.codegen.pop(R::RAX);
                     cc.codegen.mov(R::RCX, "qword [rax]");
                     cc.codegen.push(R::RCX);
@@ -323,8 +326,13 @@ fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) {
             };
             match v_map.vtype {
                 VariableType::Array(_, _) => {
-                    let mov_addr = format!("qword [rbp - {}]", v_map.offset + v_map.vtype.size());
-                    cc.codegen.mov(R::RAX, mov_addr);
+                    //todo!("ReImplemnt");
+                    //let mov_addr = format!("qword [rbp - {}]", v_map.offset + v_map.vtype.size());
+                    //cc.codegen.mov(R::RAX, mov_addr);
+                    //cc.codegen.push(R::RAX);
+
+                    //cc.codegen.mov(R::RAX, R::RBP);
+                    cc.codegen.lea(R::RAX, format!("[rbp - {}]",v_map.offset + v_map.vtype.size()));
                     cc.codegen.push(R::RAX);
                 }
                 _ => {

@@ -139,6 +139,14 @@ impl Codegen {
         }
     }
 
+    pub fn lea(&mut self, d1: impl ToString, d2: impl ToString) {
+        self.instruct_buf.push(format!(
+            "{SPACING}lea {}, {}",
+            d1.to_string(),
+            d2.to_string()
+        ));
+    }
+    
     pub fn mov(&mut self, d1: impl ToString, d2: impl ToString) {
         self.instruct_buf.push(format!(
             "{SPACING}mov {}, {}",
