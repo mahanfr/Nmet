@@ -7,7 +7,7 @@ use crate::{
         block::BlockType,
         function::{Function, FunctionArg},
         types::VariableType,
-    },
+    }, codegen::R,
 };
 
 use super::{compile_block, frame_size, function_args_register_sized, mem_word, CompilerContext};
@@ -76,8 +76,8 @@ pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
             .unwrap();
     }
     if f.ident == "main" {
-        cc.codegen.mov("rax", 60);
-        cc.codegen.mov("rdi", 0);
+        cc.codegen.mov(R::RAX, 60);
+        cc.codegen.mov(R::RDI, 0);
         cc.codegen.syscall();
     } else {
         // revert rbp

@@ -3,7 +3,7 @@ use crate::{
     parser::{
         expr::{CompareOp, Expr, ExprType, FunctionCall, Op},
         types::VariableType,
-    },
+    }, codegen::R,
 };
 
 use super::{
@@ -27,7 +27,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                 v_map.offset + v_map.vtype.size()
             );
             cc.codegen.mov(rbs("a", &v_map.vtype), mem_acss);
-            cc.codegen.push("rax");
+            cc.codegen.push(R::RAX);
             v_map.vtype
         }
         ExprType::Access(ident, ac) => {
@@ -63,10 +63,10 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             // cc.instruct_buf
             //     .push(asm!("mov rdx, [rbp-{}]", v_map.offset + v_map.vtype.size()));
             cc.codegen.mov(
-                "rdx",
+                R::RDX,
                 format!("[rbp-{}]", v_map.offset + v_map.vtype.size()),
             );
-            cc.codegen.add("rdx", offset);
+            cc.codegen.add(R::RDX, offset);
             cc.codegen
                 .mov(rbs("a", &actype), format!("{} [rdx]", mem_word(&actype)));
             // cc.instruct_buf.push(asm!(
@@ -74,7 +74,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             //     rbs("a", &actype),
             //     mem_word(&actype)
             // ));
-            cc.codegen.push("rax");
+            cc.codegen.push(R::RAX);
             actype
         }
         ExprType::Bool(b) => {
@@ -97,8 +97,8 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
         ExprType::Compare(c) => {
             let left_type = compile_expr(cc, c.left.as_ref());
             let right_type = compile_expr(cc, c.right.as_ref());
-            cc.codegen.mov("rcx", 0);
-            cc.codegen.mov("rdx", 1);
+            cc.codegen.mov(R::RCX, 0);
+            cc.codegen.mov(R::RDX, 1);
             let mut reg_type = left_type.clone();
             if right_type != left_type {
                 if right_type.is_numeric() && left_type.is_numeric() {
@@ -118,86 +118,86 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                 }
             }
             // Make sure rbx is first so the order is correct
-            cc.codegen.pop("rbx");
-            cc.codegen.pop("rax");
+            cc.codegen.pop(R::RBX);
+            cc.codegen.pop(R::RAX);
             cc.codegen.cmp(rbs("a", &reg_type), rbs("b", &reg_type));
             match c.op {
                 CompareOp::Eq => {
-                    cc.codegen.cmove("rcx", "rdx");
+                    cc.codegen.cmove(R::RCX, R::RDX);
                 }
                 CompareOp::NotEq => {
-                    cc.codegen.cmovne("rcx", "rdx");
+                    cc.codegen.cmovne(R::RCX, R::RDX);
                 }
                 CompareOp::Bigger => {
-                    cc.codegen.cmovg("rcx", "rdx");
+                    cc.codegen.cmovg(R::RCX, R::RDX);
                 }
                 CompareOp::Smaller => {
-                    cc.codegen.cmovl("rcx", "rdx");
+                    cc.codegen.cmovl(R::RCX, R::RDX);
                 }
                 CompareOp::BiggerEq => {
-                    cc.codegen.cmovge("rcx", "rdx");
+                    cc.codegen.cmovge(R::RCX, R::RDX);
                 }
                 CompareOp::SmallerEq => {
-                    cc.codegen.cmovle("rcx", "rdx");
+                    cc.codegen.cmovle(R::RCX, R::RDX);
                 }
             }
-            cc.codegen.push("rcx");
+            cc.codegen.push(R::RCX);
             VariableType::Bool
         }
         ExprType::Binary(b) => {
             let left_type = compile_expr(cc, b.left.as_ref());
             let right_type = compile_expr(cc, b.right.as_ref());
-            cc.codegen.pop("rbx");
-            cc.codegen.pop("rax");
+            cc.codegen.pop(R::RBX);
+            cc.codegen.pop(R::RAX);
             match b.op {
                 Op::Plus => {
-                    cc.codegen.add("rax", "rbx");
-                    cc.codegen.push("rax");
+                    cc.codegen.add(R::RAX, R::RBX);
+                    cc.codegen.push(R::RAX);
                 }
                 Op::Sub => {
-                    cc.codegen.sub("rax", "rbx");
-                    cc.codegen.push("rax");
+                    cc.codegen.sub(R::RAX, R::RBX);
+                    cc.codegen.push(R::RAX);
                 }
                 Op::Multi => {
-                    cc.codegen.imul("rax", "rbx");
-                    cc.codegen.push("rax");
+                    cc.codegen.imul(R::RAX, R::RBX);
+                    cc.codegen.push(R::RAX);
                 }
                 Op::Devide => {
                     cc.codegen.cqo();
-                    cc.codegen.idiv("rbx");
-                    cc.codegen.push("rax");
+                    cc.codegen.idiv(R::RBX);
+                    cc.codegen.push(R::RAX);
                 }
                 Op::Mod => {
                     cc.codegen.cqo();
-                    cc.codegen.idiv("rbx");
-                    cc.codegen.push("rdx");
+                    cc.codegen.idiv(R::RBX);
+                    cc.codegen.push(R::RDX);
                 }
                 Op::Or => {
-                    cc.codegen.or("rax", "rbx");
-                    cc.codegen.push("rax");
+                    cc.codegen.or(R::RAX, R::RBX);
+                    cc.codegen.push(R::RAX);
                 }
                 Op::And => {
-                    cc.codegen.and("rax", "rbx");
-                    cc.codegen.push("rax");
+                    cc.codegen.and(R::RAX, R::RBX);
+                    cc.codegen.push(R::RAX);
                 }
                 Op::Lsh => {
-                    cc.codegen.mov("rcx", "rbx");
-                    cc.codegen.sal("rax", "cl");
-                    cc.codegen.push("rax");
+                    cc.codegen.mov(R::RCX, R::RBX);
+                    cc.codegen.sal(R::RAX, R::CL);
+                    cc.codegen.push(R::RAX);
                 }
                 Op::Rsh => {
-                    cc.codegen.mov("rcx", "rbx");
-                    cc.codegen.sar("rax", "cl");
-                    cc.codegen.push("rax");
+                    cc.codegen.mov(R::RCX, R::RBX);
+                    cc.codegen.sar(R::RAX, R::CL);
+                    cc.codegen.push(R::RAX);
                 }
                 Op::LogicalOr => {
-                    cc.codegen.or("rax", "rbx");
-                    cc.codegen.push("rax");
+                    cc.codegen.or(R::RAX, R::RBX);
+                    cc.codegen.push(R::RAX);
                     return VariableType::Bool;
                 }
                 Op::LogicalAnd => {
-                    cc.codegen.and("rax", "rbx");
-                    cc.codegen.push("rax");
+                    cc.codegen.and(R::RAX, R::RBX);
+                    cc.codegen.push(R::RAX);
                     return VariableType::Bool;
                 }
                 Op::Not => {
@@ -228,11 +228,11 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
         }
         ExprType::Unary(u) => {
             let right_type = compile_expr(cc, &u.right);
-            cc.codegen.pop("rax");
+            cc.codegen.pop(R::RAX);
             match u.op {
                 Op::Sub => {
-                    cc.codegen.neg("rax");
-                    cc.codegen.push("rax");
+                    cc.codegen.neg(R::RAX);
+                    cc.codegen.push(R::RAX);
                     if right_type == VariableType::UInt {
                         return VariableType::Int;
                     } else {
@@ -240,11 +240,11 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                     }
                 }
                 Op::Plus => {
-                    cc.codegen.push("rax");
+                    cc.codegen.push(R::RAX);
                 }
                 Op::Not => {
-                    cc.codegen.not("rax");
-                    cc.codegen.push("rax");
+                    cc.codegen.not(R::RAX);
+                    cc.codegen.push(R::RAX);
                 }
                 _ => {
                     unreachable!();
@@ -271,9 +271,9 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             let t = compile_expr(cc, r);
             match t {
                 VariableType::Array(_, _) | VariableType::Pointer => {
-                    cc.codegen.pop("rax");
-                    cc.codegen.mov("rcx", "qword [rax]");
-                    cc.codegen.push("rcx");
+                    cc.codegen.pop(R::RAX);
+                    cc.codegen.mov(R::RCX, "qword [rax]");
+                    cc.codegen.push(R::RCX);
                 }
                 _ => {
                     error(format!("Expected a Pointer found ({t})"), expr.loc.clone());
@@ -289,7 +289,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                 );
             });
             compile_expr(cc, &ai.indexer);
-            cc.codegen.pop("rbx");
+            cc.codegen.pop(R::RBX);
             // cc.instruct_buf
             //     .push(asm!("mov rdx, [rbp-{}]", v_map.offset + v_map.vtype.size()));
             // cc.instruct_buf
@@ -306,7 +306,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             let reg = rbs("a", &v_map.vtype);
 
             cc.codegen.mov(reg, mem_acss);
-            cc.codegen.push("rax");
+            cc.codegen.push(R::RAX);
             match v_map.vtype {
                 VariableType::Array(t, _) => t.as_ref().clone(),
                 _ => unreachable!(),
@@ -324,13 +324,13 @@ fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) {
             match v_map.vtype {
                 VariableType::Array(_, _) => {
                     let mov_addr = format!("qword [rbp - {}]", v_map.offset + v_map.vtype.size());
-                    cc.codegen.mov("rax", mov_addr);
-                    cc.codegen.push("rax");
+                    cc.codegen.mov(R::RAX, mov_addr);
+                    cc.codegen.push(R::RAX);
                 }
                 _ => {
-                    cc.codegen.mov("rax", "rbp");
-                    cc.codegen.sub("rax", v_map.offset + v_map.vtype.size());
-                    cc.codegen.push("rax");
+                    cc.codegen.mov(R::RAX, R::RBP);
+                    cc.codegen.sub(R::RAX, v_map.offset + v_map.vtype.size());
+                    cc.codegen.push(R::RAX);
                 }
             }
         }
@@ -349,7 +349,7 @@ fn compile_function_call(
         compile_expr(cc, arg);
         match arg.etype {
             ExprType::String(_) => {
-                cc.codegen.pop("rax");
+                cc.codegen.pop(R::RAX);
                 cc.codegen.pop(function_args_register(index));
             }
             _ => {
@@ -364,10 +364,10 @@ fn compile_function_call(
             &fc.ident, "Make sure you are calling the correct function"
         ));
     };
-    cc.codegen.mov("rax", 0);
+    cc.codegen.mov(R::RAX, 0);
     cc.codegen.call(fc.ident.clone());
     if fun.ret_type != VariableType::Void {
-        cc.codegen.push("rax");
+        cc.codegen.push(R::RAX);
     }
     Ok(fun.ret_type.clone())
 }

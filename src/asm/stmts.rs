@@ -1,5 +1,6 @@
 use crate::{
     compiler::VariableMap,
+    codegen::R,
     error_handeling::error,
     parser::{
         assign::{Assign, AssignOp},
@@ -29,8 +30,8 @@ fn compile_if_stmt(cc: &mut CompilerContext, ifs: &IFStmt, exit_tag: usize) {
         ElseBlock::None => exit_tag,
         _ => cc.codegen.get_id(),
     };
-    cc.codegen.pop("rax");
-    cc.codegen.test("rax", "rax");
+    cc.codegen.pop(R::RAX);
+    cc.codegen.test(R::RAX, R::RAX);
     cc.codegen.jz(format!(".L{next_tag}"));
 
     compile_block(cc, &ifs.then_block, BlockType::Condition);
@@ -62,16 +63,16 @@ pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) {
             compile_expr(cc, e);
             match e.etype {
                 ExprType::String(_) => {
-                    cc.codegen.mov("rax", 1);
-                    cc.codegen.mov("rdi", 1);
-                    cc.codegen.pop("rbx");
-                    cc.codegen.pop("rcx");
-                    cc.codegen.mov("rsi", "rcx");
-                    cc.codegen.mov("rdx", "rbx");
+                    cc.codegen.mov(R::RAX, 1);
+                    cc.codegen.mov(R::RDI, 1);
+                    cc.codegen.pop(R::RBX);
+                    cc.codegen.pop(R::RCX);
+                    cc.codegen.mov(R::RSI, R::RCX);
+                    cc.codegen.mov(R::RDX, R::RBX);
                     cc.codegen.syscall();
                 }
                 _ => {
-                    cc.codegen.pop("rdi");
+                    cc.codegen.pop(R::RDI);
                     cc.codegen.call("print");
                 }
             }
@@ -97,7 +98,7 @@ pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) {
         },
         StmtType::Return(e) => {
             compile_expr(cc, e);
-            cc.codegen.pop("rax");
+            cc.codegen.pop(R::RAX);
             cc.codegen.leave();
             cc.codegen.ret();
         }
@@ -175,8 +176,8 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) {
         Ok(_) => (),
         Err(msg) => error(msg, w_stmt.condition.loc.clone()),
     }
-    cc.codegen.pop("rax");
-    cc.codegen.test("rax", "rax");
+    cc.codegen.pop(R::RAX);
+    cc.codegen.test(R::RAX, R::RAX);
     cc.codegen.jnz(format!(".L{block_tag}"));
     cc.codegen.tag(format!(".LE{block_tag}"));
 }
@@ -201,8 +202,8 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
         }
         VariableType::Custom(_) => {
             cc.codegen
-                .mov("rdx", format!("[rbp - {}]", v_map.offset + 8));
-            cc.codegen.add("rdx", v_map.offset_inner);
+                .mov(R::RDX, format!("[rbp - {}]", v_map.offset + 8));
+            cc.codegen.add(R::RDX, v_map.offset_inner);
             reg = rbs("a", &v_map.vtype_inner);
             format!("{} [rdx]", mem_word(&v_map.vtype_inner))
         }
@@ -215,7 +216,7 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
             )
         }
     };
-    cc.codegen.pop("rax");
+    cc.codegen.pop(R::RAX);
     match op {
         AssignOp::Eq => {
             cc.codegen.mov(mem_acss, reg);
@@ -237,7 +238,7 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
             cc.codegen.mov(b_reg, &reg);
             cc.codegen.mov(&reg, &mem_acss);
             cc.codegen.cqo();
-            cc.codegen.idiv("rbx");
+            cc.codegen.idiv(R::RBX);
             cc.codegen.mov(&mem_acss, &reg);
         }
         AssignOp::ModEq => {
@@ -245,7 +246,7 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
             cc.codegen.mov(b_reg, &reg);
             cc.codegen.mov(&reg, &mem_acss);
             cc.codegen.cqo();
-            cc.codegen.idiv("rbx");
+            cc.codegen.idiv(R::RBX);
             let d_reg = rbs("d", &v_map.vtype);
             cc.codegen.mov(&mem_acss, d_reg);
         }
@@ -285,7 +286,7 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Strin
                 _ => unreachable!(),
             }
             compile_expr(cc, &ai.indexer);
-            cc.codegen.pop("rbx");
+            cc.codegen.pop(R::RBX);
             assgin_op(cc, &assign.op, &v_map);
             Ok(())
         }

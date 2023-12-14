@@ -1,3 +1,88 @@
+use std::fmt::Display;
+
+#[allow(dead_code)]
+#[derive(Debug,Clone, Copy)]
+pub enum R {
+    RAX,
+    RCX,
+    RDX,
+    RBX,
+    RSP,
+    RBP,
+    RSI,
+    RDI,
+    EAX,
+    ECX,
+    EDX,
+    EBX,
+    ESP,
+    EBP,
+    ESI,
+    EDI,
+    AX,
+    CX,
+    DX,
+    BX,
+    SP,
+    BP,
+    SI,
+    DI,
+    AH,
+    AL,
+    CH,
+    CL,
+    DH,
+    DL,
+    BH,
+    BL,
+    SPL,
+    BPL,
+    SIL,
+    DIL,
+}
+impl Display for R {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::RAX => write!(f,"rax"),
+            Self::RCX => write!(f,"rcx"),
+            Self::RDX => write!(f,"rdx"),
+            Self::RBX => write!(f,"rbx"),
+            Self::RSP => write!(f,"rsp"),
+            Self::RBP => write!(f,"rbp"),
+            Self::RSI => write!(f,"rsi"),
+            Self::RDI => write!(f,"rdi"),
+            Self::EAX => write!(f,"eax"),
+            Self::ECX => write!(f,"ecx"),
+            Self::EDX => write!(f,"edx"),
+            Self::EBX => write!(f,"ebx"),
+            Self::ESP => write!(f,"esp"),
+            Self::EBP => write!(f,"ebp"),
+            Self::ESI => write!(f,"esi"),
+            Self::EDI => write!(f,"edi"),
+            Self::AX  => write!(f,"ax"),
+            Self::CX  => write!(f,"cx"),
+            Self::DX  => write!(f,"dx"),
+            Self::BX  => write!(f,"bx"),
+            Self::SP  => write!(f,"sp"),
+            Self::BP  => write!(f,"bp"),
+            Self::SI  => write!(f,"si"),
+            Self::DI  => write!(f,"di"),
+            Self::AH  => write!(f,"ah"),
+            Self::AL  => write!(f,"al"),
+            Self::CH  => write!(f,"ch"),
+            Self::CL  => write!(f,"cl"),
+            Self::DH  => write!(f,"dh"),
+            Self::DL  => write!(f,"dl"),
+            Self::BH  => write!(f,"bh"),
+            Self::BL  => write!(f,"bl"),
+            Self::SPL => write!(f,"spl"),
+            Self::BPL => write!(f,"bpl"),
+            Self::SIL => write!(f,"sil"),
+            Self::DIL => write!(f,"dil"),
+        }
+    }
+}
+
 #[allow(dead_code)]
 #[derive(Clone)]
 pub struct Codegen {
