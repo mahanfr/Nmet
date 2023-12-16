@@ -63,7 +63,7 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
             Ok(vt) => {
                 let mem_acss = format!("{} [rbp-{}]", mem_word(&vt), cc.mem_offset + vt.size());
                 cc.codegen.pop("rax");
-                cc.codegen.mov(mem_acss, R::RAX.sized(&vt));
+                cc.codegen.mov(mem_acss, R::A_s(&vt));
                 vtype = vt;
             }
             Err(msg) => {

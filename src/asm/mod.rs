@@ -6,7 +6,7 @@ mod variables;
 use std::error::Error;
 
 use crate::asm::function::compile_function;
-use crate::codegen::Codegen;
+use crate::codegen::{Codegen, R};
 use crate::compiler::{CompilerContext, ScopeBlock};
 use crate::error_handeling::error;
 use crate::parser::block::{Block, BlockType};
@@ -30,71 +30,26 @@ pub fn mem_word(vtype: &VariableType) -> String {
     }
 }
 
-pub fn rbs(register: &str, vtype: &VariableType) -> String {
-    let size = vtype.item_size();
-    match register {
-        "a" | "b" | "c" | "d" => match size {
-            1 => format!("{register}l"),
-            2 => format!("{register}x"),
-            4 => format!("e{register}x"),
-            8 => format!("r{register}x"),
-            _ => {
-                unreachable!("Incurrect Size")
-            }
-        },
-        "sp" | "bp" => match size {
-            1 => format!("{register}l"),
-            2 => register.to_string(),
-            4 => format!("e{register}"),
-            8 => format!("r{register}"),
-            _ => {
-                unreachable!("Incurrect Size")
-            }
-        },
-        "si" | "di" => match size {
-            1 => format!("{register}l"),
-            2 => register.to_string(),
-            4 => format!("e{register}"),
-            8 => format!("r{register}"),
-            _ => {
-                unreachable!("Incurrect Size")
-            }
-        },
-        "r8" | "r9" | "r10" | "r11" => match size {
-            1 => format!("{register}b"),
-            2 => format!("{register}w"),
-            4 => format!("{register}d"),
-            8 => register.to_string(),
-            _ => {
-                unreachable!("Incurrect Size")
-            }
-        },
-        _ => {
-            panic!("Wrong register identifier!");
-        }
-    }
-}
-
-pub fn function_args_register_sized(arg_numer: usize, vtype: &VariableType) -> String {
+pub fn function_args_register_sized(arg_numer: usize, vtype: &VariableType) -> R {
     match arg_numer {
-        0 => rbs("di", vtype),
-        1 => rbs("si", vtype),
-        2 => rbs("d", vtype),
-        3 => rbs("c", vtype),
-        4 => rbs("r8", vtype),
-        5 => rbs("r9", vtype),
+        0 => R::DI_s(vtype),
+        1 => R::Si_s(vtype),
+        2 => R::D_s(vtype),
+        3 => R::C_s(vtype),
+        4 => R::R8_s(vtype),
+        5 => R::R9_s(vtype),
         _ => unreachable!(),
     }
 }
 
-pub fn function_args_register(arg_numer: usize) -> String {
+pub fn function_args_register(arg_numer: usize) -> R {
     match arg_numer {
-        0 => "rdi".to_string(),
-        1 => "rsi".to_string(),
-        2 => "rdx".to_string(),
-        3 => "rcx".to_string(),
-        4 => "r8".to_string(),
-        5 => "r9".to_string(),
+        0 => R::RDI,
+        1 => R::RSI,
+        2 => R::RDX,
+        3 => R::RCX,
+        4 => R::R8,
+        5 => R::R9,
         _ => unreachable!(),
     }
 }
