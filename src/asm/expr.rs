@@ -26,7 +26,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                 mem_word(&v_map.vtype),
                 v_map.offset + v_map.vtype.size()
             );
-            cc.codegen.mov(rbs("a", &v_map.vtype), mem_acss);
+            cc.codegen.mov(R::RAX.sized(&v_map.vtype), mem_acss);
             cc.codegen.push(R::RAX);
             v_map.vtype
         }
@@ -68,7 +68,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             );
             cc.codegen.add(R::RDX, offset);
             cc.codegen
-                .mov(rbs("a", &actype), format!("{} [rdx]", mem_word(&actype)));
+                .mov(R::RAX.sized(&actype), format!("{} [rdx]", mem_word(&actype)));
             // cc.instruct_buf.push(asm!(
             //     "mov {}, {} [rdx]",
             //     rbs("a", &actype),
@@ -120,7 +120,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             // Make sure rbx is first so the order is correct
             cc.codegen.pop(R::RBX);
             cc.codegen.pop(R::RAX);
-            cc.codegen.cmp(rbs("a", &reg_type), rbs("b", &reg_type));
+            cc.codegen.cmp(R::RAX.sized(&reg_type), R::RBX.sized(&reg_type));
             match c.op {
                 CompareOp::Eq => {
                     cc.codegen.cmove(R::RCX, R::RDX);
@@ -306,8 +306,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                 v_map.offset + v_map.vtype.size(),
                 v_map.vtype.item_size()
             );
-            let reg = rbs("a", &v_map.vtype);
-
+            let reg = R::RAX.sized(&v_map.vtype);
             cc.codegen.mov(reg, mem_acss);
             cc.codegen.push(R::RAX);
             match v_map.vtype {

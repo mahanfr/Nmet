@@ -183,7 +183,7 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) {
 }
 
 fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
-    let reg: String;
+    let reg: R;
     let mem_acss = match &v_map.vtype {
         VariableType::Array(t, _) => {
             // cc.instruct_buf
@@ -192,7 +192,7 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
             //     .push(asm!("imul rbx, {}", v_map.vtype.item_size()));
             // cc.instruct_buf.push(asm!("add rdx, rbx"));
             // format!("{} [rdx]", mem_word(&v_map.vtype))
-            reg = rbs("a", t);
+            reg = R::RAX.sized(t);
             format!(
                 "{} [rbp-{}+rbx*{}]",
                 mem_word(&v_map.vtype),
@@ -204,11 +204,11 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
             cc.codegen
                 .mov(R::RDX, format!("[rbp - {}]", v_map.offset + 8));
             cc.codegen.add(R::RDX, v_map.offset_inner);
-            reg = rbs("a", &v_map.vtype_inner);
+            reg = R::RAX.sized(&v_map.vtype_inner);
             format!("{} [rdx]", mem_word(&v_map.vtype_inner))
         }
         _ => {
-            reg = rbs("a", &v_map.vtype);
+            reg = R::RAX.sized(&v_map.vtype);
             format!(
                 "{} [rbp-{}]",
                 mem_word(&v_map.vtype),
@@ -228,13 +228,13 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
             cc.codegen.sub(mem_acss, reg);
         }
         AssignOp::MultiEq => {
-            let b_reg = rbs("b", &v_map.vtype);
+            let b_reg = R::RBX.sized(&v_map.vtype);
             cc.codegen.mov(&b_reg, &mem_acss);
             cc.codegen.imul(&reg, &b_reg);
             cc.codegen.mov(&mem_acss, &reg);
         }
         AssignOp::DevideEq => {
-            let b_reg = rbs("b", &v_map.vtype);
+            let b_reg = R::RBX.sized(&v_map.vtype);
             cc.codegen.mov(b_reg, &reg);
             cc.codegen.mov(&reg, &mem_acss);
             cc.codegen.cqo();
@@ -242,12 +242,12 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
             cc.codegen.mov(&mem_acss, &reg);
         }
         AssignOp::ModEq => {
-            let b_reg = rbs("b", &v_map.vtype);
+            let b_reg = R::RBX.sized(&v_map.vtype);
             cc.codegen.mov(b_reg, &reg);
             cc.codegen.mov(&reg, &mem_acss);
             cc.codegen.cqo();
             cc.codegen.idiv(R::RBX);
-            let d_reg = rbs("d", &v_map.vtype);
+            let d_reg = R::RDX.sized(&v_map.vtype);
             cc.codegen.mov(&mem_acss, d_reg);
         }
     }

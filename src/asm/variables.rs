@@ -1,10 +1,10 @@
 use crate::{
     compiler::VariableMap,
     error_handeling::error,
-    parser::{types::VariableType, variable_decl::VariableDeclare},
+    parser::{types::VariableType, variable_decl::VariableDeclare}, codegen::R,
 };
 
-use super::{expr::compile_expr, mem_word, rbs, CompilerContext};
+use super::{expr::compile_expr, mem_word, CompilerContext};
 
 pub fn find_variable(cc: &CompilerContext, ident: String) -> Option<VariableMap> {
     for scoped_block in &cc.scoped_blocks {
@@ -63,7 +63,7 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
             Ok(vt) => {
                 let mem_acss = format!("{} [rbp-{}]", mem_word(&vt), cc.mem_offset + vt.size());
                 cc.codegen.pop("rax");
-                cc.codegen.mov(mem_acss, rbs("a", &vt));
+                cc.codegen.mov(mem_acss, R::RAX.sized(&vt));
                 vtype = vt;
             }
             Err(msg) => {

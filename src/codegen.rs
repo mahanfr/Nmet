@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use crate::parser::types::VariableType;
+
 #[allow(dead_code)]
 #[derive(Debug,Clone, Copy)]
 pub enum R {
@@ -40,6 +42,89 @@ pub enum R {
     SIL,
     DIL,
 }
+
+impl R {
+    pub fn sized(&self, vtype: &VariableType) -> Self {
+        let size = vtype.item_size();
+        match self {
+            Self::RAX | Self::AX | Self::EAX | Self::AL => {
+                match size {
+                    1 => Self::AL,
+                    2 => Self::AX,
+                    4 => Self::EAX,
+                    8 => Self::RAX,
+                    _ => unreachable!()  
+                }
+            }
+            Self::RBX | Self::BX | Self::EBX | Self::BL => {
+                match size {
+                    1 => Self::BL,
+                    2 => Self::BX,
+                    4 => Self::EBX,
+                    8 => Self::RBX,
+                    _ => unreachable!()  
+                }
+            }
+            Self::RCX | Self::CX | Self::ECX | Self::CL => {
+                match size {
+                    1 => Self::CL,
+                    2 => Self::CX,
+                    4 => Self::ECX,
+                    8 => Self::RCX,
+                    _ => unreachable!()  
+                }
+            }
+            Self::RDX | Self::DX | Self::EDX | Self::DL => {
+                match size {
+                    1 => Self::DL,
+                    2 => Self::DX,
+                    4 => Self::EDX,
+                    8 => Self::RDX,
+                    _ => unreachable!()  
+                }
+            }
+            Self::RSP | Self::ESP | Self::SP | Self::SPL  => {
+                match size {
+                    1 => Self::SPL,
+                    2 => Self::SP,
+                    4 => Self::ESP,
+                    8 => Self::RSP,
+                    _ => unreachable!()  
+                }
+            }
+            Self::RBP | Self::EBP | Self::BP | Self::BPL  => {
+                match size {
+                    1 => Self::BPL,
+                    2 => Self::BP,
+                    4 => Self::EBP,
+                    8 => Self::RBP,
+                    _ => unreachable!()  
+                }
+            }
+            Self::RSI | Self::ESI | Self::SI | Self::SIL  => {
+                match size {
+                    1 => Self::SIL,
+                    2 => Self::SI,
+                    4 => Self::ESI,
+                    8 => Self::RSI,
+                    _ => unreachable!()  
+                }
+            }
+            Self::RDI | Self::EDI | Self::DI | Self::DIL  => {
+                match size {
+                    1 => Self::DIL,
+                    2 => Self::DI,
+                    4 => Self::EDI,
+                    8 => Self::RDI,
+                    _ => unreachable!()  
+                }
+            }
+            _ => unreachable!()
+        }
+    }
+    
+}
+
 impl Display for R {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
