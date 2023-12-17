@@ -3,10 +3,8 @@ mod function;
 mod stmts;
 mod variables;
 
-use std::error::Error;
-
 use crate::asm::function::compile_function;
-use crate::codegen::{Codegen, R, Mnemonic::*};
+use crate::codegen::{R, Mnemonic::*};
 use crate::compiler::{CompilerContext, ScopeBlock};
 use crate::error_handeling::error;
 use crate::parser::block::{Block, BlockType};
@@ -62,7 +60,7 @@ pub fn compile_lib(
     cc: &mut CompilerContext,
     path: String,
     exports: Vec<String>,
-) -> Result<Codegen, Box<dyn Error>> {
+) {
     let program = parse_file(path);
     let is_importable = |ident: &String| {
         if !exports.is_empty() {
@@ -89,15 +87,14 @@ pub fn compile_lib(
                 let mut new_path = String::new();
                 new_path.push_str(next_path.as_str());
                 new_path.push_str(".nmt");
-                compile_lib(cc, new_path, idents)?;
+                compile_lib(cc, new_path, idents);
             }
         }
     }
-    Ok(cc.codegen.clone())
 }
 
 // TODO: Handle Compilation Error
-pub fn compile(cc: &mut CompilerContext, path: String) -> Result<Codegen, Box<dyn Error>> {
+pub fn compile(cc: &mut CompilerContext, path: String) {
     let program = parse_file(path);
     for item in program.items {
         match item {
@@ -115,7 +112,7 @@ pub fn compile(cc: &mut CompilerContext, path: String) -> Result<Codegen, Box<dy
                 let mut new_path = String::new();
                 new_path.push_str(next_path.as_str());
                 new_path.push_str(".nmt");
-                compile_lib(cc, new_path, idents)?;
+                compile_lib(cc, new_path, idents);
             }
         }
     }
@@ -127,7 +124,6 @@ pub fn compile(cc: &mut CompilerContext, path: String) -> Result<Codegen, Box<dy
         cc.scoped_blocks.is_empty(),
         "Somting went wrong: Scope has not been cleared"
     );
-    Ok(cc.codegen.clone())
 }
 
 /*

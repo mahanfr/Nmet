@@ -1,10 +1,10 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     asm,
     codegen::Codegen,
     output_generator::x86_64_nasm_generator,
-    parser::{block::BlockType, function::Function, structs::StructDef, types::VariableType},
+    parser::{block::BlockType, function::Function, structs::StructDef, types::VariableType}, bif::Bif,
 };
 
 #[derive(Debug, Clone)]
@@ -29,15 +29,13 @@ impl ScopeBlock {
 }
 
 pub struct CompilerContext {
-    // pub instruct_buf: Vec<String>,
-    // pub data_buf: Vec<String>,
-    // pub bss_buf: Vec<String>,
     pub codegen: Codegen,
     pub scoped_blocks: Vec<ScopeBlock>,
     pub block_id: usize,
     pub variables_map: HashMap<String, VariableMap>,
     pub functions_map: HashMap<String, Function>,
     pub structs_map: HashMap<String, StructDef>,
+    pub bif_set: HashSet<Bif>,
     pub mem_offset: usize,
 }
 
@@ -47,6 +45,7 @@ impl CompilerContext {
             codegen: Codegen::new(),
             scoped_blocks: Vec::new(),
             block_id: 0,
+            bif_set: HashSet::new(),
             variables_map: HashMap::new(),
             functions_map: HashMap::new(),
             structs_map: HashMap::new(),
@@ -58,10 +57,16 @@ impl CompilerContext {
 pub fn compile_to_asm(path: String) {
     let mut compiler_context = CompilerContext::new();
 
-    let mut codegen =
-        asm::compile(&mut compiler_context, path.clone()).expect("Can not Compile Program");
-    x86_64_nasm_cleanup(&mut codegen);
-    x86_64_nasm_generator(path, codegen).unwrap();
+    asm::compile(&mut compiler_context, path.clone());
+    x86_64_impl_bifs(&mut compiler_context);
+    x86_64_nasm_cleanup(&mut compiler_context.codegen);
+    x86_64_nasm_generator(path, compiler_context.codegen).unwrap();
+}
+
+pub fn x86_64_impl_bifs(cc: &mut CompilerContext) {
+    for bif in cc.bif_set.iter() {
+        bif.implement(&mut cc.codegen);
+    }
 }
 
 fn x86_64_nasm_cleanup(code: &mut Codegen) {

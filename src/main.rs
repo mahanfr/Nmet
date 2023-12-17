@@ -13,6 +13,7 @@ mod lexer;
 mod macros;
 mod output_generator;
 mod parser;
+mod bif;
 #[cfg(test)]
 mod tests;
 mod utils;

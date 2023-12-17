@@ -1,13 +1,12 @@
 use std::collections::HashMap;
 
 use crate::{
-    asm,
     compiler::{ScopeBlock, VariableMap},
     parser::{
         block::BlockType,
         function::{Function, FunctionArg},
         types::VariableType,
-    }, codegen::{R, Mnemonic::*},
+    }, codegen::{R, Mnemonic::*, build_instr1, build_instr2},
 };
 
 use super::{compile_block, frame_size, function_args_register_sized, mem_word, CompilerContext};
@@ -65,15 +64,9 @@ pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
     cc.scoped_blocks.pop();
     // Call Exit Syscall
     if !cc.variables_map.is_empty() {
-        cc.codegen
-            .insert_into_raw(index_1, asm!("push rbp"))
-            .unwrap();
-        cc.codegen
-            .insert_into_raw(index_2, asm!("mov rbp, rsp"))
-            .unwrap();
-        cc.codegen
-            .insert_into_raw(index_3, asm!("sub rsp, {}", frame_size(cc.mem_offset)))
-            .unwrap();
+        cc.codegen.replace(index_1, build_instr1(Push, R::RBP)).unwrap();
+        cc.codegen.replace(index_2, build_instr2(Mov, R::RBP, R::RSP)).unwrap();
+        cc.codegen.replace(index_3, build_instr2(Sub, R::RSP, frame_size(cc.mem_offset))).unwrap();
     }
     if f.ident == "main" {
         cc.codegen.instr2(Mov, R::RAX, 60);

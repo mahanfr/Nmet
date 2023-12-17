@@ -8,7 +8,7 @@ use crate::{
         expr::ExprType,
         stmt::{ElseBlock, IFStmt, Stmt, StmtType, WhileStmt},
         types::VariableType,
-    },
+    }, bif::Bif,
 };
 
 use super::{
@@ -72,6 +72,7 @@ pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) {
                     cc.codegen.instr0(Syscall);
                 }
                 _ => {
+                    cc.bif_set.insert(Bif::Print);
                     cc.codegen.instr1(Pop, R::RDI);
                     cc.codegen.instr1(Call, "print");
                 }
