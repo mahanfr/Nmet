@@ -55,7 +55,7 @@ pub enum R {
 #[allow(dead_code)]
 #[allow(non_snake_case)]
 impl R {
-    pub fn A_s(vtype: &VariableType) -> Self {
+    pub fn AX_sized(vtype: &VariableType) -> Self {
         let size = vtype.item_size();
         match size {
             1 => Self::AL,
@@ -66,7 +66,7 @@ impl R {
         }
     }
 
-    pub fn B_s(vtype: &VariableType) -> Self {
+    pub fn BX_sized(vtype: &VariableType) -> Self {
         let size = vtype.item_size();
         match size {
             1 => Self::BL,
@@ -77,7 +77,7 @@ impl R {
         }
     }
 
-    pub fn C_s(vtype: &VariableType) -> Self {
+    pub fn CX_sized(vtype: &VariableType) -> Self {
         let size = vtype.item_size();
         match size {
             1 => Self::CL,
@@ -88,7 +88,7 @@ impl R {
         }
     }
 
-    pub fn D_s(vtype: &VariableType) -> Self {
+    pub fn DX_sized(vtype: &VariableType) -> Self {
         let size = vtype.item_size();
         match size {
             1 => Self::DL,
@@ -99,7 +99,7 @@ impl R {
         }
     }
 
-    pub fn DI_s(vtype: &VariableType) -> Self {
+    pub fn DI_sized(vtype: &VariableType) -> Self {
         let size = vtype.item_size();
         match size {
             1 => Self::DIL,
@@ -110,7 +110,7 @@ impl R {
         }
     }
 
-    pub fn Si_s(vtype: &VariableType) -> Self {
+    pub fn Si_sized(vtype: &VariableType) -> Self {
         let size = vtype.item_size();
         match size {
             1 => Self::SIL,
@@ -121,7 +121,7 @@ impl R {
         }
     }
 
-    pub fn R8_s(vtype: &VariableType) -> Self {
+    pub fn R8_sized(vtype: &VariableType) -> Self {
         let size = vtype.item_size();
         match size {
             1 => Self::R8B,
@@ -132,7 +132,7 @@ impl R {
         }
     }
 
-    pub fn R9_s(vtype: &VariableType) -> Self {
+    pub fn R9_sized(vtype: &VariableType) -> Self {
         let size = vtype.item_size();
         match size {
             1 => Self::R9B,
@@ -196,14 +196,83 @@ impl Display for R {
 }
 
 #[allow(dead_code)]
+pub enum Mnemonic {
+    Lea,
+    Mov,
+    Cmove,
+    Cmovne,
+    Cmovg,
+    Cmovl,
+    Cmovge,
+    Cmovle,
+    Push,
+    Pop,
+    Add,
+    Sub,
+    Imul,
+    Idiv,
+    Or,
+    And,
+    Sal,
+    Sar,
+    Cmp,
+    Test,
+    Cqo,
+    Neg,
+    Not,
+    Call,
+    Jmp,
+    Jz,
+    Jnz,
+    Syscall,
+    Leave,
+    Ret,
+}
+
+impl Display for Mnemonic{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Lea    => write!(f,"lea"),
+            Self::Mov    => write!(f,"mov"),
+            Self::Cmove  => write!(f,"cmove"),
+            Self::Cmovne => write!(f,"cmovne"),
+            Self::Cmovg  => write!(f,"cmovg"),
+            Self::Cmovl  => write!(f,"cmovl"),
+            Self::Cmovge => write!(f,"cmovge"),
+            Self::Cmovle => write!(f,"cmovle"),
+            Self::Push   => write!(f,"push"),
+            Self::Pop    => write!(f,"pop"),
+            Self::Add    => write!(f,"add"),
+            Self::Sub    => write!(f,"sub"),
+            Self::Imul   => write!(f,"imul"),
+            Self::Idiv   => write!(f,"idiv"),
+            Self::Or     => write!(f,"or"),
+            Self::And    => write!(f,"and"),
+            Self::Sal    => write!(f,"sal"),
+            Self::Sar    => write!(f,"sar"),
+            Self::Cmp    => write!(f,"cmp"),
+            Self::Test   => write!(f,"test"),
+            Self::Cqo    => write!(f,"cqo"),
+            Self::Neg    => write!(f,"neg"),
+            Self::Not    => write!(f,"not"),
+            Self::Jmp    => write!(f,"jmp"),
+            Self::Jz     => write!(f,"jz"),
+            Self::Jnz    => write!(f,"jnz"),
+            Self::Syscall=> write!(f,"syscall"),
+            Self::Call   => write!(f,"call"),
+            Self::Leave  => write!(f,"leave"),
+            Self::Ret    => write!(f,"ret"),
+        }
+    }
+}
+
+#[allow(dead_code)]
 #[derive(Clone)]
 pub struct Codegen {
     pub instruct_buf: Vec<String>,
     pub data_buf: Vec<String>,
     pub bss_buf: Vec<String>,
 }
-
-static SPACING: &str = "    ";
 
 #[allow(dead_code)]
 impl Codegen {
@@ -250,176 +319,192 @@ impl Codegen {
             Err("index out of bounds!".into())
         }
     }
-
-    pub fn lea(&mut self, d1: impl ToString, d2: impl ToString) {
-        self.instruct_buf.push(format!(
-            "{SPACING}lea {}, {}",
-            d1.to_string(),
-            d2.to_string()
-        ));
+    
+    pub fn instr0(&mut self, mnem: Mnemonic) {
+        self.instruct_buf.push(mnem.to_string());
     }
 
-    pub fn mov(&mut self, d1: impl ToString, d2: impl ToString) {
-        self.instruct_buf.push(format!(
-            "{SPACING}mov {}, {}",
-            d1.to_string(),
-            d2.to_string()
-        ));
+    pub fn instr1(&mut self, mnem: Mnemonic, op1: impl Display) {
+        self.instruct_buf.push(format!("{mnem} {op1}"));
     }
-    pub fn cmove(&mut self, d1: impl ToString, d2: impl ToString) {
-        self.instruct_buf.push(format!(
-            "{SPACING}cmove {}, {}",
-            d1.to_string(),
-            d2.to_string()
-        ));
+
+    pub fn instr2(&mut self, mnem: Mnemonic, op1: impl Display, op2: impl Display) {
+        self.instruct_buf.push(format!("{mnem} {op1}, {op2}"));
     }
-    pub fn cmovne(&mut self, d1: impl ToString, d2: impl ToString) {
-        self.instruct_buf.push(format!(
-            "{SPACING}cmovne {}, {}",
-            d1.to_string(),
-            d2.to_string()
-        ));
+
+    pub fn set_lable(&mut self, lable: impl Display) {
+        self.instruct_buf.push(format!("{lable}:"))
     }
-    pub fn cmovg(&mut self, d1: impl ToString, d2: impl ToString) {
-        self.instruct_buf.push(format!(
-            "{SPACING}cmovg {}, {}",
-            d1.to_string(),
-            d2.to_string()
-        ));
-    }
-    pub fn cmovl(&mut self, d1: impl ToString, d2: impl ToString) {
-        self.instruct_buf.push(format!(
-            "{SPACING}cmovl {}, {}",
-            d1.to_string(),
-            d2.to_string()
-        ));
-    }
-    pub fn cmovge(&mut self, d1: impl ToString, d2: impl ToString) {
-        self.instruct_buf.push(format!(
-            "{SPACING}cmovge {}, {}",
-            d1.to_string(),
-            d2.to_string()
-        ));
-    }
-    pub fn cmovle(&mut self, d1: impl ToString, d2: impl ToString) {
-        self.instruct_buf.push(format!(
-            "{SPACING}cmovle {}, {}",
-            d1.to_string(),
-            d2.to_string()
-        ));
-    }
-    pub fn push(&mut self, d1: impl ToString) {
-        self.instruct_buf
-            .push(format!("{SPACING}push {}", d1.to_string()));
-    }
-    pub fn pop(&mut self, d1: impl ToString) {
-        self.instruct_buf
-            .push(format!("{SPACING}pop {}", d1.to_string()));
-    }
-    pub fn add(&mut self, d1: impl ToString, d2: impl ToString) {
-        self.instruct_buf.push(format!(
-            "{SPACING}add {}, {}",
-            d1.to_string(),
-            d2.to_string()
-        ));
-    }
-    pub fn sub(&mut self, d1: impl ToString, d2: impl ToString) {
-        self.instruct_buf.push(format!(
-            "{SPACING}sub {}, {}",
-            d1.to_string(),
-            d2.to_string()
-        ));
-    }
-    pub fn imul(&mut self, d1: impl ToString, d2: impl ToString) {
-        self.instruct_buf.push(format!(
-            "{SPACING}imul {}, {}",
-            d1.to_string(),
-            d2.to_string()
-        ));
-    }
-    pub fn idiv(&mut self, d1: impl ToString) {
-        self.instruct_buf
-            .push(format!("{SPACING}idiv {}", d1.to_string()));
-    }
-    pub fn or(&mut self, d1: impl ToString, d2: impl ToString) {
-        self.instruct_buf.push(format!(
-            "{SPACING}or {}, {}",
-            d1.to_string(),
-            d2.to_string()
-        ));
-    }
-    pub fn and(&mut self, d1: impl ToString, d2: impl ToString) {
-        self.instruct_buf.push(format!(
-            "{SPACING}and {}, {}",
-            d1.to_string(),
-            d2.to_string()
-        ));
-    }
-    pub fn sal(&mut self, d1: impl ToString, d2: impl ToString) {
-        self.instruct_buf.push(format!(
-            "{SPACING}sal {}, {}",
-            d1.to_string(),
-            d2.to_string()
-        ));
-    }
-    pub fn sar(&mut self, d1: impl ToString, d2: impl ToString) {
-        self.instruct_buf.push(format!(
-            "{SPACING}sar {}, {}",
-            d1.to_string(),
-            d2.to_string()
-        ));
-    }
-    pub fn cmp(&mut self, d1: impl ToString, d2: impl ToString) {
-        self.instruct_buf.push(format!(
-            "{SPACING}cmp {}, {}",
-            d1.to_string(),
-            d2.to_string()
-        ));
-    }
-    pub fn test(&mut self, d1: impl ToString, d2: impl ToString) {
-        self.instruct_buf.push(format!(
-            "{SPACING}test {}, {}",
-            d1.to_string(),
-            d2.to_string()
-        ));
-    }
-    pub fn cqo(&mut self) {
-        self.instruct_buf.push(format!("{SPACING}cqo"));
-    }
-    pub fn neg(&mut self, d1: impl ToString) {
-        self.instruct_buf
-            .push(format!("{SPACING}neg {}", d1.to_string()));
-    }
-    pub fn not(&mut self, d1: impl ToString) {
-        self.instruct_buf
-            .push(format!("{SPACING}not {}", d1.to_string()));
-    }
-    pub fn call(&mut self, d1: impl ToString) {
-        self.instruct_buf
-            .push(format!("{SPACING}call {}", d1.to_string()));
-    }
-    pub fn tag(&mut self, tag: impl ToString) {
-        self.instruct_buf.push(format!("{}:", tag.to_string()));
-    }
-    pub fn jmp(&mut self, tag: impl ToString) {
-        self.instruct_buf
-            .push(format!("{SPACING}jmp {}", tag.to_string()));
-    }
-    pub fn jz(&mut self, tag: impl ToString) {
-        self.instruct_buf
-            .push(format!("{SPACING}jz {}", tag.to_string()));
-    }
-    pub fn jnz(&mut self, tag: impl ToString) {
-        self.instruct_buf
-            .push(format!("{SPACING}jnz {}", tag.to_string()));
-    }
-    pub fn syscall(&mut self) {
-        self.instruct_buf.push(format!("{SPACING}syscall"));
-    }
-    pub fn leave(&mut self) {
-        self.instruct_buf.push(format!("{SPACING}leave"));
-    }
-    pub fn ret(&mut self) {
-        self.instruct_buf.push(format!("{SPACING}ret"));
-    }
+
+    // pub fn lea(&mut self, d1: impl ToString, d2: impl ToString) {
+    //     self.instruct_buf.push(format!(
+    //         "{SPACING}lea {}, {}",
+    //         d1.to_string(),
+    //         d2.to_string()
+    //     ));
+    // }
+
+    // pub fn mov(&mut self, d1: impl ToString, d2: impl ToString) {
+    //     self.instruct_buf.push(format!(
+    //         "{SPACING}mov {}, {}",
+    //         d1.to_string(),
+    //         d2.to_string()
+    //     ));
+    // }
+    // pub fn cmove(&mut self, d1: impl ToString, d2: impl ToString) {
+    //     self.instruct_buf.push(format!(
+    //         "{SPACING}cmove {}, {}",
+    //         d1.to_string(),
+    //         d2.to_string()
+    //     ));
+    // }
+    // pub fn cmovne(&mut self, d1: impl ToString, d2: impl ToString) {
+    //     self.instruct_buf.push(format!(
+    //         "{SPACING}cmovne {}, {}",
+    //         d1.to_string(),
+    //         d2.to_string()
+    //     ));
+    // }
+    // pub fn cmovg(&mut self, d1: impl ToString, d2: impl ToString) {
+    //     self.instruct_buf.push(format!(
+    //         "{SPACING}cmovg {}, {}",
+    //         d1.to_string(),
+    //         d2.to_string()
+    //     ));
+    // }
+    // pub fn cmovl(&mut self, d1: impl ToString, d2: impl ToString) {
+    //     self.instruct_buf.push(format!(
+    //         "{SPACING}cmovl {}, {}",
+    //         d1.to_string(),
+    //         d2.to_string()
+    //     ));
+    // }
+    // pub fn cmovge(&mut self, d1: impl ToString, d2: impl ToString) {
+    //     self.instruct_buf.push(format!(
+    //         "{SPACING}cmovge {}, {}",
+    //         d1.to_string(),
+    //         d2.to_string()
+    //     ));
+    // }
+    // pub fn cmovle(&mut self, d1: impl ToString, d2: impl ToString) {
+    //     self.instruct_buf.push(format!(
+    //         "{SPACING}cmovle {}, {}",
+    //         d1.to_string(),
+    //         d2.to_string()
+    //     ));
+    // }
+    // pub fn push(&mut self, d1: impl ToString) {
+    //     self.instruct_buf
+    //         .push(format!("{SPACING}push {}", d1.to_string()));
+    // }
+    // pub fn pop(&mut self, d1: impl ToString) {
+    //     self.instruct_buf
+    //         .push(format!("{SPACING}pop {}", d1.to_string()));
+    // }
+    // pub fn add(&mut self, d1: impl ToString, d2: impl ToString) {
+    //     self.instruct_buf.push(format!(
+    //         "{SPACING}add {}, {}",
+    //         d1.to_string(),
+    //         d2.to_string()
+    //     ));
+    // }
+    // pub fn sub(&mut self, d1: impl ToString, d2: impl ToString) {
+    //     self.instruct_buf.push(format!(
+    //         "{SPACING}sub {}, {}",
+    //         d1.to_string(),
+    //         d2.to_string()
+    //     ));
+    // }
+    // pub fn imul(&mut self, d1: impl ToString, d2: impl ToString) {
+    //     self.instruct_buf.push(format!(
+    //         "{SPACING}imul {}, {}",
+    //         d1.to_string(),
+    //         d2.to_string()
+    //     ));
+    // }
+    // pub fn idiv(&mut self, d1: impl ToString) {
+    //     self.instruct_buf
+    //         .push(format!("{SPACING}idiv {}", d1.to_string()));
+    // }
+    // pub fn or(&mut self, d1: impl ToString, d2: impl ToString) {
+    //     self.instruct_buf.push(format!(
+    //         "{SPACING}or {}, {}",
+    //         d1.to_string(),
+    //         d2.to_string()
+    //     ));
+    // }
+    // pub fn and(&mut self, d1: impl ToString, d2: impl ToString) {
+    //     self.instruct_buf.push(format!(
+    //         "{SPACING}and {}, {}",
+    //         d1.to_string(),
+    //         d2.to_string()
+    //     ));
+    // }
+    // pub fn sal(&mut self, d1: impl ToString, d2: impl ToString) {
+    //     self.instruct_buf.push(format!(
+    //         "{SPACING}sal {}, {}",
+    //         d1.to_string(),
+    //         d2.to_string()
+    //     ));
+    // }
+    // pub fn sar(&mut self, d1: impl ToString, d2: impl ToString) {
+    //     self.instruct_buf.push(format!(
+    //         "{SPACING}sar {}, {}",
+    //         d1.to_string(),
+    //         d2.to_string()
+    //     ));
+    // }
+    // pub fn cmp(&mut self, d1: impl ToString, d2: impl ToString) {
+    //     self.instruct_buf.push(format!(
+    //         "{SPACING}cmp {}, {}",
+    //         d1.to_string(),
+    //         d2.to_string()
+    //     ));
+    // }
+    // pub fn test(&mut self, d1: impl ToString, d2: impl ToString) {
+    //     self.instruct_buf.push(format!(
+    //         "{SPACING}test {}, {}",
+    //         d1.to_string(),
+    //         d2.to_string()
+    //     ));
+    // }
+    // pub fn cqo(&mut self) {
+    //     self.instruct_buf.push(format!("{SPACING}cqo"));
+    // }
+    // pub fn neg(&mut self, d1: impl ToString) {
+    //     self.instruct_buf
+    //         .push(format!("{SPACING}neg {}", d1.to_string()));
+    // }
+    // pub fn not(&mut self, d1: impl ToString) {
+    //     self.instruct_buf
+    //         .push(format!("{SPACING}not {}", d1.to_string()));
+    // }
+    // pub fn call(&mut self, d1: impl ToString) {
+    //     self.instruct_buf
+    //         .push(format!("{SPACING}call {}", d1.to_string()));
+    // }
+    // pub fn tag(&mut self, tag: impl ToString) {
+    //     self.instruct_buf.push(format!("{}:", tag.to_string()));
+    // }
+    // pub fn jmp(&mut self, tag: impl ToString) {
+    //     self.instruct_buf
+    //         .push(format!("{SPACING}jmp {}", tag.to_string()));
+    // }
+    // pub fn jz(&mut self, tag: impl ToString) {
+    //     self.instruct_buf
+    //         .push(format!("{SPACING}jz {}", tag.to_string()));
+    // }
+    // pub fn jnz(&mut self, tag: impl ToString) {
+    //     self.instruct_buf
+    //         .push(format!("{SPACING}jnz {}", tag.to_string()));
+    // }
+    // pub fn syscall(&mut self) {
+    //     self.instruct_buf.push(format!("{SPACING}syscall"));
+    // }
+    // pub fn leave(&mut self) {
+    //     self.instruct_buf.push(format!("{SPACING}leave"));
+    // }
+    // pub fn ret(&mut self) {
+    //     self.instruct_buf.push(format!("{SPACING}ret"));
+    // }
 }

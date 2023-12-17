@@ -6,7 +6,7 @@ mod variables;
 use std::error::Error;
 
 use crate::asm::function::compile_function;
-use crate::codegen::{Codegen, R};
+use crate::codegen::{Codegen, R, Mnemonic::*};
 use crate::compiler::{CompilerContext, ScopeBlock};
 use crate::error_handeling::error;
 use crate::parser::block::{Block, BlockType};
@@ -32,12 +32,12 @@ pub fn mem_word(vtype: &VariableType) -> String {
 
 pub fn function_args_register_sized(arg_numer: usize, vtype: &VariableType) -> R {
     match arg_numer {
-        0 => R::DI_s(vtype),
-        1 => R::Si_s(vtype),
-        2 => R::D_s(vtype),
-        3 => R::C_s(vtype),
-        4 => R::R8_s(vtype),
-        5 => R::R9_s(vtype),
+        0 => R::DI_sized(vtype),
+        1 => R::Si_sized(vtype),
+        2 => R::DX_sized(vtype),
+        3 => R::CX_sized(vtype),
+        4 => R::R8_sized(vtype),
+        5 => R::R9_sized(vtype),
         _ => unreachable!(),
     }
 }
@@ -144,7 +144,7 @@ fn compile_block(cc: &mut CompilerContext, block: &Block, block_type: BlockType)
                 let mut did_break: bool = false;
                 for s_block in cc.scoped_blocks.iter().rev() {
                     if let BlockType::Loop(loc) = s_block.block_type {
-                        cc.codegen.jmp(format!(".LE{}", loc.1));
+                        cc.codegen.instr1(Jmp, format!(".LE{}", loc.1));
                         did_break = true;
                         break;
                     }
@@ -157,7 +157,7 @@ fn compile_block(cc: &mut CompilerContext, block: &Block, block_type: BlockType)
                 let mut did_cont: bool = false;
                 for s_block in cc.scoped_blocks.iter().rev() {
                     if let BlockType::Loop(loc) = s_block.block_type {
-                        cc.codegen.jmp(format!(".L{}", loc.0));
+                        cc.codegen.instr1(Jmp,format!(".L{}", loc.0));
                         did_cont = true;
                         break;
                     }

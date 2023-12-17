@@ -1,7 +1,7 @@
 use crate::{
     compiler::VariableMap,
     error_handeling::error,
-    parser::{types::VariableType, variable_decl::VariableDeclare}, codegen::R,
+    parser::{types::VariableType, variable_decl::VariableDeclare}, codegen::{R, Mnemonic::*},
 };
 
 use super::{expr::compile_expr, mem_word, CompilerContext};
@@ -24,7 +24,7 @@ fn _insert_global_variable(cc: &mut CompilerContext, atype: &VariableType, asize
         mem_word(&VariableType::Pointer),
         cc.mem_offset + 8
     );
-    cc.codegen.mov(mem_acss, bss_tag);
+    cc.codegen.instr2(Mov, mem_acss, bss_tag);
 }
 
 pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Result<(), String> {
@@ -48,7 +48,7 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
                 mem_word(&VariableType::Pointer),
                 cc.mem_offset + 8
             );
-            cc.codegen.mov(mem_acss, struct_tag);
+            cc.codegen.instr2(Mov, mem_acss, struct_tag);
         }
         VariableType::String => {}
         _ => (),
@@ -62,8 +62,8 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
         match vtype.cast(&texpr) {
             Ok(vt) => {
                 let mem_acss = format!("{} [rbp-{}]", mem_word(&vt), cc.mem_offset + vt.size());
-                cc.codegen.pop("rax");
-                cc.codegen.mov(mem_acss, R::A_s(&vt));
+                cc.codegen.instr1(Pop, R::RAX);
+                cc.codegen.instr2(Mov, mem_acss, R::AX_sized(&vt));
                 vtype = vt;
             }
             Err(msg) => {

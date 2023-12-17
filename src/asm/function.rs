@@ -7,7 +7,7 @@ use crate::{
         block::BlockType,
         function::{Function, FunctionArg},
         types::VariableType,
-    }, codegen::R,
+    }, codegen::{R, Mnemonic::*},
 };
 
 use super::{compile_block, frame_size, function_args_register_sized, mem_word, CompilerContext};
@@ -29,7 +29,7 @@ pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
                 map.offset + map.vtype.size()
             );
             let reg = function_args_register_sized(args_count, &map.vtype);
-            cc.codegen.mov(mem_acss, reg);
+            cc.codegen.instr2(Mov, mem_acss, reg);
         } else {
             todo!();
             // let mem_overload = format!("{} [rbp+{}]", mem_word(8), 16 + (args_count - 6) * 8);
@@ -50,9 +50,9 @@ pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
     cc.mem_offset = 0;
     cc.variables_map = HashMap::new();
     if f.ident == "main" {
-        cc.codegen.tag("_start");
+        cc.codegen.set_lable("_start");
     } else {
-        cc.codegen.tag(f.ident.clone());
+        cc.codegen.set_lable(f.ident.clone());
     }
 
     // set rbp to stack pointer for this block
@@ -76,17 +76,17 @@ pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
             .unwrap();
     }
     if f.ident == "main" {
-        cc.codegen.mov(R::RAX, 60);
-        cc.codegen.mov(R::RDI, 0);
-        cc.codegen.syscall();
+        cc.codegen.instr2(Mov, R::RAX, 60);
+        cc.codegen.instr2(Mov, R::RDI, 0);
+        cc.codegen.instr0(Syscall);
     } else {
         // revert rbp
         if !cc.variables_map.is_empty() {
             //cc.instruct_buf.push(asm!("pop rbp"));
-            cc.codegen.leave();
-            cc.codegen.ret();
+            cc.codegen.instr0(Leave);
+            cc.codegen.instr0(Ret);
         } else {
-            cc.codegen.ret();
+            cc.codegen.instr0(Ret);
         }
     }
 }
