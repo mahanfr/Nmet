@@ -4,7 +4,7 @@ mod stmts;
 mod variables;
 
 use crate::asm::function::compile_function;
-use crate::codegen::{R, Mnemonic::*};
+use crate::codegen::{Mnemonic::*, Reg};
 use crate::compiler::{CompilerContext, ScopeBlock};
 use crate::error_handeling::error;
 use crate::parser::block::{Block, BlockType};
@@ -28,26 +28,26 @@ pub fn mem_word(vtype: &VariableType) -> String {
     }
 }
 
-pub fn function_args_register_sized(arg_numer: usize, vtype: &VariableType) -> R {
+pub fn function_args_register_sized(arg_numer: usize, vtype: &VariableType) -> Reg {
     match arg_numer {
-        0 => R::DI_sized(vtype),
-        1 => R::Si_sized(vtype),
-        2 => R::DX_sized(vtype),
-        3 => R::CX_sized(vtype),
-        4 => R::R8_sized(vtype),
-        5 => R::R9_sized(vtype),
+        0 => Reg::DI_sized(vtype),
+        1 => Reg::Si_sized(vtype),
+        2 => Reg::DX_sized(vtype),
+        3 => Reg::CX_sized(vtype),
+        4 => Reg::R8_sized(vtype),
+        5 => Reg::R9_sized(vtype),
         _ => unreachable!(),
     }
 }
 
-pub fn function_args_register(arg_numer: usize) -> R {
+pub fn function_args_register(arg_numer: usize) -> Reg {
     match arg_numer {
-        0 => R::RDI,
-        1 => R::RSI,
-        2 => R::RDX,
-        3 => R::RCX,
-        4 => R::R8,
-        5 => R::R9,
+        0 => Reg::RDI,
+        1 => Reg::RSI,
+        2 => Reg::RDX,
+        3 => Reg::RCX,
+        4 => Reg::R8,
+        5 => Reg::R9,
         _ => unreachable!(),
     }
 }
@@ -56,11 +56,7 @@ fn frame_size(mem_offset: usize) -> usize {
     2 << mem_offset.ilog2() as usize
 }
 
-pub fn compile_lib(
-    cc: &mut CompilerContext,
-    path: String,
-    exports: Vec<String>,
-) {
+pub fn compile_lib(cc: &mut CompilerContext, path: String, exports: Vec<String>) {
     let program = parse_file(path);
     let is_importable = |ident: &String| {
         if !exports.is_empty() {
@@ -153,7 +149,7 @@ fn compile_block(cc: &mut CompilerContext, block: &Block, block_type: BlockType)
                 let mut did_cont: bool = false;
                 for s_block in cc.scoped_blocks.iter().rev() {
                     if let BlockType::Loop(loc) = s_block.block_type {
-                        cc.codegen.instr1(Jmp,format!(".L{}", loc.0));
+                        cc.codegen.instr1(Jmp, format!(".L{}", loc.0));
                         did_cont = true;
                         break;
                     }

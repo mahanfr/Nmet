@@ -2,9 +2,10 @@ use std::collections::{HashMap, HashSet};
 
 use crate::{
     asm,
+    bif::Bif,
     codegen::Codegen,
     output_generator::x86_64_nasm_generator,
-    parser::{block::BlockType, function::Function, structs::StructDef, types::VariableType}, bif::Bif,
+    parser::{block::BlockType, function::Function, structs::StructDef, types::VariableType},
 };
 
 #[derive(Debug, Clone)]

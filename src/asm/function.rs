@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 
 use crate::{
+    codegen::{build_instr1, build_instr2, Mnemonic::*, Reg::*},
     compiler::{ScopeBlock, VariableMap},
     parser::{
         block::BlockType,
         function::{Function, FunctionArg},
         types::VariableType,
-    }, codegen::{R, Mnemonic::*, build_instr1, build_instr2},
+    },
 };
 
 use super::{compile_block, frame_size, function_args_register_sized, mem_word, CompilerContext};
@@ -64,13 +65,19 @@ pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
     cc.scoped_blocks.pop();
     // Call Exit Syscall
     if !cc.variables_map.is_empty() {
-        cc.codegen.replace(index_1, build_instr1(Push, R::RBP)).unwrap();
-        cc.codegen.replace(index_2, build_instr2(Mov, R::RBP, R::RSP)).unwrap();
-        cc.codegen.replace(index_3, build_instr2(Sub, R::RSP, frame_size(cc.mem_offset))).unwrap();
+        cc.codegen
+            .replace(index_1, build_instr1(Push, RBP))
+            .unwrap();
+        cc.codegen
+            .replace(index_2, build_instr2(Mov, RBP, RSP))
+            .unwrap();
+        cc.codegen
+            .replace(index_3, build_instr2(Sub, RSP, frame_size(cc.mem_offset)))
+            .unwrap();
     }
     if f.ident == "main" {
-        cc.codegen.instr2(Mov, R::RAX, 60);
-        cc.codegen.instr2(Mov, R::RDI, 0);
+        cc.codegen.instr2(Mov, RAX, 60);
+        cc.codegen.instr2(Mov, RDI, 0);
         cc.codegen.instr0(Syscall);
     } else {
         // revert rbp

@@ -1,7 +1,11 @@
 use crate::{
+    codegen::{
+        Mnemonic::*,
+        Reg::{self, *},
+    },
     compiler::VariableMap,
     error_handeling::error,
-    parser::{types::VariableType, variable_decl::VariableDeclare}, codegen::{R, Mnemonic::*},
+    parser::{types::VariableType, variable_decl::VariableDeclare},
 };
 
 use super::{expr::compile_expr, mem_word, CompilerContext};
@@ -62,8 +66,8 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
         match vtype.cast(&texpr) {
             Ok(vt) => {
                 let mem_acss = format!("{} [rbp-{}]", mem_word(&vt), cc.mem_offset + vt.size());
-                cc.codegen.instr1(Pop, R::RAX);
-                cc.codegen.instr2(Mov, mem_acss, R::AX_sized(&vt));
+                cc.codegen.instr1(Pop, RAX);
+                cc.codegen.instr2(Mov, mem_acss, Reg::AX_sized(&vt));
                 vtype = vt;
             }
             Err(msg) => {

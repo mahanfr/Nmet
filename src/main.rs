@@ -4,6 +4,7 @@ use std::process::Command;
 use std::{env::args, process::exit};
 
 mod asm;
+mod bif;
 mod codegen;
 mod command_line;
 mod common;
@@ -13,7 +14,6 @@ mod lexer;
 mod macros;
 mod output_generator;
 mod parser;
-mod bif;
 #[cfg(test)]
 mod tests;
 mod utils;
