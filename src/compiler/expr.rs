@@ -1,8 +1,8 @@
 use crate::{
     codegen::{
-        Mem,
-        Mnemonic::*,
-        Reg::{self, *},
+        memory::Mem,
+        mnmemonic::Mnemonic::*,
+        register::Reg::{self, *},
     },
     error_handeling::error,
     parser::{

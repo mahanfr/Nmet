@@ -6,8 +6,8 @@ mod variables;
 
 use crate::codegen::{
     build_instr2, Codegen,
-    Mnemonic::{self, *},
-    Reg,
+    mnmemonic::Mnemonic::{self, *},
+    register::Reg,
 };
 use crate::compiler::{bif::Bif, function::compile_function};
 use crate::error_handeling::error;

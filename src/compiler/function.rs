@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    codegen::{build_instr1, build_instr2, Mem, Mnemonic::*, Reg::*},
+    codegen::{build_instr1, build_instr2, memory::Mem, mnmemonic::Mnemonic::*, register::Reg::*},
     compiler::{ScopeBlock, VariableMap},
     parser::{
         block::BlockType,
