@@ -1,6 +1,66 @@
 use std::fmt::Display;
+use std::ops::{Add, Sub, Mul};
 
 use crate::parser::types::VariableType;
+
+
+pub enum Mem {
+    U(MemOp),
+    Byte(MemOp),
+    Word(MemOp),
+    Dword(MemOp),
+    Qword(MemOp),
+}
+
+impl Display for Mem {
+   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+       match self {
+           Self::U(mop) => write!(f, "[{mop}]"),
+           Self::Byte(mop) => write!(f, "Byte [{mop}]"),
+           Self::Word(mop) => write!(f, "Word [{mop}]"),
+           Self::Dword(mop) => write!(f, "Dword [{mop}]"),
+           Self::Qword(mop) => write!(f, "Qword [{mop}]"),
+       }
+   } 
+}
+
+pub enum MemOp {
+    Single(Reg),
+    Offset(Reg,u32),
+    Negate(Reg, u32),
+    Multi(Reg, u32),
+    Add(Box<MemOp>,Box<MemOp>),
+    Sub(Box<MemOp>,Box<MemOp>),
+}
+
+impl Add for MemOp {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self::Add(Box::new(self), Box::new(rhs))
+    }
+}
+
+impl Sub for MemOp {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self::Sub(Box::new(self), Box::new(rhs))
+    }
+}
+
+impl Display for MemOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Single(r) => write!(f, "{r}"),
+            Self::Offset(r, i) => write!(f, "{r} + {i}"),
+            Self::Negate(r, i) => write!(f, "{r} - {i}"),
+            Self::Multi(r, i) => write!(f, "{r} * {i}"),
+            Self::Add(r1, r2) => write!(f, "{r1} + {r2}"),
+            Self::Sub(r1, r2) => write!(f, "{r1} - {r2}"),
+        }
+    }
+}
 
 #[allow(dead_code)]
 #[allow(clippy::upper_case_acronyms)]
@@ -51,6 +111,36 @@ pub enum Reg {
     DIL = 0x17,
     R8B = 0x18,
     R9B = 0x19,
+}
+
+impl Add<u32> for Reg {
+    type Output = MemOp;
+
+    fn add(self, rhs: u32) -> Self::Output {
+        MemOp::Offset(self, rhs)
+    }
+}
+
+impl Sub<u32> for Reg {
+    type Output = MemOp;
+
+    fn sub(self, rhs: u32) -> Self::Output {
+        MemOp::Negate(self, rhs)
+    }
+}
+
+impl Mul<u32> for Reg {
+    type Output = MemOp;
+
+    fn mul(self, rhs: u32) -> Self::Output {
+        MemOp::Multi(self, rhs)
+    }
+}
+
+impl Into<MemOp> for Reg {
+    fn into(self) -> MemOp {
+        MemOp::Single(self)
+    }
 }
 
 #[allow(dead_code)]
