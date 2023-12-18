@@ -1,9 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    asm,
-    bif::Bif,
-    codegen::Codegen,
+    asm::{self, bif::Bif},
+    codegen::{build_instr2, Codegen, Mnemonic},
     output_generator::x86_64_nasm_generator,
     parser::{block::BlockType, function::Function, structs::StructDef, types::VariableType},
 };
@@ -15,6 +14,12 @@ pub struct VariableMap {
     pub vtype: VariableType,
     pub vtype_inner: VariableType,
     pub is_mut: bool,
+}
+
+impl VariableMap {
+    pub fn stack_offset(&self) -> usize {
+        self.offset + self.vtype.size()
+    }
 }
 
 pub type BLocation = (usize, usize);
@@ -89,6 +94,7 @@ fn merge_instr(ins1: &str, inst2: &str) -> String {
     if data1 == data2 {
         String::new()
     } else {
-        format!("    mov {data2}, {data1}")
+        build_instr2(Mnemonic::Mov, data2, data1)
+        // format!("    mov {data2}, {data1}")
     }
 }

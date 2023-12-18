@@ -1,8 +1,7 @@
 use std::fmt::Display;
-use std::ops::{Add, Sub, Mul};
+use std::ops::{Add, Mul, Sub};
 
 use crate::parser::types::VariableType;
-
 
 pub enum Mem {
     U(MemOp),
@@ -12,25 +11,44 @@ pub enum Mem {
     Qword(MemOp),
 }
 
+impl Mem {
+    pub fn dyn_sized(vtype: &VariableType, mem_op: MemOp) -> Self {
+        let size = vtype.item_size();
+        match size {
+            1 => Self::Byte(mem_op),
+            2 => Self::Word(mem_op),
+            4 => Self::Dword(mem_op),
+            8 => Self::Qword(mem_op),
+            _ => unreachable!(),
+        }
+    }
+}
+
 impl Display for Mem {
-   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-       match self {
-           Self::U(mop) => write!(f, "[{mop}]"),
-           Self::Byte(mop) => write!(f, "Byte [{mop}]"),
-           Self::Word(mop) => write!(f, "Word [{mop}]"),
-           Self::Dword(mop) => write!(f, "Dword [{mop}]"),
-           Self::Qword(mop) => write!(f, "Qword [{mop}]"),
-       }
-   } 
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::U(mop) => write!(f, "[{mop}]"),
+            Self::Byte(mop) => write!(f, "Byte [{mop}]"),
+            Self::Word(mop) => write!(f, "Word [{mop}]"),
+            Self::Dword(mop) => write!(f, "Dword [{mop}]"),
+            Self::Qword(mop) => write!(f, "Qword [{mop}]"),
+        }
+    }
 }
 
 pub enum MemOp {
     Single(Reg),
-    Offset(Reg,u32),
-    Negate(Reg, u32),
-    Multi(Reg, u32),
-    Add(Box<MemOp>,Box<MemOp>),
-    Sub(Box<MemOp>,Box<MemOp>),
+    Offset(Reg, usize),
+    Negate(Reg, usize),
+    Multi(Reg, usize),
+    Add(Box<MemOp>, Box<MemOp>),
+    Sub(Box<MemOp>, Box<MemOp>),
+}
+
+impl From<Reg> for MemOp {
+    fn from(val: Reg) -> MemOp {
+        MemOp::Single(val)
+    }
 }
 
 impl Add for MemOp {
@@ -113,35 +131,30 @@ pub enum Reg {
     R9B = 0x19,
 }
 
-impl Add<u32> for Reg {
+impl Add<usize> for Reg {
     type Output = MemOp;
 
-    fn add(self, rhs: u32) -> Self::Output {
+    fn add(self, rhs: usize) -> Self::Output {
         MemOp::Offset(self, rhs)
     }
 }
 
-impl Sub<u32> for Reg {
+impl Sub<usize> for Reg {
     type Output = MemOp;
 
-    fn sub(self, rhs: u32) -> Self::Output {
+    fn sub(self, rhs: usize) -> Self::Output {
         MemOp::Negate(self, rhs)
     }
 }
 
-impl Mul<u32> for Reg {
+impl Mul<usize> for Reg {
     type Output = MemOp;
 
-    fn mul(self, rhs: u32) -> Self::Output {
+    fn mul(self, rhs: usize) -> Self::Output {
         MemOp::Multi(self, rhs)
     }
 }
 
-impl Into<MemOp> for Reg {
-    fn into(self) -> MemOp {
-        MemOp::Single(self)
-    }
-}
 
 #[allow(dead_code)]
 #[allow(non_snake_case)]

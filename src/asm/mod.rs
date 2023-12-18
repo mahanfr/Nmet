@@ -1,3 +1,4 @@
+pub mod bif;
 mod expr;
 mod function;
 mod stmts;
@@ -15,18 +16,18 @@ use crate::parser::types::VariableType;
 
 use self::stmts::compile_stmt;
 
-pub fn mem_word(vtype: &VariableType) -> String {
-    let size = vtype.item_size();
-    match size {
-        1 => "byte".to_string(),
-        2 => "word".to_string(),
-        4 => "dword".to_string(),
-        8 => "qword".to_string(),
-        _ => {
-            unreachable!("Incurrect Size")
-        }
-    }
-}
+// pub fn mem_word(vtype: &VariableType) -> String {
+//     let size = vtype.item_size();
+//     match size {
+//         1 => "byte".to_string(),
+//         2 => "word".to_string(),
+//         4 => "dword".to_string(),
+//         8 => "qword".to_string(),
+//         _ => {
+//             unreachable!("Incurrect Size")
+//         }
+//     }
+// }
 
 pub fn function_args_register_sized(arg_numer: usize, vtype: &VariableType) -> Reg {
     match arg_numer {

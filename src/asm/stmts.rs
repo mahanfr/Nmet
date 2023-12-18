@@ -1,6 +1,6 @@
 use crate::{
-    bif::Bif,
     codegen::{
+        Mem,
         Mnemonic::*,
         Reg::{self, *},
     },
@@ -16,9 +16,9 @@ use crate::{
 };
 
 use super::{
+    bif::Bif,
     compile_block,
     expr::compile_expr,
-    mem_word,
     variables::{find_variable, get_vriable_map, insert_variable},
     CompilerContext,
 };
@@ -143,11 +143,13 @@ fn compile_inline_asm(cc: &mut CompilerContext, instr: &String) -> Result<(), St
                             ident.clone()
                         ));
                     };
-                    let mem_acss = format!(
-                        "{} [rbp-{}]",
-                        mem_word(&v_map.vtype),
-                        v_map.offset + v_map.vtype.size()
-                    );
+                    // let mem_acss = format!(
+                    //     "{} [rbp-{}]",
+                    //     mem_word(&v_map.vtype),
+                    //     v_map.offset + v_map.vtype.size()
+                    // );
+                    let mem_acss =
+                        Mem::dyn_sized(&v_map.vtype, RBP - v_map.stack_offset()).to_string();
                     let mut temp = String::new();
                     temp.push_str(chars[0..(first_index)].iter().collect::<String>().as_str());
                     temp.push_str(mem_acss.as_str());
@@ -198,27 +200,33 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
             // cc.instruct_buf.push(asm!("add rdx, rbx"));
             // format!("{} [rdx]", mem_word(&v_map.vtype))
             reg = Reg::AX_sized(t);
-            format!(
-                "{} [rbp-{}+rbx*{}]",
-                mem_word(&v_map.vtype),
-                v_map.offset + v_map.vtype.size(),
-                v_map.vtype.item_size()
+            // format!(
+            //     "{} [rbp-{}+rbx*{}]",
+            //     mem_word(&v_map.vtype),
+            //     v_map.offset + v_map.vtype.size(),
+            //     v_map.vtype.item_size()
+            // )
+            Mem::dyn_sized(
+                &v_map.vtype,
+                RBP - v_map.stack_offset() + RBX * v_map.vtype.item_size(),
             )
         }
         VariableType::Custom(_) => {
             cc.codegen
-                .instr2(Mov, RDX, format!("[rbp - {}]", v_map.offset + 8));
+                .instr2(Mov, RDX, Mem::U(RBP - (v_map.offset + 8)));
             cc.codegen.instr2(Add, RDX, v_map.offset_inner);
             reg = Reg::AX_sized(&v_map.vtype_inner);
-            format!("{} [rdx]", mem_word(&v_map.vtype_inner))
+            // format!("{} [rdx]", mem_word(&v_map.vtype_inner))
+            Mem::dyn_sized(&v_map.vtype_inner, RDX.into())
         }
         _ => {
             reg = Reg::AX_sized(&v_map.vtype);
-            format!(
-                "{} [rbp-{}]",
-                mem_word(&v_map.vtype),
-                v_map.offset + v_map.vtype.size()
-            )
+            // format!(
+            //     "{} [rbp-{}]",
+            //     mem_word(&v_map.vtype),
+            //     v_map.offset + v_map.vtype.size()
+            // )
+            Mem::dyn_sized(&v_map.vtype, RBP - v_map.stack_offset())
         }
     };
     cc.codegen.instr1(Pop, RAX);

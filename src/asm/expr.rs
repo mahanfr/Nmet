@@ -1,5 +1,6 @@
 use crate::{
     codegen::{
+        Mem,
         Mnemonic::*,
         Reg::{self, *},
     },
@@ -11,7 +12,7 @@ use crate::{
 };
 
 use super::{
-    function_args_register, mem_word,
+    function_args_register,
     variables::{find_variable, get_vriable_map},
     CompilerContext,
 };
@@ -25,11 +26,12 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             let Some(v_map) = get_vriable_map(cc, v) else {
                 error("Trying to access an Undifined variable", expr.loc.clone());
             };
-            let mem_acss = format!(
-                "{} [rbp-{}]",
-                mem_word(&v_map.vtype),
-                v_map.offset + v_map.vtype.size()
-            );
+            // let mem_acss = format!(
+            //     "{} [rbp-{}]",
+            //     mem_word(&v_map.vtype),
+            //     v_map.offset + v_map.vtype.size()
+            // );
+            let mem_acss = Mem::dyn_sized(&v_map.vtype, RBP - v_map.stack_offset());
             cc.codegen
                 .instr2(Mov, Reg::AX_sized(&v_map.vtype), mem_acss);
             cc.codegen.instr1(Push, RAX);
@@ -67,16 +69,13 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             }
             // cc.instruct_buf
             //     .push(asm!("mov rdx, [rbp-{}]", v_map.offset + v_map.vtype.size()));
-            cc.codegen.instr2(
-                Mov,
-                RDX,
-                format!("[rbp-{}]", v_map.offset + v_map.vtype.size()),
-            );
+            cc.codegen
+                .instr2(Mov, RDX, Mem::U(RBP - v_map.stack_offset()));
             cc.codegen.instr2(Add, RDX, offset);
             cc.codegen.instr2(
                 Mov,
                 Reg::AX_sized(&actype),
-                format!("{} [rdx]", mem_word(&actype)),
+                Mem::dyn_sized(&actype, RDX.into()),
             );
             // cc.instruct_buf.push(asm!(
             //     "mov {}, {} [rdx]",
@@ -285,7 +284,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                 }
                 VariableType::Pointer => {
                     cc.codegen.instr1(Pop, RAX);
-                    cc.codegen.instr2(Mov, RCX, "qword [rax]");
+                    cc.codegen.instr2(Mov, RCX, Mem::Qword(RAX.into()));
                     cc.codegen.instr1(Push, RCX);
                 }
                 _ => {
@@ -310,11 +309,15 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             // cc.instruct_buf.push(asm!("add rdx, rbx"));
 
             // let mem_acss = format!("{} [rdx]", mem_word(&v_map.vtype));
-            let mem_acss = format!(
-                "{} [rbp-{}+rbx*{}]",
-                mem_word(&v_map.vtype),
-                v_map.offset + v_map.vtype.size(),
-                v_map.vtype.item_size()
+            // let mem_acss = format!(
+            //     "{} [rbp-{}+rbx*{}]",
+            //     mem_word(&v_map.vtype),
+            //     v_map.offset + v_map.vtype.size(),
+            //     v_map.vtype.item_size()
+            // );
+            let mem_acss = Mem::dyn_sized(
+                &v_map.vtype,
+                RBP - v_map.stack_offset() + RBX * v_map.vtype.item_size(),
             );
             let reg = Reg::AX_sized(&v_map.vtype);
             cc.codegen.instr2(Mov, reg, mem_acss);
@@ -341,11 +344,8 @@ fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) {
                     //cc.codegen.push(RAX);
 
                     //cc.codegen.mov(RAX, RBP);
-                    cc.codegen.instr2(
-                        Lea,
-                        RAX,
-                        format!("[rbp - {}]", v_map.offset + v_map.vtype.size()),
-                    );
+                    cc.codegen
+                        .instr2(Lea, RAX, Mem::U(RBP - v_map.stack_offset()));
                     cc.codegen.instr1(Push, RAX);
                 }
                 _ => {

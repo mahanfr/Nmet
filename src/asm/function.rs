@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    codegen::{build_instr1, build_instr2, Mnemonic::*, Reg::*},
+    codegen::{build_instr1, build_instr2, Mem, Mnemonic::*, Reg::*},
     compiler::{ScopeBlock, VariableMap},
     parser::{
         block::BlockType,
@@ -10,7 +10,7 @@ use crate::{
     },
 };
 
-use super::{compile_block, frame_size, function_args_register_sized, mem_word, CompilerContext};
+use super::{compile_block, frame_size, function_args_register_sized, CompilerContext};
 
 pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
     for (args_count, arg) in args.iter().enumerate() {
@@ -23,11 +23,12 @@ pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
             vtype_inner: VariableType::Any,
         };
         if args_count < 6 {
-            let mem_acss = format!(
-                "{} [rbp-{}]",
-                mem_word(&map.vtype),
-                map.offset + map.vtype.size()
-            );
+            // let mem_acss = format!(
+            //     "{} [rbp-{}]",
+            //     mem_word(&map.vtype),
+            //     map.offset + map.vtype.size()
+            // );
+            let mem_acss = Mem::dyn_sized(&map.vtype, RBP - map.stack_offset());
             let reg = function_args_register_sized(args_count, &map.vtype);
             cc.codegen.instr2(Mov, mem_acss, reg);
         } else {

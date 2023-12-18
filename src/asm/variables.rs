@@ -1,5 +1,6 @@
 use crate::{
     codegen::{
+        Mem,
         Mnemonic::*,
         Reg::{self, *},
     },
@@ -8,7 +9,7 @@ use crate::{
     parser::{types::VariableType, variable_decl::VariableDeclare},
 };
 
-use super::{expr::compile_expr, mem_word, CompilerContext};
+use super::{expr::compile_expr, CompilerContext};
 
 pub fn find_variable(cc: &CompilerContext, ident: String) -> Option<VariableMap> {
     for scoped_block in &cc.scoped_blocks {
@@ -23,11 +24,12 @@ pub fn find_variable(cc: &CompilerContext, ident: String) -> Option<VariableMap>
 
 fn _insert_global_variable(cc: &mut CompilerContext, atype: &VariableType, asize: &usize) {
     let bss_tag = cc.codegen.add_bss_seg(atype.item_size() * asize);
-    let mem_acss = format!(
-        "{} [rbp-{}]",
-        mem_word(&VariableType::Pointer),
-        cc.mem_offset + 8
-    );
+    // let mem_acss = format!(
+    //     "{} [rbp-{}]",
+    //     mem_word(&VariableType::Pointer),
+    //     cc.mem_offset + 8
+    // );
+    let mem_acss = Mem::Qword(RBP - (cc.mem_offset + 8));
     cc.codegen.instr2(Mov, mem_acss, bss_tag);
 }
 
@@ -47,11 +49,12 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
             };
             let size: usize = struct_map.items.iter().map(|(_, v)| v.size()).sum();
             let struct_tag = cc.codegen.add_bss_seg(size);
-            let mem_acss = format!(
-                "{} [rbp-{}]",
-                mem_word(&VariableType::Pointer),
-                cc.mem_offset + 8
-            );
+            // let mem_acss = format!(
+            //     "{} [rbp-{}]",
+            //     mem_word(&VariableType::Pointer),
+            //     cc.mem_offset + 8
+            // );
+            let mem_acss = Mem::Qword(RBP - (cc.mem_offset + 8));
             cc.codegen.instr2(Mov, mem_acss, struct_tag);
         }
         VariableType::String => {}
@@ -65,7 +68,8 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
         // TODO: Strings should include size
         match vtype.cast(&texpr) {
             Ok(vt) => {
-                let mem_acss = format!("{} [rbp-{}]", mem_word(&vt), cc.mem_offset + vt.size());
+                // let mem_acss = format!("{} [rbp-{}]", mem_word(&vt), cc.mem_offset + vt.size());
+                let mem_acss = Mem::dyn_sized(&vt, RBP - (cc.mem_offset + vt.size()));
                 cc.codegen.instr1(Pop, RAX);
                 cc.codegen.instr2(Mov, mem_acss, Reg::AX_sized(&vt));
                 vtype = vt;
