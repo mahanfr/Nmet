@@ -1,6 +1,7 @@
 use std::{fmt::Display, str::FromStr};
 
 #[allow(dead_code)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Mnemonic {
     Lea,
     Mov,

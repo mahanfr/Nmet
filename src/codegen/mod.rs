@@ -2,10 +2,11 @@ pub mod asm_parser;
 pub mod memory;
 pub mod mnmemonic;
 pub mod register;
+pub mod instructions;
 
 use std::fmt::Display;
 
-use self::mnmemonic::Mnemonic;
+use self::{mnmemonic::Mnemonic, instructions::Instr};
 
 #[allow(dead_code)]
 #[derive(Clone)]
@@ -48,8 +49,8 @@ impl Codegen {
         self.instruct_buf.len() - 1
     }
 
-    pub fn insert_raw(&mut self, instr: String) {
-        self.instruct_buf.push(instr);
+    pub fn insert_raw(&mut self, instr: Instr) {
+        self.instruct_buf.push(instr.to_string());
     }
 
     pub fn replace(&mut self, index: usize, instr: String) -> Result<(), String> {
@@ -87,14 +88,3 @@ impl Codegen {
     }
 }
 
-// pub fn build_instr0(mnem: Mnemonic) -> String {
-//     mnem.to_string()
-// }
-
-pub fn build_instr1(mnem: Mnemonic, op1: impl Display) -> String {
-    format!("{mnem} {op1}")
-}
-
-pub fn build_instr2(mnem: Mnemonic, op1: impl Display, op2: impl Display) -> String {
-    format!("{mnem} {op1}, {op2}")
-}

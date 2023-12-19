@@ -2,7 +2,7 @@ use crate::{
     codegen::{
         memory::Mem,
         mnmemonic::Mnemonic::*,
-        register::Reg::{self, *},
+        register::Reg::{self, *}, asm_parser::parse_asm,
     },
     compiler::VariableMap,
     error_handeling::error,
@@ -163,9 +163,9 @@ fn compile_inline_asm(cc: &mut CompilerContext, instr: &String) -> Result<(), St
                 index += 1;
             }
         }
-        cc.codegen.insert_raw(final_instr);
+        cc.codegen.insert_raw(parse_asm(final_instr));
     } else {
-        cc.codegen.insert_raw(instr.into());
+        cc.codegen.insert_raw(parse_asm(instr.into()));
     }
     Ok(())
 }

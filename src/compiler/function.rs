@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    codegen::{build_instr1, build_instr2, memory::Mem, mnmemonic::Mnemonic::*, register::Reg::*},
+    codegen::{instructions::Instr, memory::Mem, mnmemonic::Mnemonic::*, register::Reg::*},
     compiler::{ScopeBlock, VariableMap},
     parser::{
         block::BlockType,
@@ -67,13 +67,13 @@ pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
     // Call Exit Syscall
     if !cc.variables_map.is_empty() {
         cc.codegen
-            .replace(index_1, build_instr1(Push, RBP))
+            .replace(index_1, Instr::new_instr1(Push, RBP).to_string())
             .unwrap();
         cc.codegen
-            .replace(index_2, build_instr2(Mov, RBP, RSP))
+            .replace(index_2, Instr::new_instr2(Mov, RBP, RSP).to_string())
             .unwrap();
         cc.codegen
-            .replace(index_3, build_instr2(Sub, RSP, frame_size(cc.mem_offset)))
+            .replace(index_3, Instr::new_instr2(Sub, RSP, frame_size(cc.mem_offset)).to_string())
             .unwrap();
     }
     if f.ident == "main" {

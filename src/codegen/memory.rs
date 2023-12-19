@@ -4,6 +4,7 @@ use std::fmt::Display;
 
 use super::register::Reg;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Mem {
     U(MemOp),
     Byte(MemOp),
@@ -37,6 +38,7 @@ impl Display for Mem {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MemOp {
     Single(Reg),
     Offset(Reg, usize),

@@ -7,7 +7,7 @@ use super::memory::MemOp;
 
 #[allow(dead_code)]
 #[allow(clippy::upper_case_acronyms)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Reg {
     RAX = 0x80,

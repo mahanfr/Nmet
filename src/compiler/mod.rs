@@ -5,10 +5,9 @@ mod stmts;
 mod variables;
 
 use crate::codegen::{
-    build_instr2,
     mnmemonic::Mnemonic::{self, *},
     register::Reg,
-    Codegen,
+    Codegen, instructions::Instr,
 };
 use crate::compiler::{bif::Bif, function::compile_function};
 use crate::error_handeling::error;
@@ -113,7 +112,7 @@ fn merge_instr(ins1: &str, inst2: &str) -> String {
     if data1 == data2 {
         String::new()
     } else {
-        build_instr2(Mnemonic::Mov, data2, data1)
+        Instr::new_instr2(Mnemonic::Mov, data2.to_string(), data1.to_string()).to_string().to_string()
         // format!("    mov {data2}, {data1}")
     }
 }
