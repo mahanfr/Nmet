@@ -73,7 +73,10 @@ pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
             .replace(index_2, Instr::new_instr2(Mov, RBP, RSP))
             .unwrap();
         cc.codegen
-            .replace(index_3, Instr::new_instr2(Sub, RSP, frame_size(cc.mem_offset)))
+            .replace(
+                index_3,
+                Instr::new_instr2(Sub, RSP, frame_size(cc.mem_offset)),
+            )
             .unwrap();
     }
     if f.ident == "main" {

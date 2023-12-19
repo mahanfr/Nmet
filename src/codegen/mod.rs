@@ -1,12 +1,15 @@
 pub mod asm_parser;
+pub mod instructions;
 pub mod memory;
 pub mod mnmemonic;
 pub mod register;
-pub mod instructions;
 
 use std::fmt::Display;
 
-use self::{mnmemonic::Mnemonic, instructions::{Instr, Opr}};
+use self::{
+    instructions::{Instr, Opr},
+    mnmemonic::Mnemonic,
+};
 
 #[allow(dead_code)]
 #[derive(Clone)]
@@ -45,7 +48,7 @@ impl Codegen {
     }
 
     pub fn place_holder(&mut self) -> usize {
-        self.instruct_buf.push(Instr::None);
+        self.instruct_buf.push(Instr::Nop);
         self.instruct_buf.len() - 1
     }
 
@@ -76,7 +79,7 @@ impl Codegen {
     }
 
     pub fn instr1(&mut self, mnem: Mnemonic, op1: impl Into<Opr>) {
-        self.instruct_buf.push(Instr::new_instr1(mnem ,op1));
+        self.instruct_buf.push(Instr::new_instr1(mnem, op1));
     }
 
     pub fn instr2(&mut self, mnem: Mnemonic, op1: impl Into<Opr>, op2: impl Into<Opr>) {
@@ -87,4 +90,3 @@ impl Codegen {
         self.instruct_buf.push(Instr::Lable(lable.to_string()));
     }
 }
-

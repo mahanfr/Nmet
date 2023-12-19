@@ -5,11 +5,7 @@ mod stmts;
 mod variables;
 
 use crate::codegen::instructions::Instr;
-use crate::codegen::{
-    mnmemonic::Mnemonic::*,
-    register::Reg,
-    Codegen,
-};
+use crate::codegen::{mnmemonic::Mnemonic::*, register::Reg, Codegen};
 use crate::compiler::{bif::Bif, function::compile_function};
 use crate::error_handeling::error;
 use crate::output_generator::x86_64_nasm_generator;
@@ -96,19 +92,17 @@ pub fn x86_64_impl_bifs(cc: &mut CompilerContext) {
 
 fn x86_64_nasm_cleanup(code: &mut Codegen) {
     for i in 0..(code.instruct_buf.len() - 2) {
-        let instr1 = code.instruct_buf[i].clone();
-        let instr2 = code.instruct_buf[i+1].clone();
-        if instr1.is(Push) && instr2.is(Pop) {
-            if instr1.operand1() == instr2.operand1() {
-                code.instruct_buf[i] = Instr::None;
-                code.instruct_buf[i+1] = Instr::None;
-            } else {
-                code.instruct_buf[i] = Instr::A2(Mov, instr2.operand1(), instr1.operand1());
-                code.instruct_buf[i+1] = Instr::None;
-            }
+        let Instr::Push(op_a) = code.instruct_buf[i].clone() else {continue;};
+        let Instr::Pop(op_b)  = code.instruct_buf[i + 1].clone() else {continue;};
+        if op_a == op_b {
+            code.instruct_buf[i] = Instr::Nop;
+            code.instruct_buf[i + 1] = Instr::Nop;
+        } else {
+            code.instruct_buf[i] = Instr::new_instr2(Mov, op_b, op_a);
+            code.instruct_buf[i + 1] = Instr::Nop;
         }
     }
-    code.instruct_buf.retain(|x| x != &Instr::None);
+    code.instruct_buf.retain(|x| x != &Instr::Nop);
 }
 
 // fn x86_64_nasm_cleanup(code: &mut Codegen) {
@@ -123,7 +117,7 @@ fn x86_64_nasm_cleanup(code: &mut Codegen) {
 //     }
 //     code.instruct_buf.retain(|x| !x.is_empty());
 // }
-// 
+//
 // fn merge_instr(ins1: &str, inst2: &str) -> String {
 //     let data1 = ins1.split(' ').last().unwrap();
 //     let data2 = inst2.split(' ').last().unwrap();
@@ -134,7 +128,7 @@ fn x86_64_nasm_cleanup(code: &mut Codegen) {
 //         // format!("    mov {data2}, {data1}")
 //     }
 // }
-// 
+//
 pub fn function_args_register_sized(arg_numer: usize, vtype: &VariableType) -> Reg {
     match arg_numer {
         0 => Reg::DI_sized(vtype),

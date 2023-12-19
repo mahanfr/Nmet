@@ -1,8 +1,9 @@
 use crate::{
     codegen::{
+        asm_parser::parse_asm,
         memory::Mem,
         mnmemonic::Mnemonic::*,
-        register::Reg::{self, *}, asm_parser::parse_asm,
+        register::Reg::{self, *},
     },
     compiler::VariableMap,
     error_handeling::error,

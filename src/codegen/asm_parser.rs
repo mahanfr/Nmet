@@ -3,9 +3,10 @@ use std::str::FromStr;
 use crate::lexer::{Lexer, TokenType};
 
 use super::{
+    instructions::{Instr, Opr},
     memory::{Mem, MemOp},
     mnmemonic::Mnemonic,
-    register::Reg, instructions::{Instr, Opr},
+    register::Reg,
 };
 
 pub fn parse_asm(source: String) -> Instr {
@@ -48,35 +49,32 @@ fn parse_mnemonic(lexer: &mut Lexer) -> Mnemonic {
 fn parse_op(lexer: &mut Lexer) -> Opr {
     match lexer.get_token_type() {
         TokenType::Identifier => {
-            match Reg::from_str(&lexer.get_token().literal) {
-                Ok(reg) => {
-                    lexer.match_token(TokenType::Identifier);
-                    return reg.into();
-                }
-                Err(_) => (),
+            if let Ok(reg) = Reg::from_str(&lexer.get_token().literal) {
+                lexer.match_token(TokenType::Identifier);
+                return reg.into();
             }
             match lexer.get_token().literal.to_lowercase().as_str() {
                 "qword" => {
                     lexer.match_token(TokenType::Identifier);
-                    return Mem::Qword(parse_memop(lexer)).into();
+                    Mem::Qword(parse_memop(lexer)).into()
                 }
                 "dword" => {
                     lexer.match_token(TokenType::Identifier);
-                    return Mem::Dword(parse_memop(lexer)).into();
+                    Mem::Dword(parse_memop(lexer)).into()
                 }
                 "word" => {
                     lexer.match_token(TokenType::Identifier);
-                    return Mem::Word(parse_memop(lexer)).into();
+                    Mem::Word(parse_memop(lexer)).into()
                 }
                 "byte" => {
                     lexer.match_token(TokenType::Identifier);
-                    return Mem::Byte(parse_memop(lexer)).into();
+                    Mem::Byte(parse_memop(lexer)).into()
                 }
                 _ => panic!("Unexpected Asm Operation {}!", lexer.get_token().literal),
             }
         }
         TokenType::OBracket => {
-            return Mem::U(parse_memop(lexer)).into();
+            Mem::U(parse_memop(lexer)).into()
         }
         TokenType::Int(i) => i.into(),
         _ => panic!("Unsupported ASM operation!"),
@@ -137,7 +135,7 @@ fn parse_memop(lexer: &mut Lexer) -> MemOp {
                 }
                 TokenType::CBracket => {
                     lexer.match_token(TokenType::CBracket);
-                    return m1;
+                    m1
                 }
                 _ => panic!("Unknown Memory operation!"),
             }
@@ -157,8 +155,14 @@ fn test_mnemonic_parsing() {
         Instr::new_instr2(Mnemonic::Mov, Reg::RAX, 1),
         parse_asm("mov rax, 1".to_string())
     );
-    assert_eq!(Instr::new_instr0(Mnemonic::Syscall), parse_asm("syscall".to_string()));
-    assert_eq!(Instr::new_instr1(Mnemonic::Push, Reg::RAX), parse_asm("push rax".to_string()));
+    assert_eq!(
+        Instr::new_instr0(Mnemonic::Syscall),
+        parse_asm("syscall".to_string())
+    );
+    assert_eq!(
+        Instr::new_instr1(Mnemonic::Push, Reg::RAX),
+        parse_asm("push rax".to_string())
+    );
     assert_eq!(
         Instr::new_instr2(Mnemonic::Mov, Reg::RAX, Mem::U(Reg::RBX.into())),
         parse_asm("mov rax, [rbx]".to_string())
@@ -168,7 +172,11 @@ fn test_mnemonic_parsing() {
         parse_asm("mov rax, qword [rbx+2]".to_string())
     );
     assert_eq!(
-        Instr::new_instr2(Mnemonic::Mov, Reg::RAX, Mem::Qword(Reg::RBX + 2 - Reg::RAX * 3)),
+        Instr::new_instr2(
+            Mnemonic::Mov,
+            Reg::RAX,
+            Mem::Qword(Reg::RBX + 2 - Reg::RAX * 3)
+        ),
         parse_asm("mov rax, qword [rbx+2-rax*3]".to_string())
     );
 }
