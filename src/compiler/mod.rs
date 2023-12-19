@@ -5,9 +5,9 @@ mod stmts;
 mod variables;
 
 use crate::codegen::{
-    mnmemonic::Mnemonic::{self, *},
+    mnmemonic::Mnemonic::*,
     register::Reg,
-    Codegen, instructions::Instr,
+    Codegen,
 };
 use crate::compiler::{bif::Bif, function::compile_function};
 use crate::error_handeling::error;
@@ -83,7 +83,7 @@ pub fn compile_to_asm(path: String) {
 
     compile(&mut compiler_context, path.clone());
     x86_64_impl_bifs(&mut compiler_context);
-    x86_64_nasm_cleanup(&mut compiler_context.codegen);
+    // x86_64_nasm_cleanup(&mut compiler_context.codegen);
     x86_64_nasm_generator(path, compiler_context.codegen).unwrap();
 }
 
@@ -93,29 +93,29 @@ pub fn x86_64_impl_bifs(cc: &mut CompilerContext) {
     }
 }
 
-fn x86_64_nasm_cleanup(code: &mut Codegen) {
-    for i in 0..(code.instruct_buf.len() - 2) {
-        if code.instruct_buf[i].trim_start().starts_with("push")
-            && code.instruct_buf[i + 1].trim_start().starts_with("pop")
-        {
-            let merged: String = merge_instr(&code.instruct_buf[i], &code.instruct_buf[i + 1]);
-            code.instruct_buf[i].clear();
-            code.instruct_buf[i + 1] = merged;
-        }
-    }
-    code.instruct_buf.retain(|x| !x.is_empty());
-}
-
-fn merge_instr(ins1: &str, inst2: &str) -> String {
-    let data1 = ins1.split(' ').last().unwrap();
-    let data2 = inst2.split(' ').last().unwrap();
-    if data1 == data2 {
-        String::new()
-    } else {
-        Instr::new_instr2(Mnemonic::Mov, data2.to_string(), data1.to_string()).to_string().to_string()
-        // format!("    mov {data2}, {data1}")
-    }
-}
+// fn x86_64_nasm_cleanup(code: &mut Codegen) {
+//     for i in 0..(code.instruct_buf.len() - 2) {
+//         if code.instruct_buf[i].trim_start().starts_with("push")
+//             && code.instruct_buf[i + 1].trim_start().starts_with("pop")
+//         {
+//             let merged: String = merge_instr(&code.instruct_buf[i], &code.instruct_buf[i + 1]);
+//             code.instruct_buf[i].clear();
+//             code.instruct_buf[i + 1] = merged;
+//         }
+//     }
+//     code.instruct_buf.retain(|x| !x.is_empty());
+// }
+// 
+// fn merge_instr(ins1: &str, inst2: &str) -> String {
+//     let data1 = ins1.split(' ').last().unwrap();
+//     let data2 = inst2.split(' ').last().unwrap();
+//     if data1 == data2 {
+//         String::new()
+//     } else {
+//         Instr::new_instr2(Mnemonic::Mov, data2.to_string(), data1.to_string()).to_string().to_string()
+//         // format!("    mov {data2}, {data1}")
+//     }
+// }
 pub fn function_args_register_sized(arg_numer: usize, vtype: &VariableType) -> Reg {
     match arg_numer {
         0 => Reg::DI_sized(vtype),

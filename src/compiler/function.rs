@@ -67,13 +67,13 @@ pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
     // Call Exit Syscall
     if !cc.variables_map.is_empty() {
         cc.codegen
-            .replace(index_1, Instr::new_instr1(Push, RBP).to_string())
+            .replace(index_1, Instr::new_instr1(Push, RBP))
             .unwrap();
         cc.codegen
-            .replace(index_2, Instr::new_instr2(Mov, RBP, RSP).to_string())
+            .replace(index_2, Instr::new_instr2(Mov, RBP, RSP))
             .unwrap();
         cc.codegen
-            .replace(index_3, Instr::new_instr2(Sub, RSP, frame_size(cc.mem_offset)).to_string())
+            .replace(index_3, Instr::new_instr2(Sub, RSP, frame_size(cc.mem_offset)))
             .unwrap();
     }
     if f.ident == "main" {

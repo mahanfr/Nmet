@@ -6,12 +6,12 @@ pub mod instructions;
 
 use std::fmt::Display;
 
-use self::{mnmemonic::Mnemonic, instructions::Instr};
+use self::{mnmemonic::Mnemonic, instructions::{Instr, Opr}};
 
 #[allow(dead_code)]
 #[derive(Clone)]
 pub struct Codegen {
-    pub instruct_buf: Vec<String>,
+    pub instruct_buf: Vec<Instr>,
     pub data_buf: Vec<String>,
     pub bss_buf: Vec<String>,
 }
@@ -45,15 +45,15 @@ impl Codegen {
     }
 
     pub fn place_holder(&mut self) -> usize {
-        self.instruct_buf.push(String::new());
+        self.instruct_buf.push(Instr::None);
         self.instruct_buf.len() - 1
     }
 
     pub fn insert_raw(&mut self, instr: Instr) {
-        self.instruct_buf.push(instr.to_string());
+        self.instruct_buf.push(instr);
     }
 
-    pub fn replace(&mut self, index: usize, instr: String) -> Result<(), String> {
+    pub fn replace(&mut self, index: usize, instr: Instr) -> Result<(), String> {
         if index < self.instruct_buf.len() - 1 {
             self.instruct_buf[index] = instr;
             Ok(())
@@ -62,7 +62,7 @@ impl Codegen {
         }
     }
 
-    pub fn insert_into_raw(&mut self, index: usize, instr: String) -> Result<(), String> {
+    pub fn insert_into_raw(&mut self, index: usize, instr: Instr) -> Result<(), String> {
         if index < self.instruct_buf.len() - 1 {
             self.instruct_buf[index] = instr;
             Ok(())
@@ -72,19 +72,19 @@ impl Codegen {
     }
 
     pub fn instr0(&mut self, mnem: Mnemonic) {
-        self.instruct_buf.push(mnem.to_string());
+        self.instruct_buf.push(Instr::new_instr0(mnem));
     }
 
-    pub fn instr1(&mut self, mnem: Mnemonic, op1: impl Display) {
-        self.instruct_buf.push(format!("{mnem} {op1}"));
+    pub fn instr1(&mut self, mnem: Mnemonic, op1: impl Into<Opr>) {
+        self.instruct_buf.push(Instr::new_instr1(mnem ,op1));
     }
 
-    pub fn instr2(&mut self, mnem: Mnemonic, op1: impl Display, op2: impl Display) {
-        self.instruct_buf.push(format!("{mnem} {op1}, {op2}"));
+    pub fn instr2(&mut self, mnem: Mnemonic, op1: impl Into<Opr>, op2: impl Into<Opr>) {
+        self.instruct_buf.push(Instr::new_instr2(mnem, op1, op2));
     }
 
     pub fn set_lable(&mut self, lable: impl Display) {
-        self.instruct_buf.push(format!("{lable}:"))
+        self.instruct_buf.push(Instr::Lable(lable.to_string()));
     }
 }
 

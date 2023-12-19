@@ -86,21 +86,22 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             actype
         }
         ExprType::Bool(b) => {
-            cc.codegen.instr1(Push, b);
+            cc.codegen.instr1(Push, *b as i32);
             VariableType::Bool
         }
         ExprType::Char(x) => {
-            cc.codegen.instr1(Push, x);
+            cc.codegen.instr1(Push, *x as i32);
             VariableType::Char
         }
         ExprType::Int(x) => {
             // push x
-            cc.codegen.instr1(Push, x);
+            cc.codegen.instr1(Push, *x);
             VariableType::Int
         }
-        ExprType::Float(f) => {
-            cc.codegen.instr1(Push, format!("__float64__({f})"));
-            VariableType::Float
+        ExprType::Float(_) => {
+            todo!()
+            // cc.codegen.instr1(Push, format!("__float64__({f})"));
+            // VariableType::Float
         }
         ExprType::Compare(c) => {
             let left_type = compile_expr(cc, c.left.as_ref());

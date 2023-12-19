@@ -35,6 +35,17 @@ impl From<i64> for Opr {
         Self::Imm(val)
     }
 }
+impl From<&Mem> for Opr {
+    fn from(value: &Mem) -> Self {
+        Self::Mem(value.clone())
+    }
+}
+
+impl From<&str> for Opr {
+    fn from(value: &str) -> Self {
+        Self::Lable(value.to_string())
+    }
+}
 impl From<String> for Opr {
     fn from(val: String) -> Opr {
         Self::Lable(val)
@@ -52,8 +63,10 @@ impl Display for Opr {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug,Clone, PartialEq)]
 pub enum Instr {
+    None,
+    Lable(String),
     A0(Mnemonic),
     A1(Mnemonic, Opr),
     A2(Mnemonic, Opr, Opr),
@@ -62,6 +75,8 @@ pub enum Instr {
 impl Display for Instr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::Lable(l) => write!(f,"{l}:"),
+            Self::None => write!(f,"nop"),
             Self::A0(m) => m.fmt(f),
             Self::A1(m, opr1) => write!(f,"{m} {opr1}"),
             Self::A2(m, opr1, opr2) => write!(f,"{m} {opr1}, {opr2}"),

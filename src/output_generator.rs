@@ -77,7 +77,7 @@ pub fn x86_64_nasm_generator(path: String, codegen: Codegen) -> Result<(), Box<d
     file.write_all(b"section .text\n")?;
     file.write_all(b"global _start\n")?;
     for instruct in &codegen.instruct_buf {
-        file.write_all(instruct.as_bytes())?;
+        file.write_all(instruct.to_string().as_bytes())?;
         file.write_all(b"\n")?;
     }
 
