@@ -4,6 +4,7 @@ mod function;
 mod stmts;
 mod variables;
 
+use crate::codegen::instructions::Instr;
 use crate::codegen::{
     mnmemonic::Mnemonic::*,
     register::Reg,
@@ -83,7 +84,7 @@ pub fn compile_to_asm(path: String) {
 
     compile(&mut compiler_context, path.clone());
     x86_64_impl_bifs(&mut compiler_context);
-    // x86_64_nasm_cleanup(&mut compiler_context.codegen);
+    x86_64_nasm_cleanup(&mut compiler_context.codegen);
     x86_64_nasm_generator(path, compiler_context.codegen).unwrap();
 }
 
@@ -91,6 +92,23 @@ pub fn x86_64_impl_bifs(cc: &mut CompilerContext) {
     for bif in cc.bif_set.iter() {
         bif.implement(&mut cc.codegen);
     }
+}
+
+fn x86_64_nasm_cleanup(code: &mut Codegen) {
+    for i in 0..(code.instruct_buf.len() - 2) {
+        let instr1 = code.instruct_buf[i].clone();
+        let instr2 = code.instruct_buf[i+1].clone();
+        if instr1.is(Push) && instr2.is(Pop) {
+            if instr1.operand1() == instr2.operand1() {
+                code.instruct_buf[i] = Instr::None;
+                code.instruct_buf[i+1] = Instr::None;
+            } else {
+                code.instruct_buf[i] = Instr::A2(Mov, instr2.operand1(), instr1.operand1());
+                code.instruct_buf[i+1] = Instr::None;
+            }
+        }
+    }
+    code.instruct_buf.retain(|x| x != &Instr::None);
 }
 
 // fn x86_64_nasm_cleanup(code: &mut Codegen) {
@@ -116,6 +134,7 @@ pub fn x86_64_impl_bifs(cc: &mut CompilerContext) {
 //         // format!("    mov {data2}, {data1}")
 //     }
 // }
+// 
 pub fn function_args_register_sized(arg_numer: usize, vtype: &VariableType) -> Reg {
     match arg_numer {
         0 => Reg::DI_sized(vtype),

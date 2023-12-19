@@ -1,4 +1,4 @@
-use crate::codegen::{memory::Mem, mnmemonic::Mnemonic::*, register::Reg::*, Codegen};
+use crate::codegen::{memory::Mem, mnmemonic::Mnemonic::*, register::Reg::*, Codegen };
 
 #[derive(Hash, PartialEq, Eq)]
 pub enum Bif {
