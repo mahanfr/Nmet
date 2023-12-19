@@ -70,6 +70,21 @@ fn string_expr_test() {
 }
 
 #[test]
+fn structs_test() {
+    generate_asm("./tests/structs.nmt");
+    let output = Command::new("./build/structs")
+        .output()
+        .expect("Error Executing the program!");
+    assert!(output.status.success());
+    let expectation = "65\n";
+    assert_eq!(
+        String::from_utf8(output.stdout).unwrap(),
+        expectation.to_string()
+    );
+    remove_file("./build/structs").unwrap_or_else(|_| ());
+}
+
+#[test]
 fn loops_test() {
     generate_asm("./tests/loops.nmt");
     let output = Command::new("./build/loops")
