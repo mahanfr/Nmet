@@ -1,6 +1,6 @@
-use std::fmt::Display;
-use core::ops::{Add, Sub};
 use crate::parser::types::VariableType;
+use core::ops::{Add, Sub};
+use std::fmt::Display;
 
 use super::register::Reg;
 

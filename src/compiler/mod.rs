@@ -5,9 +5,10 @@ mod stmts;
 mod variables;
 
 use crate::codegen::{
-    build_instr2, Codegen,
+    build_instr2,
     mnmemonic::Mnemonic::{self, *},
     register::Reg,
+    Codegen,
 };
 use crate::compiler::{bif::Bif, function::compile_function};
 use crate::error_handeling::error;

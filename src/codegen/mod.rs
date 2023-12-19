@@ -1,6 +1,7 @@
-pub mod register;
+pub mod asm_parser;
 pub mod memory;
 pub mod mnmemonic;
+pub mod register;
 
 use std::fmt::Display;
 

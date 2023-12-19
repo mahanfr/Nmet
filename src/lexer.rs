@@ -715,37 +715,30 @@ impl Lexer {
     }
 }
 
-#[cfg(test)]
-mod lexer_tests {
-    use crate::lexer::TokenType;
+#[test]
+fn expr_tokens() {
+    let mut lexer = Lexer::new(String::new(), "a + (3 * 4) - 2".to_string());
+    assert_eq!(lexer.next_token().t_type, TokenType::Identifier);
+    assert_eq!(lexer.next_token().t_type, TokenType::Plus);
+    assert_eq!(lexer.next_token().t_type, TokenType::OParen);
+    assert_eq!(lexer.next_token().t_type, TokenType::Int(3));
+    assert_eq!(lexer.next_token().t_type, TokenType::Multi);
+    assert_eq!(lexer.next_token().t_type, TokenType::Int(4));
+    assert_eq!(lexer.next_token().t_type, TokenType::CParen);
+    assert_eq!(lexer.next_token().t_type, TokenType::Minus);
+    assert_eq!(lexer.next_token().t_type, TokenType::Int(2));
+}
 
-    use super::Lexer;
+#[test]
+fn string_literal() {
+    let mut lexer = Lexer::new(String::new(), "\"test\"".to_string());
+    assert_eq!(lexer.tokenize_string_literal().t_type, TokenType::String);
+}
 
-    #[test]
-    fn expr_tokens() {
-        let mut lexer = Lexer::new(String::new(), "a + (3 * 4) - 2".to_string());
-        assert_eq!(lexer.next_token().t_type, TokenType::Identifier);
-        assert_eq!(lexer.next_token().t_type, TokenType::Plus);
-        assert_eq!(lexer.next_token().t_type, TokenType::OParen);
-        assert_eq!(lexer.next_token().t_type, TokenType::Int(3));
-        assert_eq!(lexer.next_token().t_type, TokenType::Multi);
-        assert_eq!(lexer.next_token().t_type, TokenType::Int(4));
-        assert_eq!(lexer.next_token().t_type, TokenType::CParen);
-        assert_eq!(lexer.next_token().t_type, TokenType::Minus);
-        assert_eq!(lexer.next_token().t_type, TokenType::Int(2));
-    }
-
-    #[test]
-    fn string_literal() {
-        let mut lexer = Lexer::new(String::new(), "\"test\"".to_string());
-        assert_eq!(lexer.tokenize_string_literal().t_type, TokenType::String);
-    }
-
-    #[test]
-    fn string_literal_escape_seq() {
-        let mut lexer = Lexer::new(String::new(), "\"test\\ntest\"".to_string());
-        assert_eq!(lexer.tokenize_string_literal().t_type, TokenType::String);
-        let mut lexer = Lexer::new(String::new(), "\"\\\"test\\\"\"".to_string());
-        assert_eq!(lexer.tokenize_string_literal().t_type, TokenType::String);
-    }
+#[test]
+fn string_literal_escape_seq() {
+    let mut lexer = Lexer::new(String::new(), "\"test\\ntest\"".to_string());
+    assert_eq!(lexer.tokenize_string_literal().t_type, TokenType::String);
+    let mut lexer = Lexer::new(String::new(), "\"\\\"test\\\"\"".to_string());
+    assert_eq!(lexer.tokenize_string_literal().t_type, TokenType::String);
 }
