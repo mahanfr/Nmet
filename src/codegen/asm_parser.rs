@@ -73,9 +73,7 @@ fn parse_op(lexer: &mut Lexer) -> Opr {
                 _ => panic!("Unexpected Asm Operation {}!", lexer.get_token().literal),
             }
         }
-        TokenType::OBracket => {
-            Mem::U(parse_memop(lexer)).into()
-        }
+        TokenType::OBracket => Mem::U(parse_memop(lexer)).into(),
         TokenType::Int(i) => i.into(),
         _ => panic!("Unsupported ASM operation!"),
     }

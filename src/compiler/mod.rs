@@ -92,8 +92,12 @@ pub fn x86_64_impl_bifs(cc: &mut CompilerContext) {
 
 fn x86_64_nasm_cleanup(code: &mut Codegen) {
     for i in 0..(code.instruct_buf.len() - 2) {
-        let Instr::Push(op_a) = code.instruct_buf[i].clone() else {continue;};
-        let Instr::Pop(op_b)  = code.instruct_buf[i + 1].clone() else {continue;};
+        let Instr::Push(op_a) = code.instruct_buf[i].clone() else {
+            continue;
+        };
+        let Instr::Pop(op_b) = code.instruct_buf[i + 1].clone() else {
+            continue;
+        };
         if op_a == op_b {
             code.instruct_buf[i] = Instr::Nop;
             code.instruct_buf[i + 1] = Instr::Nop;

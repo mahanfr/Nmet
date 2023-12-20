@@ -6,6 +6,7 @@ use std::{env::args, process::exit};
 mod codegen;
 mod command_line;
 mod compiler;
+mod elf;
 mod error_handeling;
 mod lexer;
 mod macros;
