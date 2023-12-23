@@ -1,6 +1,10 @@
-use std::{iter::repeat, fs::{self, File}, io::{BufWriter, Write}};
+use std::{
+    fs::{self, File},
+    io::{BufWriter, Write},
+    iter::repeat,
+};
 
-use crate::compiler::CompilerContext;
+use crate::{compiler::CompilerContext, utils::get_program_name};
 
 pub fn generate_header() -> Vec<u8> {
     let mut bytes = Vec::new();
@@ -32,10 +36,11 @@ pub fn generate_header() -> Vec<u8> {
     return bytes;
 }
 
-fn generate_text_section() -> Vec<u8> {
+fn generate_text_section(cc: &CompilerContext) -> Vec<u8> {
     let mut bytes = Vec::new();
-    bytes.extend(vec![0xb8,0x3c,0x00,0x00,0x00,0xbf,0x00,0x00]);
-    bytes.extend(vec![0x00,0x00,0x0f,0x05]);
+    for instr in cc.codegen.instruct_buf.iter() {
+        bytes.extend(instr.assemble());
+    }
     bytes
 }
 
@@ -191,8 +196,8 @@ fn generate_shsrttab() -> (Vec<u8>, Vec<u32>) {
     (data, tab)
 }
 
-pub fn generate_elf(_path: String, _cc: &CompilerContext) {
-    let text_sec = generate_text_section();
+pub fn generate_elf(path: String, cc: &CompilerContext) {
+    let text_sec = generate_text_section(cc);
     let (shstr_data, shstr_rows) = generate_shsrttab();
     let (strtab_data, str_rows) = generate_strtab();
     let symtab = generate_symtab(str_rows);
@@ -209,12 +214,12 @@ pub fn generate_elf(_path: String, _cc: &CompilerContext) {
             bytes.push(0);
         }
     }
-    
+
     fs::create_dir_all("./build").unwrap();
-    let stream = File::create("./build/test_elf.o").unwrap();
+    let program_name = format!("test_{}", get_program_name(path));
+    let stream = File::create(format!("./build/{program_name}.o")).unwrap();
     let mut file = BufWriter::new(stream);
     file.write_all(&bytes).unwrap();
     file.flush().unwrap();
-    println!("[info] Elf file Generated!");
+    println!("[info] Elf Object file Generated!");
 }
-

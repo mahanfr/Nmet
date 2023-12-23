@@ -1,2 +1,8 @@
 
-func main() {}
+func main() {
+    asm {
+        "mov rax, 60"
+        "mov rdi, 69"
+        "syscall"
+    }
+}

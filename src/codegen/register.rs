@@ -56,89 +56,13 @@ pub enum Reg {
     R9B = 0x19,
 }
 
-impl Add<usize> for Reg {
-    type Output = MemOp;
-
-    fn add(self, rhs: usize) -> Self::Output {
-        MemOp::Offset(self, rhs)
-    }
-}
-
-impl Sub<usize> for Reg {
-    type Output = MemOp;
-
-    fn sub(self, rhs: usize) -> Self::Output {
-        MemOp::Negate(self, rhs)
-    }
-}
-
-impl Mul<usize> for Reg {
-    type Output = MemOp;
-
-    fn mul(self, rhs: usize) -> Self::Output {
-        MemOp::Multi(self, rhs)
-    }
-}
-
-impl FromStr for Reg {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut lowercase_s = s.to_string();
-        lowercase_s = lowercase_s.to_lowercase();
-        match lowercase_s.trim() {
-            "rax" => Ok(Self::RAX),
-            "rcx" => Ok(Self::RCX),
-            "rdx" => Ok(Self::RDX),
-            "rbx" => Ok(Self::RBX),
-            "rsp" => Ok(Self::RSP),
-            "rbp" => Ok(Self::RBP),
-            "rsi" => Ok(Self::RSI),
-            "rdi" => Ok(Self::RDI),
-            "r8" => Ok(Self::R8),
-            "r9" => Ok(Self::R9),
-            "eax" => Ok(Self::EAX),
-            "ecx" => Ok(Self::ECX),
-            "edx" => Ok(Self::EDX),
-            "ebx" => Ok(Self::EBX),
-            "esp" => Ok(Self::ESP),
-            "ebp" => Ok(Self::EBP),
-            "esi" => Ok(Self::ESI),
-            "edi" => Ok(Self::EDI),
-            "r8d" => Ok(Self::R8D),
-            "r9d" => Ok(Self::R9D),
-            "ax" => Ok(Self::AX),
-            "cx" => Ok(Self::CX),
-            "dx" => Ok(Self::DX),
-            "bx" => Ok(Self::BX),
-            "sp" => Ok(Self::SP),
-            "bp" => Ok(Self::BP),
-            "si" => Ok(Self::SI),
-            "di" => Ok(Self::DI),
-            "r8w" => Ok(Self::R8W),
-            "r9w" => Ok(Self::R9W),
-            "ah" => Ok(Self::AH),
-            "al" => Ok(Self::AL),
-            "ch" => Ok(Self::CH),
-            "cl" => Ok(Self::CL),
-            "dh" => Ok(Self::DH),
-            "dl" => Ok(Self::DL),
-            "bh" => Ok(Self::BH),
-            "bl" => Ok(Self::BL),
-            "spl" => Ok(Self::SPL),
-            "bpl" => Ok(Self::BPL),
-            "sil" => Ok(Self::SIL),
-            "dil" => Ok(Self::DIL),
-            "r8b" => Ok(Self::R8B),
-            "r9b" => Ok(Self::R9B),
-            _ => Err(format!("Unsupported Register \"{lowercase_s}\"!")),
-        }
-    }
-}
-
 #[allow(dead_code)]
 #[allow(non_snake_case)]
 impl Reg {
+    pub fn upcode32(&self) -> u8 {
+        *self as u8 & 0x0f
+    }
+
     pub fn AX_sized(vtype: &VariableType) -> Self {
         let size = vtype.item_size();
         match size {
@@ -224,6 +148,86 @@ impl Reg {
             4 => Self::R9D,
             8 => Self::R9,
             _ => unreachable!(),
+        }
+    }
+}
+
+impl Add<usize> for Reg {
+    type Output = MemOp;
+
+    fn add(self, rhs: usize) -> Self::Output {
+        MemOp::Offset(self, rhs)
+    }
+}
+
+impl Sub<usize> for Reg {
+    type Output = MemOp;
+
+    fn sub(self, rhs: usize) -> Self::Output {
+        MemOp::Negate(self, rhs)
+    }
+}
+
+impl Mul<usize> for Reg {
+    type Output = MemOp;
+
+    fn mul(self, rhs: usize) -> Self::Output {
+        MemOp::Multi(self, rhs)
+    }
+}
+
+impl FromStr for Reg {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut lowercase_s = s.to_string();
+        lowercase_s = lowercase_s.to_lowercase();
+        match lowercase_s.trim() {
+            "rax" => Ok(Self::RAX),
+            "rcx" => Ok(Self::RCX),
+            "rdx" => Ok(Self::RDX),
+            "rbx" => Ok(Self::RBX),
+            "rsp" => Ok(Self::RSP),
+            "rbp" => Ok(Self::RBP),
+            "rsi" => Ok(Self::RSI),
+            "rdi" => Ok(Self::RDI),
+            "r8" => Ok(Self::R8),
+            "r9" => Ok(Self::R9),
+            "eax" => Ok(Self::EAX),
+            "ecx" => Ok(Self::ECX),
+            "edx" => Ok(Self::EDX),
+            "ebx" => Ok(Self::EBX),
+            "esp" => Ok(Self::ESP),
+            "ebp" => Ok(Self::EBP),
+            "esi" => Ok(Self::ESI),
+            "edi" => Ok(Self::EDI),
+            "r8d" => Ok(Self::R8D),
+            "r9d" => Ok(Self::R9D),
+            "ax" => Ok(Self::AX),
+            "cx" => Ok(Self::CX),
+            "dx" => Ok(Self::DX),
+            "bx" => Ok(Self::BX),
+            "sp" => Ok(Self::SP),
+            "bp" => Ok(Self::BP),
+            "si" => Ok(Self::SI),
+            "di" => Ok(Self::DI),
+            "r8w" => Ok(Self::R8W),
+            "r9w" => Ok(Self::R9W),
+            "ah" => Ok(Self::AH),
+            "al" => Ok(Self::AL),
+            "ch" => Ok(Self::CH),
+            "cl" => Ok(Self::CL),
+            "dh" => Ok(Self::DH),
+            "dl" => Ok(Self::DL),
+            "bh" => Ok(Self::BH),
+            "bl" => Ok(Self::BL),
+            "spl" => Ok(Self::SPL),
+            "bpl" => Ok(Self::BPL),
+            "sil" => Ok(Self::SIL),
+            "dil" => Ok(Self::DIL),
+            "r8b" => Ok(Self::R8B),
+            "r9b" => Ok(Self::R9B),
+            _ => Err(format!("Unsupported Register \"{lowercase_s}\"!")),
         }
     }
 }

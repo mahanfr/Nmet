@@ -35,6 +35,7 @@ fn compile_command(arg: &mut CliArgs) {
             "-elf" => {
                 arg.next();
                 compile_to_elf(arg.get());
+                exit(0);
             }
             _ => {
                 eprintln!("Unknown option for compile command!");

@@ -8,15 +8,28 @@ use super::{
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Opr {
-    R(Reg),
+    R64(Reg),
+    R32(Reg),
+    R16(Reg),
+    R8(Reg),
+    R4(Reg),
     Mem(Mem),
-    Imm(i64),
+    Imm64(i64),
+    Imm32(i32),
     Lable(String),
 }
 
 impl From<Reg> for Opr {
     fn from(val: Reg) -> Opr {
-        Self::R(val)
+        let size = ((val as u8) & 0xf0) >> 4;
+        match size {
+            8 => Self::R64(val),
+            4 => Self::R32(val),
+            2 => Self::R16(val),
+            1 => Self::R8(val),
+            0 => Self::R4(val),
+            _ => unreachable!(),
+        }
     }
 }
 impl From<Mem> for Opr {
@@ -26,17 +39,17 @@ impl From<Mem> for Opr {
 }
 impl From<usize> for Opr {
     fn from(val: usize) -> Opr {
-        Self::Imm(val as i64)
+        Self::Imm32(val as i32)
     }
 }
 impl From<i32> for Opr {
     fn from(val: i32) -> Opr {
-        Self::Imm(val as i64)
+        Self::Imm32(val as i32)
     }
 }
 impl From<i64> for Opr {
     fn from(val: i64) -> Opr {
-        Self::Imm(val)
+        Self::Imm64(val)
     }
 }
 impl From<&Mem> for Opr {
@@ -59,9 +72,10 @@ impl From<String> for Opr {
 impl Display for Opr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::R(x) => x.fmt(f),
+            Self::R64(x) | Self::R32(x) | Self::R16(x) | Self::R8(x) | Self::R4(x) => x.fmt(f),
             Self::Mem(x) => x.fmt(f),
-            Self::Imm(x) => x.fmt(f),
+            Self::Imm64(x) => x.fmt(f),
+            Self::Imm32(x) => x.fmt(f),
             Self::Lable(x) => x.fmt(f),
         }
     }
@@ -149,6 +163,25 @@ impl Display for Instr {
 }
 
 impl Instr {
+    pub fn assemble(&self) -> Vec<u8> {
+        match self {
+            Self::Mov(op1, op2) => match (op1, op2) {
+                (Opr::R64(r) | Opr::R32(r), Opr::Imm32(val)) => {
+                    let mut bytes = Vec::<u8>::new();
+                    bytes.push(0xb8 + r.upcode32());
+                    bytes.extend(val.to_le_bytes());
+                    bytes
+                }
+                _ => todo!(),
+            },
+            Self::Syscall => {
+                vec![0x0f, 0x05]
+            }
+            Self::Lable(_) => vec![],
+            _ => todo!(),
+        }
+    }
+
     pub fn new_instr0(mnem: Mnemonic) -> Self {
         match mnem {
             Cqo => Self::Cqo,
