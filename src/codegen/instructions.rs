@@ -44,7 +44,7 @@ impl From<usize> for Opr {
 }
 impl From<i32> for Opr {
     fn from(val: i32) -> Opr {
-        Self::Imm32(val as i32)
+        Self::Imm32(val)
     }
 }
 impl From<i64> for Opr {

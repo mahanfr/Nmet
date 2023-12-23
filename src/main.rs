@@ -25,7 +25,7 @@ pub static DEBUG: bool = true;
 
 /// Compiles the given file into an executable
 fn compile_command(arg: &mut CliArgs) {
-    if arg.get().starts_with("-") {
+    if arg.get().starts_with('-') {
         match arg.get().as_str() {
             // "--llvm" => {
             //     arg.next();

@@ -1,7 +1,6 @@
 use std::{
     fs::{self, File},
     io::{BufWriter, Write},
-    iter::repeat,
 };
 
 use crate::{compiler::CompilerContext, utils::get_program_name};
@@ -33,7 +32,7 @@ pub fn generate_header() -> Vec<u8> {
     bytes.extend(5u16.to_le_bytes());
     // DYNAMIC: section header string table index
     bytes.extend(2u16.to_le_bytes());
-    return bytes;
+    bytes
 }
 
 fn generate_text_section(cc: &CompilerContext) -> Vec<u8> {
@@ -47,12 +46,12 @@ fn generate_text_section(cc: &CompilerContext) -> Vec<u8> {
 fn section_offset(data_lists: &Vec<Vec<u8>>, index: usize) -> usize {
     let mut sum = 0;
     if index > 0 {
-        for i in 0..index {
-            let a = data_lists[i].len();
+        for item in data_lists.iter().take(index) {
+            let a = item.len();
             if a % 16 != 0 {
                 sum += ((a / 16) + 1) * 16;
             } else {
-                sum += data_lists[i].len();
+                sum += a;
             }
         }
     }
@@ -62,9 +61,8 @@ fn section_offset(data_lists: &Vec<Vec<u8>>, index: usize) -> usize {
 // SHF_WRITE: 1
 // SHF_ALLOC: 2
 // SHF_EXECINSTR: 4
-fn generate_section_headers(data_lists: &Vec<Vec<u8>>, shstrtab: &Vec<u32>) -> Vec<u8> {
-    let mut bytes = Vec::<u8>::new();
-    bytes.extend(repeat(0).take(64));
+fn generate_section_headers(data_lists: &Vec<Vec<u8>>, shstrtab: &[u32]) -> Vec<u8> {
+    let mut bytes = vec![0;64];
 
     // .text
     bytes.extend(shstrtab[0].to_le_bytes());
@@ -117,8 +115,7 @@ fn generate_section_headers(data_lists: &Vec<Vec<u8>>, shstrtab: &Vec<u32>) -> V
 }
 
 fn generate_symtab(strtab: Vec<u32>) -> Vec<u8> {
-    let mut bytes = Vec::new();
-    bytes.resize(24, 0);
+    let mut bytes = vec![0; 24];
 
     bytes.extend(strtab[0].to_le_bytes());
     bytes.push(4u8);
