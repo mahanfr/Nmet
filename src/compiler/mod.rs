@@ -7,6 +7,7 @@ mod variables;
 use crate::codegen::instructions::Instr;
 use crate::codegen::{mnmemonic::Mnemonic::*, register::Reg, Codegen};
 use crate::compiler::{bif::Bif, function::compile_function};
+use crate::elf::generate_elf;
 use crate::error_handeling::error;
 use crate::output_generator::x86_64_nasm_generator;
 use crate::parser::{
@@ -75,22 +76,32 @@ impl CompilerContext {
     }
 }
 
+pub fn compile_to_elf(path: String) {
+    let mut compiler_context = CompilerContext::new();
+
+    compile(&mut compiler_context, path.clone());
+    impl_bifs(&mut compiler_context);
+    optimize(&mut compiler_context.codegen);
+    generate_elf(path, &compiler_context);
+    
+}
+
 pub fn compile_to_asm(path: String) {
     let mut compiler_context = CompilerContext::new();
 
     compile(&mut compiler_context, path.clone());
-    x86_64_impl_bifs(&mut compiler_context);
-    x86_64_nasm_cleanup(&mut compiler_context.codegen);
+    impl_bifs(&mut compiler_context);
+    optimize(&mut compiler_context.codegen);
     x86_64_nasm_generator(path, compiler_context.codegen).unwrap();
 }
 
-pub fn x86_64_impl_bifs(cc: &mut CompilerContext) {
+pub fn impl_bifs(cc: &mut CompilerContext) {
     for bif in cc.bif_set.iter() {
         bif.implement(&mut cc.codegen);
     }
 }
 
-fn x86_64_nasm_cleanup(code: &mut Codegen) {
+fn optimize(code: &mut Codegen) {
     for i in 0..(code.instruct_buf.len() - 2) {
         let Instr::Push(op_a) = code.instruct_buf[i].clone() else {
             continue;
