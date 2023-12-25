@@ -4,7 +4,7 @@ mod function;
 mod stmts;
 mod variables;
 
-use crate::codegen::instructions::Instr;
+use crate::codegen::instructions::{Instr, Opr};
 use crate::codegen::{mnmemonic::Mnemonic::*, register::Reg, Codegen};
 use crate::compiler::{bif::Bif, function::compile_function};
 use crate::elf::generate_elf;
@@ -102,6 +102,13 @@ pub fn impl_bifs(cc: &mut CompilerContext) {
 
 fn optimize(code: &mut Codegen) {
     for i in 0..(code.instruct_buf.len() - 2) {
+        if let Instr::Mov(op_a, op_b) = code.instruct_buf[i].clone() {
+            if let Opr::R64(r) = op_a.clone() {
+                if let Opr::Imm32(_) = op_b.clone() {
+                    code.instruct_buf[i] = Instr::Mov(Opr::R32(r), op_b);
+                }
+            }
+        }
         let Instr::Push(op_a) = code.instruct_buf[i].clone() else {
             continue;
         };
