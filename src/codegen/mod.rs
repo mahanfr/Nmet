@@ -4,7 +4,7 @@ pub mod memory;
 pub mod mnmemonic;
 pub mod register;
 
-use std::fmt::Display;
+use std::{fmt::Display, collections::HashMap};
 
 use self::{
     instructions::{Instr, Opr},
@@ -17,6 +17,7 @@ pub struct Codegen {
     pub instruct_buf: Vec<Instr>,
     pub data_buf: Vec<String>,
     pub bss_buf: Vec<String>,
+    pub last_lable: String,
 }
 
 #[allow(dead_code)]
@@ -26,6 +27,7 @@ impl Codegen {
             instruct_buf: Vec::new(),
             bss_buf: Vec::new(),
             data_buf: Vec::new(),
+            last_lable: String::new(),
         }
     }
 
@@ -90,3 +92,12 @@ impl Codegen {
         self.instruct_buf.push(Instr::Lable(lable.to_string()));
     }
 }
+/*
+        let lable_string = lable.to_string();
+        if lable_string.starts_with(".") {
+            if self.last_lable.is_empty() {
+                panic!("Unknown jump location from {lable_string}");
+            }
+            self.instruct_buf.push(Instr::Lable(format!("{}{}",self.last_lable,lable.to_string())));
+        } else {
+ * */

@@ -1,4 +1,6 @@
-use std::fmt::Display;
+use std::{fmt::Display, process::exit};
+
+use crate::error_handeling::error;
 
 use super::{
     memory::Mem,
@@ -161,6 +163,13 @@ impl Display for Instr {
         }
     }
 }
+fn modrm_ex(ex:u8, reg: Reg) -> u8 {
+    ((0b11 << 3) | (ex & 0x07) << 3) | (reg.upcode32() & 0x07)
+}
+
+fn modrm_r(reg1: Reg, reg2: Reg) -> u8 {
+    ((0b11 << 3) | (reg1.upcode32() & 0x07) << 3) | (reg2.upcode32() & 0x07)
+}
 
 impl Instr {
     pub fn assemble(&self) -> Vec<u8> {
@@ -171,14 +180,42 @@ impl Instr {
                     bytes.push(0xb8 + r.upcode32());
                     bytes.extend(val.to_le_bytes());
                     bytes
-                }
+                },
+                (Opr::R64(r1) ,Opr::R64(r2)) => {
+                    vec![0x48,0x89, modrm_r(*r2,*r1)]
+                },
                 _ => todo!(),
             },
+            Self::Push(op1) => match op1 {
+                Opr::Imm32(val) => {
+                    // TODO: Might be 0x6A
+                    let mut bytes = vec![0x68];
+                    bytes.extend(val.to_le_bytes());
+                    bytes
+                },
+                _ => todo!(),
+            },
+            Self::Pop(op1) => {
+                let Opr::R64(r) = op1 else {
+                    eprintln!("Unsupported Operator ({op1}) for instruction {self}");
+                    exit(1);
+                };
+                vec![(58 + r.upcode32())]
+            },
+            Self::Cqo => vec![0x48,0x99],
+            Self::Idiv(op1) => match op1 {
+                Opr::R64(r) => vec![0x48, 0xf7, modrm_ex(7, *r)],
+                Opr::R32(r) => vec![0xf7, modrm_ex(7, *r)],
+                _ => todo!(),
+            }
+            Self::Call(lable) => {
+               todo!() 
+            }
             Self::Syscall => {
                 vec![0x0f, 0x05]
             }
             Self::Lable(_) => vec![],
-            _ => todo!(),
+            _ => todo!("{self:?}"),
         }
     }
 
