@@ -184,7 +184,7 @@ impl Instr {
                 (Opr::R64(r1) ,Opr::R64(r2)) => {
                     vec![0x48,0x89, modrm_r(*r2,*r1)]
                 },
-                _ => todo!(),
+                _ => todo!("{self}"),
             },
             Self::Push(op1) => match op1 {
                 Opr::Imm32(val) => {
@@ -193,7 +193,10 @@ impl Instr {
                     bytes.extend(val.to_le_bytes());
                     bytes
                 },
-                _ => todo!(),
+                Opr::R64(r) => {
+                    vec![(0x50 + r.upcode32())]
+                },
+                _ => todo!("{op1}"),
             },
             Self::Pop(op1) => {
                 let Opr::R64(r) = op1 else {
@@ -207,14 +210,67 @@ impl Instr {
                 Opr::R64(r) => vec![0x48, 0xf7, modrm_ex(7, *r)],
                 Opr::R32(r) => vec![0xf7, modrm_ex(7, *r)],
                 _ => todo!(),
+            },
+            Self::Add(op1,op2) => match (op1,op2) {
+                (Opr::R64(r1), Opr::R64(r2)) => {
+                    vec![0x48,0x01, modrm_r(*r2,*r1)]
+                },
+                _ => unimplemented!(),
+            },
+            Self::Sub(op1,op2) => match (op1,op2) {
+                (Opr::R64(r1), Opr::R64(r2)) => {
+                    vec![0x48, 0x29, modrm_r(*r2,*r1)]
+                },
+                (Opr::R64(r1), Opr::Imm32(val)) => {
+                    if *val < u8::MAX as i32 {
+                        vec![0x48, 0x83, modrm_ex(5,*r1)]
+                    } else {
+                        unimplemented!();
+                    }
+                },
+                _ => unimplemented!("{self}"),
+            },
+            Self::Imul(op1,op2) => match (op1,op2) {
+                (Opr::R64(r1), Opr::R64(r2)) => {
+                    vec![0x48, 0x0f, 0xaf, modrm_r(*r2,*r1)]
+                },
+                _ => unimplemented!(),
+            },
+            Self::Or(op1, op2) => match (op1,op2) {
+                (Opr::R64(r1), Opr::R64(r2)) => {
+                    vec![0x48, 0x09, modrm_r(*r2,*r1)]
+                },
+                _ => unimplemented!(),
+            },
+            Self::And(op1, op2) => match (op1,op2) {
+                (Opr::R64(r1), Opr::R64(r2)) => {
+                    vec![0x48, 0x21, modrm_r(*r2,*r1)]
+                },
+                _ => unimplemented!(),
+            },
+            Self::Sar(op1, op2) => match (op1,op2) {
+                (Opr::R64(r1), Opr::R8(Reg::CL)) => {
+                    vec![0x48, 0xd3, modrm_ex(7, *r1)]
+                },
+                _ => unimplemented!(),
+            },
+            Self::Sal(op1, op2) => match (op1,op2) {
+                (Opr::R64(r1), Opr::R8(Reg::CL)) => {
+                    vec![0x48, 0xd3, modrm_ex(6, *r1)]
+                },
+                _ => unimplemented!(),
             }
-            Self::Call(lable) => {
-               todo!() 
+            Self::Shr(op1, op2) => match (op1,op2) {
+                (Opr::R64(r1), Opr::R8(Reg::CL)) => {
+                    vec![0x48, 0xd3, modrm_ex(5, *r1)]
+                },
+                _ => unimplemented!(),
             }
+            Self::Call(_) => unreachable!("It should be handeled on higher level"),
+            Self::Lable(_) => unreachable!("It should be handeled on higher level"),
             Self::Syscall => {
                 vec![0x0f, 0x05]
             }
-            Self::Lable(_) => vec![],
             _ => todo!("{self:?}"),
         }
     }

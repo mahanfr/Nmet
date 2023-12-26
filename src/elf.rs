@@ -1,9 +1,9 @@
 use std::{
     fs::{self, File},
-    io::{BufWriter, Write},
+    io::{BufWriter, Write}, collections::HashMap,
 };
 
-use crate::{compiler::CompilerContext, utils::get_program_name};
+use crate::{compiler::CompilerContext, utils::get_program_name, codegen::instructions::{Instr, Opr}};
 
 pub fn generate_header() -> Vec<u8> {
     let mut bytes = Vec::new();
@@ -35,10 +35,58 @@ pub fn generate_header() -> Vec<u8> {
     bytes
 }
 
+struct ReFillableBytes {
+    index: usize,
+    size: u8,
+}
+
 fn generate_text_section(cc: &CompilerContext) -> Vec<u8> {
     let mut bytes = Vec::new();
+    let mut investigation_list = Vec::<(String, ReFillableBytes)>::new();
+    let mut lables_map = HashMap::<String, usize>::new();
+    let mut last_main_lable = String::new();
     for instr in cc.codegen.instruct_buf.iter() {
-        bytes.extend(instr.assemble());
+        match instr {
+            Instr::Lable(lable) => {
+                if lable.starts_with(".") {
+                    lables_map.insert(format!("{last_main_lable}{lable}"),  bytes.len());
+                } else {
+                    last_main_lable = lable.clone();
+                    lables_map.insert(lable.clone(), bytes.len());
+                }
+                for item in investigation_list.iter() {
+                    if &item.0 == lable {
+                        if item.1.size == 4 {
+                            let replacment = ((bytes.len() - item.1.index + 4) as i32).to_le_bytes();
+                            bytes[item.1.index + 1] = replacment[0];
+                            bytes[item.1.index + 2] = replacment[1];
+                            bytes[item.1.index + 3] = replacment[2];
+                            bytes[item.1.index + 4] = replacment[3];
+                        }
+                    }
+                }
+            },
+            Instr::Call(lable) => {
+                let Opr::Lable(lable_str) = lable else {
+                    panic!("Unknown operator ({lable}) for call!");
+                };
+                match lables_map.get(lable_str) {
+                    Some(val) => {
+                        bytes.push(0xe8); // opcode
+                        bytes.extend(((val - bytes.len()) as i32).to_le_bytes());   // value
+                        todo!("Might be wrong!");
+                    },
+                    None => {
+                        investigation_list.push((lable_str.clone(), ReFillableBytes {
+                            index: bytes.len(),
+                            size: 4,
+                        }));
+                        bytes.extend(vec![0xe8,0,0,0,0]);
+                    },
+                }
+            },
+            _ => bytes.extend(instr.assemble()),
+        }
     }
     bytes
 }
