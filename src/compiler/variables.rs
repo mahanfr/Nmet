@@ -1,11 +1,13 @@
 use crate::{
     codegen::{
+        instructions::Opr,
         mnmemonic::Mnemonic::*,
-        register::Reg::{self, *}, instructions::Opr,
+        register::Reg::{self, *},
     },
     compiler::VariableMap,
     error_handeling::error,
-    parser::{types::VariableType, variable_decl::VariableDeclare}, mem, memq,
+    mem, memq,
+    parser::{types::VariableType, variable_decl::VariableDeclare},
 };
 
 use super::{expr::compile_expr, CompilerContext};

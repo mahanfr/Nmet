@@ -1,13 +1,15 @@
 use crate::{
     codegen::{
+        instructions::Opr,
         mnmemonic::Mnemonic::*,
-        register::Reg::{self, *}, instructions::Opr,
+        register::Reg::{self, *},
     },
     error_handeling::error,
+    mem, memq,
     parser::{
         expr::{CompareOp, Expr, ExprType, FunctionCall, Op},
         types::VariableType,
-    }, mem, memq,
+    },
 };
 
 use super::{
@@ -30,7 +32,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             //     mem_word(&v_map.vtype),
             //     v_map.offset + v_map.vtype.size()
             // );
-            let mem_acss = Opr::MemDisp(v_map.vtype.item_size() as u8, RBP, v_map.stack_offset());
+            let mem_acss = Opr::MemDisp(v_map.vtype.item_size(), RBP, v_map.stack_offset());
             cc.codegen
                 .instr2(Mov, Reg::AX_sized(&v_map.vtype), mem_acss);
             cc.codegen.instr1(Push, RAX);
@@ -68,13 +70,12 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             }
             // cc.instruct_buf
             //     .push(asm!("mov rdx, [rbp-{}]", v_map.offset + v_map.vtype.size()));
-            cc.codegen
-                .instr2(Mov, RDX, mem!(RBP, v_map.stack_offset()));
+            cc.codegen.instr2(Mov, RDX, mem!(RBP, v_map.stack_offset()));
             cc.codegen.instr2(Add, RDX, offset);
             cc.codegen.instr2(
                 Mov,
                 Reg::AX_sized(&actype),
-                Opr::MemAddr(actype.item_size() as u8, RDX),
+                Opr::MemAddr(actype.item_size(), RDX),
             );
             // cc.instruct_buf.push(asm!(
             //     "mov {}, {} [rdx]",
@@ -341,8 +342,7 @@ fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) {
                     //cc.codegen.push(RAX);
 
                     //cc.codegen.mov(RAX, RBP);
-                    cc.codegen
-                        .instr2(Lea, RAX, mem!(RBP, v_map.stack_offset()));
+                    cc.codegen.instr2(Lea, RAX, mem!(RBP, v_map.stack_offset()));
                     cc.codegen.instr1(Push, RAX);
                 }
                 _ => {

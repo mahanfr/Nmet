@@ -1,18 +1,20 @@
 use crate::{
     codegen::{
         asm_parser::parse_asm,
+        instructions::Opr,
         mnmemonic::Mnemonic::*,
-        register::Reg::{self, *}, instructions::Opr,
+        register::Reg::{self, *},
     },
     compiler::VariableMap,
     error_handeling::error,
+    mem,
     parser::{
         assign::{Assign, AssignOp},
         block::BlockType,
         expr::ExprType,
         stmt::{ElseBlock, IFStmt, Stmt, StmtType, WhileStmt},
         types::VariableType,
-    }, mem,
+    },
 };
 
 use super::{
@@ -148,8 +150,8 @@ fn compile_inline_asm(cc: &mut CompilerContext, instr: &String) -> Result<(), St
                     //     mem_word(&v_map.vtype),
                     //     v_map.offset + v_map.vtype.size()
                     // );
-                    let mem_acss =
-                        Opr::MemDisp(v_map.vtype.item_size() as u8, RBP, v_map.stack_offset()).to_string();
+                    let mem_acss = Opr::MemDisp(v_map.vtype.item_size(), RBP, v_map.stack_offset())
+                        .to_string();
                     let mut temp = String::new();
                     temp.push_str(chars[0..(first_index)].iter().collect::<String>().as_str());
                     temp.push_str(mem_acss.as_str());
@@ -206,8 +208,12 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
             //     v_map.offset + v_map.vtype.size(),
             //     v_map.vtype.item_size()
             // )
-            Opr::MemDispSib(v_map.vtype.item_size(),
-                RBP, v_map.stack_offset(), RBX,  v_map.vtype.item_size() as u8
+            Opr::MemDispSib(
+                v_map.vtype.item_size(),
+                RBP,
+                v_map.stack_offset(),
+                RBX,
+                v_map.vtype.item_size(),
             )
         }
         VariableType::Custom(_) => {
@@ -225,7 +231,7 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
             //     mem_word(&v_map.vtype),
             //     v_map.offset + v_map.vtype.size()
             // )
-            Opr::MemDisp(v_map.vtype.item_size() ,RBP, v_map.stack_offset())
+            Opr::MemDisp(v_map.vtype.item_size(), RBP, v_map.stack_offset())
         }
     };
     cc.codegen.instr1(Pop, RAX);

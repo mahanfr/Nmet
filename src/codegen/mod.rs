@@ -92,11 +92,11 @@ impl Codegen {
     }
 }
 /*
-        let lable_string = lable.to_string();
-        if lable_string.starts_with(".") {
-            if self.last_lable.is_empty() {
-                panic!("Unknown jump location from {lable_string}");
-            }
-            self.instruct_buf.push(Instr::Lable(format!("{}{}",self.last_lable,lable.to_string())));
-        } else {
- * */
+       let lable_string = lable.to_string();
+       if lable_string.starts_with(".") {
+           if self.last_lable.is_empty() {
+               panic!("Unknown jump location from {lable_string}");
+           }
+           self.instruct_buf.push(Instr::Lable(format!("{}{}",self.last_lable,lable.to_string())));
+       } else {
+* */

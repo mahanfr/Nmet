@@ -1,4 +1,7 @@
-use crate::{codegen::{mnmemonic::Mnemonic::*, register::Reg::*, Codegen, instructions::Opr}, mem, memq, memb};
+use crate::{
+    codegen::{instructions::Opr, mnmemonic::Mnemonic::*, register::Reg::*, Codegen},
+    mem, memb, memq,
+};
 
 #[derive(Hash, PartialEq, Eq)]
 pub enum Bif {
@@ -38,9 +41,9 @@ impl Bif {
         codegen.instr2(Lea, EDX, mem!(RAX, 48));
         codegen.instr2(Mov, EAX, 31);
         codegen.instr2(Sub, RAX, memq!(RBP, -8));
-        codegen.instr2(Mov, memb!(RBP ,-48, RAX), DL);
+        codegen.instr2(Mov, memb!(RBP, -48, RAX), DL);
         codegen.instr2(Add, memq!(RBP, -8), 1);
-        codegen.instr2(Mov, RAX, memq!(RBP , -56));
+        codegen.instr2(Mov, RAX, memq!(RBP, -56));
         codegen.instr2(Mov, RDX, -3689348814741910323i64);
         codegen.instr1(Mul, RDX);
         codegen.instr2(Mov, RAX, RDX);

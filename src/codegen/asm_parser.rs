@@ -1,7 +1,10 @@
 use std::str::FromStr;
 
 #[allow(unused_imports)]
-use crate::{lexer::{Lexer, TokenType}, mem ,memq};
+use crate::{
+    lexer::{Lexer, TokenType},
+    mem, memq,
+};
 
 use super::{
     instructions::{Instr, Opr},
@@ -57,15 +60,15 @@ fn parse_op(lexer: &mut Lexer) -> Opr {
                 "qword" => {
                     lexer.match_token(TokenType::Identifier);
                     parse_mem(lexer, 8)
-                },
+                }
                 "dword" => {
                     lexer.match_token(TokenType::Identifier);
                     parse_mem(lexer, 4)
-                },
+                }
                 "word" => {
                     lexer.match_token(TokenType::Identifier);
                     parse_mem(lexer, 2)
-                },
+                }
                 "byte" => {
                     lexer.match_token(TokenType::Identifier);
                     parse_mem(lexer, 1)
@@ -89,10 +92,10 @@ fn parse_mem(lexer: &mut Lexer, size: u8) -> Opr {
             let sign = lexer.get_token_type();
             lexer.next_token();
             let TokenType::Int(mut val) = lexer.get_token_type() else {
-                panic!("expected an integer found {}",lexer.get_token_type());
+                panic!("expected an integer found {}", lexer.get_token_type());
             };
             if sign == TokenType::Minus {
-                val = val * -1;
+                val = -val;
             }
             lexer.next_token();
             if lexer.get_token_type() == TokenType::CBracket {
@@ -106,19 +109,19 @@ fn parse_mem(lexer: &mut Lexer, size: u8) -> Opr {
                 } else {
                     lexer.match_token(TokenType::Multi);
                     let TokenType::Int(scale) = lexer.get_token_type() else {
-                        panic!("expected an integer found {}",lexer.get_token_type());
+                        panic!("expected an integer found {}", lexer.get_token_type());
                     };
-                    if !vec![1,2,4,8].contains(&scale) {
+                    if ![1, 2, 4, 8].contains(&scale) {
                         panic!("unexpected scale for a register");
                     }
                     lexer.next_token();
                     Opr::MemDispSib(size, r, val, r2, scale as u8)
                 }
             } else {
-                panic!("unsupported operator \"{}\"!",lexer.get_token().literal);
+                panic!("unsupported operator \"{}\"!", lexer.get_token().literal);
             }
-        },
-        _ => panic!("unsupported operation!")
+        }
+        _ => panic!("unsupported operation!"),
     };
     lexer.match_token(TokenType::CBracket);
     res
@@ -154,13 +157,13 @@ fn parse_mem(lexer: &mut Lexer, size: u8) -> Opr {
 //                 panic!("Unsupported Operation! {}", lexer.get_token().literal);
 //             };
 //             lexer.next_token();
-//             
+//
 //             MemOp::Multi(r, offset as usize)
 //         }
 //         _ => panic!("Unsupported Register Operation!"),
 //     }
 // }
-// 
+//
 // fn parse_memop(lexer: &mut Lexer) -> MemOp {
 //     lexer.match_token(TokenType::OBracket);
 //     match lexer.get_token_type() {
@@ -216,11 +219,7 @@ fn test_mnemonic_parsing() {
         parse_asm("mov rax, qword [rbx+2]".to_string())
     );
     assert_eq!(
-        Instr::new_instr2(
-            Mnemonic::Mov,
-            Reg::RAX,
-            memq!(Reg::RBX, 2, Reg::RAX, 4)
-        ),
+        Instr::new_instr2(Mnemonic::Mov, Reg::RAX, memq!(Reg::RBX, 2, Reg::RAX, 4)),
         parse_asm("mov rax, qword [rbx+2 + rax*4]".to_string())
     );
 }

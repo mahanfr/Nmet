@@ -7,49 +7,79 @@ use super::{
 
 #[macro_export]
 macro_rules! memb {
-    ($R1:expr) => {Opr::MemAddr(1,$R1)};
-    ($R1:expr , $disp:expr) => {Opr::MemDisp(1,$R1, $disp)};
-    ($R1:expr , $disp:expr, $R2:expr) => {Opr::MemDispSib(1,$R1, $disp, $R2, 1)};
+    ($R1:expr) => {
+        Opr::MemAddr(1, $R1)
+    };
+    ($R1:expr , $disp:expr) => {
+        Opr::MemDisp(1, $R1, $disp)
+    };
+    ($R1:expr , $disp:expr, $R2:expr) => {
+        Opr::MemDispSib(1, $R1, $disp, $R2, 1)
+    };
     ($R1:expr , $disp:expr, $R2:expr, $scale:expr) => {
-        Opr::MemDispSib(1,$R1, $disp, $R2, $scale)
+        Opr::MemDispSib(1, $R1, $disp, $R2, $scale)
     };
 }
 #[macro_export]
 macro_rules! memw {
-    ($R1:expr) => {Opr::MemAddr(2,$R1)};
-    ($R1:expr , $disp:expr) => {Opr::MemDisp(2,$R1, $disp)};
-    ($R1:expr , $disp:expr, $R2:expr) => {Opr::MemDispSib(2,$R1, $disp, $R2, 1)};
+    ($R1:expr) => {
+        Opr::MemAddr(2, $R1)
+    };
+    ($R1:expr , $disp:expr) => {
+        Opr::MemDisp(2, $R1, $disp)
+    };
+    ($R1:expr , $disp:expr, $R2:expr) => {
+        Opr::MemDispSib(2, $R1, $disp, $R2, 1)
+    };
     ($R1:expr , $disp:expr, $R2:expr, $scale:expr) => {
-        Opr::MemDispSib(2,$R1, $disp, $R2, $scale)
+        Opr::MemDispSib(2, $R1, $disp, $R2, $scale)
     };
 }
 #[macro_export]
 macro_rules! memd {
-    ($R1:expr) => {Opr::MemAddr(4,$R1)};
-    ($R1:expr , $disp:expr) => {Opr::MemDisp(4,$R1, $disp)};
-    ($R1:expr , $disp:expr, $R2:expr) => {Opr::MemDispSib(4,$R1, $disp, $R2, 1)};
+    ($R1:expr) => {
+        Opr::MemAddr(4, $R1)
+    };
+    ($R1:expr , $disp:expr) => {
+        Opr::MemDisp(4, $R1, $disp)
+    };
+    ($R1:expr , $disp:expr, $R2:expr) => {
+        Opr::MemDispSib(4, $R1, $disp, $R2, 1)
+    };
     ($R1:expr , $disp:expr, $R2:expr, $scale:expr) => {
-        Opr::MemDispSib(4,$R1, $disp, $R2, $scale)
+        Opr::MemDispSib(4, $R1, $disp, $R2, $scale)
     };
 }
 
 #[macro_export]
 macro_rules! memq {
-    ($R1:expr) => {Opr::MemAddr(8,$R1)};
-    ($R1:expr , $disp:expr) => {Opr::MemDisp(8,$R1, $disp)};
-    ($R1:expr , $disp:expr, $R2:expr) => {Opr::MemDispSib(8,$R1, $disp, $R2, 1)};
+    ($R1:expr) => {
+        Opr::MemAddr(8, $R1)
+    };
+    ($R1:expr , $disp:expr) => {
+        Opr::MemDisp(8, $R1, $disp)
+    };
+    ($R1:expr , $disp:expr, $R2:expr) => {
+        Opr::MemDispSib(8, $R1, $disp, $R2, 1)
+    };
     ($R1:expr , $disp:expr, $R2:expr, $scale:expr) => {
-        Opr::MemDispSib(8,$R1, $disp, $R2, $scale)
+        Opr::MemDispSib(8, $R1, $disp, $R2, $scale)
     };
 }
 
 #[macro_export]
 macro_rules! mem {
-    ($R1:expr) => {Opr::MemAddr(0,$R1)};
-    ($R1:expr , $disp:expr) => {Opr::MemDisp(0,$R1, $disp)};
-    ($R1:expr , $disp:expr, $R2:expr) => {Opr::MemDispSib(0,$R1, $disp, $R2, 1)};
+    ($R1:expr) => {
+        Opr::MemAddr(0, $R1)
+    };
+    ($R1:expr , $disp:expr) => {
+        Opr::MemDisp(0, $R1, $disp)
+    };
+    ($R1:expr , $disp:expr, $R2:expr) => {
+        Opr::MemDispSib(0, $R1, $disp, $R2, 1)
+    };
     ($R1:expr , $disp:expr, $R2:expr, $scale:expr) => {
-        Opr::MemDispSib(0,$R1, $disp, $R2, $scale)
+        Opr::MemDispSib(0, $R1, $disp, $R2, $scale)
     };
 }
 
@@ -76,14 +106,14 @@ impl Opr {
             2 => "word",
             4 => "dword",
             8 => "qword",
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }
 
 impl From<Reg> for Opr {
     fn from(val: Reg) -> Opr {
-        mem!(Reg::RAX ,5);
+        mem!(Reg::RAX, 5);
         let size = ((val as u8) & 0xf0) >> 4;
         match size {
             8 => Self::R64(val),
@@ -95,7 +125,7 @@ impl From<Reg> for Opr {
         }
     }
 }
-impl From<&Opr> for Opr{
+impl From<&Opr> for Opr {
     fn from(val: &Self) -> Opr {
         val.clone()
     }
@@ -132,21 +162,31 @@ impl Display for Opr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::R64(x) | Self::R32(x) | Self::R16(x) | Self::R8(x) | Self::R4(x) => x.fmt(f),
-            Self::MemAddr(s, r) => write!(f,"{} [{r}]", Self::mem_hint(s)),
+            Self::MemAddr(s, r) => write!(f, "{} [{r}]", Self::mem_hint(s)),
             Self::MemDisp(s, r, disp) => {
                 if disp < &0 {
                     write!(f, "{} [{r} - {}]", Self::mem_hint(s), disp.abs())
                 } else {
                     write!(f, "{} [{r} + {}]", Self::mem_hint(s), disp.abs())
                 }
-            },
+            }
             Self::MemDispSib(s, r1, disp, r2, scale) => {
                 if disp < &0 {
-                    write!(f, "{} [{r1} - {} + {r2} * {scale}]", Self::mem_hint(s), disp.abs())
+                    write!(
+                        f,
+                        "{} [{r1} - {} + {r2} * {scale}]",
+                        Self::mem_hint(s),
+                        disp.abs()
+                    )
                 } else {
-                    write!(f, "{} [{r1} + {} + {r2} * {scale}]", Self::mem_hint(s), disp.abs())
+                    write!(
+                        f,
+                        "{} [{r1} + {} + {r2} * {scale}]",
+                        Self::mem_hint(s),
+                        disp.abs()
+                    )
                 }
-            },
+            }
             Self::Imm64(x) => x.fmt(f),
             Self::Imm32(x) => x.fmt(f),
             Self::Lable(x) => x.fmt(f),
@@ -234,7 +274,7 @@ impl Display for Instr {
         }
     }
 }
-fn modrm_ex(ex:u8, reg: Reg) -> u8 {
+fn modrm_ex(ex: u8, reg: Reg) -> u8 {
     ((0b11 << 3) | (ex & 0x07) << 3) | (reg.upcode32() & 0x07)
 }
 
@@ -251,10 +291,10 @@ impl Instr {
                     bytes.push(0xb8 + r.upcode32());
                     bytes.extend(val.to_le_bytes());
                     bytes
-                },
-                (Opr::R64(r1) ,Opr::R64(r2)) => {
-                    vec![0x48,0x89, modrm_r(*r2,*r1)]
-                },
+                }
+                (Opr::R64(r1), Opr::R64(r2)) => {
+                    vec![0x48, 0x89, modrm_r(*r2, *r1)]
+                }
                 // (Opr::Mem(mem),Opr::R64(r)) => {
                 //     let mem_op = match mem {
                 //         Mem::U(mmo) => mmo,
@@ -270,10 +310,10 @@ impl Instr {
                     let mut bytes = vec![0x68];
                     bytes.extend(val.to_le_bytes());
                     bytes
-                },
+                }
                 Opr::R64(r) => {
                     vec![(0x50 + r.upcode32())]
-                },
+                }
                 _ => todo!("{op1}"),
             },
             Self::Pop(op1) => {
@@ -282,68 +322,68 @@ impl Instr {
                     exit(1);
                 };
                 vec![(58 + r.upcode32())]
-            },
-            Self::Cqo => vec![0x48,0x99],
+            }
+            Self::Cqo => vec![0x48, 0x99],
             Self::Idiv(op1) => match op1 {
                 Opr::R64(r) => vec![0x48, 0xf7, modrm_ex(7, *r)],
                 Opr::R32(r) => vec![0xf7, modrm_ex(7, *r)],
                 _ => todo!(),
             },
-            Self::Add(op1,op2) => match (op1,op2) {
+            Self::Add(op1, op2) => match (op1, op2) {
                 (Opr::R64(r1), Opr::R64(r2)) => {
-                    vec![0x48,0x01, modrm_r(*r2,*r1)]
-                },
+                    vec![0x48, 0x01, modrm_r(*r2, *r1)]
+                }
                 _ => unimplemented!(),
             },
-            Self::Sub(op1,op2) => match (op1,op2) {
+            Self::Sub(op1, op2) => match (op1, op2) {
                 (Opr::R64(r1), Opr::R64(r2)) => {
-                    vec![0x48, 0x29, modrm_r(*r2,*r1)]
-                },
+                    vec![0x48, 0x29, modrm_r(*r2, *r1)]
+                }
                 (Opr::R64(r1), Opr::Imm32(val)) => {
                     if *val < u8::MAX as i32 {
-                        vec![0x48, 0x83, modrm_ex(5,*r1)]
+                        vec![0x48, 0x83, modrm_ex(5, *r1)]
                     } else {
                         unimplemented!();
                     }
-                },
+                }
                 _ => unimplemented!("{self}"),
             },
-            Self::Imul(op1,op2) => match (op1,op2) {
+            Self::Imul(op1, op2) => match (op1, op2) {
                 (Opr::R64(r1), Opr::R64(r2)) => {
-                    vec![0x48, 0x0f, 0xaf, modrm_r(*r2,*r1)]
-                },
+                    vec![0x48, 0x0f, 0xaf, modrm_r(*r2, *r1)]
+                }
                 _ => unimplemented!(),
             },
-            Self::Or(op1, op2) => match (op1,op2) {
+            Self::Or(op1, op2) => match (op1, op2) {
                 (Opr::R64(r1), Opr::R64(r2)) => {
-                    vec![0x48, 0x09, modrm_r(*r2,*r1)]
-                },
+                    vec![0x48, 0x09, modrm_r(*r2, *r1)]
+                }
                 _ => unimplemented!(),
             },
-            Self::And(op1, op2) => match (op1,op2) {
+            Self::And(op1, op2) => match (op1, op2) {
                 (Opr::R64(r1), Opr::R64(r2)) => {
-                    vec![0x48, 0x21, modrm_r(*r2,*r1)]
-                },
+                    vec![0x48, 0x21, modrm_r(*r2, *r1)]
+                }
                 _ => unimplemented!(),
             },
-            Self::Sar(op1, op2) => match (op1,op2) {
+            Self::Sar(op1, op2) => match (op1, op2) {
                 (Opr::R64(r1), Opr::R8(Reg::CL)) => {
                     vec![0x48, 0xd3, modrm_ex(7, *r1)]
-                },
+                }
                 _ => unimplemented!(),
             },
-            Self::Sal(op1, op2) => match (op1,op2) {
+            Self::Sal(op1, op2) => match (op1, op2) {
                 (Opr::R64(r1), Opr::R8(Reg::CL)) => {
                     vec![0x48, 0xd3, modrm_ex(6, *r1)]
-                },
+                }
                 _ => unimplemented!(),
-            }
-            Self::Shr(op1, op2) => match (op1,op2) {
+            },
+            Self::Shr(op1, op2) => match (op1, op2) {
                 (Opr::R64(r1), Opr::R8(Reg::CL)) => {
                     vec![0x48, 0xd3, modrm_ex(5, *r1)]
-                },
+                }
                 _ => unimplemented!(),
-            }
+            },
             Self::Call(_) => unreachable!("It should be handeled on higher level"),
             Self::Lable(_) => unreachable!("It should be handeled on higher level"),
             Self::Syscall => {
@@ -376,7 +416,7 @@ impl Instr {
             Jnz => Self::Jnz(op1.into()),
             Jne => Self::Jne(op1.into()),
             Call => Self::Call(op1.into()),
-            _ => panic!("Wrong operand count for {mnem:?} {}",op1.into()),
+            _ => panic!("Wrong operand count for {mnem:?} {}", op1.into()),
         }
     }
 
