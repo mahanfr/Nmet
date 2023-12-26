@@ -57,11 +57,11 @@ impl VariableType {
     }
 
     /// Returns size of a single item in the type
-    pub fn item_size(&self) -> usize {
+    pub fn item_size(&self) -> u8 {
         match self {
-            Self::Array(a, _) => a.size(),
+            Self::Array(a, _) => a.size() as u8,
             Self::String => 8,
-            _ => self.size(),
+            _ => self.size() as u8,
         }
     }
 
@@ -74,7 +74,7 @@ impl VariableType {
             Self::Char => 1,
             Self::String => 16,
             Self::Void => 0,
-            Self::Array(t, s) => t.item_size() * s,
+            Self::Array(t, s) => t.item_size() as usize * s,
             Self::Float => 8,
             Self::Custom(_) => 8,
             Self::Any => todo!(),

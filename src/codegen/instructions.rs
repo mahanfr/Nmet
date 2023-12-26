@@ -1,12 +1,57 @@
 use std::{fmt::Display, process::exit};
 
-use crate::error_handeling::error;
-
 use super::{
-    memory::Mem,
     mnmemonic::Mnemonic::{self, *},
     register::Reg,
 };
+
+#[macro_export]
+macro_rules! memb {
+    ($R1:expr) => {Opr::MemAddr(1,$R1)};
+    ($R1:expr , $disp:expr) => {Opr::MemDisp(1,$R1, $disp)};
+    ($R1:expr , $disp:expr, $R2:expr) => {Opr::MemDispSib(1,$R1, $disp, $R2, 1)};
+    ($R1:expr , $disp:expr, $R2:expr, $scale:expr) => {
+        Opr::MemDispSib(1,$R1, $disp, $R2, $scale)
+    };
+}
+#[macro_export]
+macro_rules! memw {
+    ($R1:expr) => {Opr::MemAddr(2,$R1)};
+    ($R1:expr , $disp:expr) => {Opr::MemDisp(2,$R1, $disp)};
+    ($R1:expr , $disp:expr, $R2:expr) => {Opr::MemDispSib(2,$R1, $disp, $R2, 1)};
+    ($R1:expr , $disp:expr, $R2:expr, $scale:expr) => {
+        Opr::MemDispSib(2,$R1, $disp, $R2, $scale)
+    };
+}
+#[macro_export]
+macro_rules! memd {
+    ($R1:expr) => {Opr::MemAddr(4,$R1)};
+    ($R1:expr , $disp:expr) => {Opr::MemDisp(4,$R1, $disp)};
+    ($R1:expr , $disp:expr, $R2:expr) => {Opr::MemDispSib(4,$R1, $disp, $R2, 1)};
+    ($R1:expr , $disp:expr, $R2:expr, $scale:expr) => {
+        Opr::MemDispSib(4,$R1, $disp, $R2, $scale)
+    };
+}
+
+#[macro_export]
+macro_rules! memq {
+    ($R1:expr) => {Opr::MemAddr(8,$R1)};
+    ($R1:expr , $disp:expr) => {Opr::MemDisp(8,$R1, $disp)};
+    ($R1:expr , $disp:expr, $R2:expr) => {Opr::MemDispSib(8,$R1, $disp, $R2, 1)};
+    ($R1:expr , $disp:expr, $R2:expr, $scale:expr) => {
+        Opr::MemDispSib(8,$R1, $disp, $R2, $scale)
+    };
+}
+
+#[macro_export]
+macro_rules! mem {
+    ($R1:expr) => {Opr::MemAddr(0,$R1)};
+    ($R1:expr , $disp:expr) => {Opr::MemDisp(0,$R1, $disp)};
+    ($R1:expr , $disp:expr, $R2:expr) => {Opr::MemDispSib(0,$R1, $disp, $R2, 1)};
+    ($R1:expr , $disp:expr, $R2:expr, $scale:expr) => {
+        Opr::MemDispSib(0,$R1, $disp, $R2, $scale)
+    };
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Opr {
@@ -15,14 +60,30 @@ pub enum Opr {
     R16(Reg),
     R8(Reg),
     R4(Reg),
-    Mem(Mem),
+    MemAddr(u8, Reg),
+    MemDisp(u8, Reg, i32),
+    MemDispSib(u8, Reg, i32, Reg, u8),
     Imm64(i64),
     Imm32(i32),
     Lable(String),
 }
 
+impl Opr {
+    fn mem_hint(size: &u8) -> &'static str {
+        match size {
+            0 => "",
+            1 => "byte",
+            2 => "word",
+            4 => "dword",
+            8 => "qword",
+            _ => unreachable!()
+        }
+    }
+}
+
 impl From<Reg> for Opr {
     fn from(val: Reg) -> Opr {
+        mem!(Reg::RAX ,5);
         let size = ((val as u8) & 0xf0) >> 4;
         match size {
             8 => Self::R64(val),
@@ -34,11 +95,12 @@ impl From<Reg> for Opr {
         }
     }
 }
-impl From<Mem> for Opr {
-    fn from(val: Mem) -> Opr {
-        Self::Mem(val)
+impl From<&Opr> for Opr{
+    fn from(val: &Self) -> Opr {
+        val.clone()
     }
 }
+
 impl From<usize> for Opr {
     fn from(val: usize) -> Opr {
         Self::Imm32(val as i32)
@@ -52,11 +114,6 @@ impl From<i32> for Opr {
 impl From<i64> for Opr {
     fn from(val: i64) -> Opr {
         Self::Imm64(val)
-    }
-}
-impl From<&Mem> for Opr {
-    fn from(value: &Mem) -> Self {
-        Self::Mem(value.clone())
     }
 }
 
@@ -75,7 +132,21 @@ impl Display for Opr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::R64(x) | Self::R32(x) | Self::R16(x) | Self::R8(x) | Self::R4(x) => x.fmt(f),
-            Self::Mem(x) => x.fmt(f),
+            Self::MemAddr(s, r) => write!(f,"{} [{r}]", Self::mem_hint(s)),
+            Self::MemDisp(s, r, disp) => {
+                if disp < &0 {
+                    write!(f, "{} [{r} - {}]", Self::mem_hint(s), disp.abs())
+                } else {
+                    write!(f, "{} [{r} + {}]", Self::mem_hint(s), disp.abs())
+                }
+            },
+            Self::MemDispSib(s, r1, disp, r2, scale) => {
+                if disp < &0 {
+                    write!(f, "{} [{r1} - {} + {r2} * {scale}]", Self::mem_hint(s), disp.abs())
+                } else {
+                    write!(f, "{} [{r1} + {} + {r2} * {scale}]", Self::mem_hint(s), disp.abs())
+                }
+            },
             Self::Imm64(x) => x.fmt(f),
             Self::Imm32(x) => x.fmt(f),
             Self::Lable(x) => x.fmt(f),
@@ -184,6 +255,13 @@ impl Instr {
                 (Opr::R64(r1) ,Opr::R64(r2)) => {
                     vec![0x48,0x89, modrm_r(*r2,*r1)]
                 },
+                // (Opr::Mem(mem),Opr::R64(r)) => {
+                //     let mem_op = match mem {
+                //         Mem::U(mmo) => mmo,
+                //         Mem::Qword(mmo) => mmo,
+                //         _ => panic!("Illigal Move: moving from {r} to {mem}"),
+                //     };
+                // },
                 _ => todo!("{self}"),
             },
             Self::Push(op1) => match op1 {
@@ -298,7 +376,7 @@ impl Instr {
             Jnz => Self::Jnz(op1.into()),
             Jne => Self::Jne(op1.into()),
             Call => Self::Call(op1.into()),
-            _ => panic!("Wrong operand count for {mnem:?}"),
+            _ => panic!("Wrong operand count for {mnem:?} {}",op1.into()),
         }
     }
 

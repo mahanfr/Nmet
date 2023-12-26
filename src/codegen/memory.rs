@@ -43,11 +43,10 @@ pub enum MemOp {
     Single(Reg),
     Offset(Reg, usize),
     Negate(Reg, usize),
-    Multi(Reg, usize),
-    Add(Box<MemOp>, Box<MemOp>),
-    Sub(Box<MemOp>, Box<MemOp>),
+    NegDispSib(Reg, usize, Reg, usize),
+    PosDispSib(Reg, usize, Reg, usize),
 }
-
+mem![RAX - 4 + RBX * 4]
 impl From<Reg> for MemOp {
     fn from(val: Reg) -> MemOp {
         MemOp::Single(val)
@@ -58,15 +57,7 @@ impl Add for MemOp {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        Self::Add(Box::new(self), Box::new(rhs))
-    }
-}
-
-impl Sub for MemOp {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        Self::Sub(Box::new(self), Box::new(rhs))
+        Self::DispSib(Box::new(self), Box::new(rhs))
     }
 }
 
@@ -78,7 +69,6 @@ impl Display for MemOp {
             Self::Negate(r, i) => write!(f, "{r} - {i}"),
             Self::Multi(r, i) => write!(f, "{r} * {i}"),
             Self::Add(r1, r2) => write!(f, "{r1} + {r2}"),
-            Self::Sub(r1, r2) => write!(f, "{r1} - {r2}"),
         }
     }
 }

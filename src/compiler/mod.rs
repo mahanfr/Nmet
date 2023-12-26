@@ -33,8 +33,8 @@ pub struct VariableMap {
 }
 
 impl VariableMap {
-    pub fn stack_offset(&self) -> usize {
-        self.offset + self.vtype.size()
+    pub fn stack_offset(&self) -> i32 {
+        -((self.offset + self.vtype.size()) as i32)
     }
 }
 

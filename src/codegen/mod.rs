@@ -1,10 +1,9 @@
 pub mod asm_parser;
 pub mod instructions;
-pub mod memory;
 pub mod mnmemonic;
 pub mod register;
 
-use std::{fmt::Display, collections::HashMap};
+use std::fmt::Display;
 
 use self::{
     instructions::{Instr, Opr},

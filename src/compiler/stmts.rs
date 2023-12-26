@@ -1,9 +1,8 @@
 use crate::{
     codegen::{
         asm_parser::parse_asm,
-        memory::Mem,
         mnmemonic::Mnemonic::*,
-        register::Reg::{self, *},
+        register::Reg::{self, *}, instructions::Opr,
     },
     compiler::VariableMap,
     error_handeling::error,
@@ -13,7 +12,7 @@ use crate::{
         expr::ExprType,
         stmt::{ElseBlock, IFStmt, Stmt, StmtType, WhileStmt},
         types::VariableType,
-    },
+    }, mem,
 };
 
 use super::{
@@ -150,7 +149,7 @@ fn compile_inline_asm(cc: &mut CompilerContext, instr: &String) -> Result<(), St
                     //     v_map.offset + v_map.vtype.size()
                     // );
                     let mem_acss =
-                        Mem::dyn_sized(&v_map.vtype, RBP - v_map.stack_offset()).to_string();
+                        Opr::MemDisp(v_map.vtype.item_size() as u8, RBP, v_map.stack_offset()).to_string();
                     let mut temp = String::new();
                     temp.push_str(chars[0..(first_index)].iter().collect::<String>().as_str());
                     temp.push_str(mem_acss.as_str());
@@ -207,18 +206,17 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
             //     v_map.offset + v_map.vtype.size(),
             //     v_map.vtype.item_size()
             // )
-            Mem::dyn_sized(
-                &v_map.vtype,
-                RBP - v_map.stack_offset() + RBX * v_map.vtype.item_size(),
+            Opr::MemDispSib(v_map.vtype.item_size(),
+                RBP, v_map.stack_offset(), RBX,  v_map.vtype.item_size() as u8
             )
         }
         VariableType::Custom(_) => {
             cc.codegen
-                .instr2(Mov, RDX, Mem::U(RBP - (v_map.offset + 8)));
+                .instr2(Mov, RDX, mem!(RBP, -(v_map.offset as i32 + 8)));
             cc.codegen.instr2(Add, RDX, v_map.offset_inner);
             reg = Reg::AX_sized(&v_map.vtype_inner);
             // format!("{} [rdx]", mem_word(&v_map.vtype_inner))
-            Mem::dyn_sized(&v_map.vtype_inner, RDX.into())
+            Opr::MemAddr(v_map.vtype_inner.item_size(), RDX)
         }
         _ => {
             reg = Reg::AX_sized(&v_map.vtype);
@@ -227,7 +225,7 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
             //     mem_word(&v_map.vtype),
             //     v_map.offset + v_map.vtype.size()
             // )
-            Mem::dyn_sized(&v_map.vtype, RBP - v_map.stack_offset())
+            Opr::MemDisp(v_map.vtype.item_size() ,RBP, v_map.stack_offset())
         }
     };
     cc.codegen.instr1(Pop, RAX);

@@ -1,12 +1,11 @@
 use crate::{
     codegen::{
-        memory::Mem,
         mnmemonic::Mnemonic::*,
-        register::Reg::{self, *},
+        register::Reg::{self, *}, instructions::Opr,
     },
     compiler::VariableMap,
     error_handeling::error,
-    parser::{types::VariableType, variable_decl::VariableDeclare},
+    parser::{types::VariableType, variable_decl::VariableDeclare}, mem, memq,
 };
 
 use super::{expr::compile_expr, CompilerContext};
@@ -23,13 +22,13 @@ pub fn find_variable(cc: &CompilerContext, ident: String) -> Option<VariableMap>
 }
 
 fn _insert_global_variable(cc: &mut CompilerContext, atype: &VariableType, asize: &usize) {
-    let bss_tag = cc.codegen.add_bss_seg(atype.item_size() * asize);
+    let bss_tag = cc.codegen.add_bss_seg(atype.item_size() as usize * asize);
     // let mem_acss = format!(
     //     "{} [rbp-{}]",
     //     mem_word(&VariableType::Pointer),
     //     cc.mem_offset + 8
     // );
-    let mem_acss = Mem::Qword(RBP - (cc.mem_offset + 8));
+    let mem_acss = mem!(RBP, -(cc.mem_offset as i32 + 8));
     cc.codegen.instr2(Mov, mem_acss, bss_tag);
 }
 
@@ -54,7 +53,7 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
             //     mem_word(&VariableType::Pointer),
             //     cc.mem_offset + 8
             // );
-            let mem_acss = Mem::Qword(RBP - (cc.mem_offset + 8));
+            let mem_acss = memq!(RBP, -(cc.mem_offset as i32 + 8));
             cc.codegen.instr2(Mov, mem_acss, struct_tag);
         }
         VariableType::String => {}
@@ -69,7 +68,7 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
         match vtype.cast(&texpr) {
             Ok(vt) => {
                 // let mem_acss = format!("{} [rbp-{}]", mem_word(&vt), cc.mem_offset + vt.size());
-                let mem_acss = Mem::dyn_sized(&vt, RBP - (cc.mem_offset + vt.size()));
+                let mem_acss = mem!(RBP, -((cc.mem_offset + vt.size()) as i32));
                 cc.codegen.instr1(Pop, RAX);
                 cc.codegen.instr2(Mov, mem_acss, Reg::AX_sized(&vt));
                 vtype = vt;

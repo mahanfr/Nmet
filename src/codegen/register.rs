@@ -1,9 +1,6 @@
-use core::ops::{Add, Mul, Sub};
 use std::{fmt::Display, str::FromStr};
 
 use crate::parser::types::VariableType;
-
-use super::memory::MemOp;
 
 #[allow(dead_code)]
 #[allow(clippy::upper_case_acronyms)]
@@ -149,30 +146,6 @@ impl Reg {
             8 => Self::R9,
             _ => unreachable!(),
         }
-    }
-}
-
-impl Add<usize> for Reg {
-    type Output = MemOp;
-
-    fn add(self, rhs: usize) -> Self::Output {
-        MemOp::Offset(self, rhs)
-    }
-}
-
-impl Sub<usize> for Reg {
-    type Output = MemOp;
-
-    fn sub(self, rhs: usize) -> Self::Output {
-        MemOp::Negate(self, rhs)
-    }
-}
-
-impl Mul<usize> for Reg {
-    type Output = MemOp;
-
-    fn mul(self, rhs: usize) -> Self::Output {
-        MemOp::Multi(self, rhs)
     }
 }
 
