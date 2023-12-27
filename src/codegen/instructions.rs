@@ -274,12 +274,16 @@ impl Display for Instr {
         }
     }
 }
-fn modrm_ex(ex: u8, reg: Reg) -> u8 {
-    ((0b11 << 3) | (ex & 0x07) << 3) | (reg.upcode32() & 0x07)
+fn modrm_ex(modr: u8, ex: u8, reg: Reg) -> u8 {
+    (((modr & 0x3) << 3) | (ex & 0x07) << 3) | (reg.upcode32() & 0x07)
 }
 
 fn modrm_r(reg1: Reg, reg2: Reg) -> u8 {
     ((0b11 << 3) | (reg1.upcode32() & 0x07) << 3) | (reg2.upcode32() & 0x07)
+}
+
+fn modrm(modr: u8, r1: Reg, r2: Reg) -> u8 {
+    (((modr & 0x3) << 3) | (r1.upcode32() & 0x07) << 3) | (r2.upcode32() & 0x07)
 }
 
 impl Instr {
@@ -295,13 +299,27 @@ impl Instr {
                 (Opr::R64(r1), Opr::R64(r2)) => {
                     vec![0x48, 0x89, modrm_r(*r2, *r1)]
                 }
-                // (Opr::Mem(mem),Opr::R64(r)) => {
-                //     let mem_op = match mem {
-                //         Mem::U(mmo) => mmo,
-                //         Mem::Qword(mmo) => mmo,
-                //         _ => panic!("Illigal Move: moving from {r} to {mem}"),
-                //     };
-                // },
+                (Opr::MemDisp(_, memr, disp), Opr::Imm32(val)) => {
+                    if disp.abs() < i8::MAX as i32 {
+                        let mut bytes = vec![0x48,0x89,modrm_ex(0b01,0,*memr),(disp.to_le_bytes()[0])];
+                        bytes.extend(val.to_le_bytes());
+                        bytes
+                    } else {
+                        let mut bytes = vec![0x48,0x89,modrm_ex(0b01,0,*memr)];
+                        bytes.extend(disp.to_le_bytes());
+                        bytes.extend(val.to_le_bytes());
+                        bytes
+                    }
+                }
+                (Opr::MemDisp(_, memr, disp), Opr::R64(r)) => {
+                    if disp.abs() < i8::MAX as i32 {
+                        vec![0x48,0xc7,modrm(0b01,*r,*memr),(disp.to_le_bytes()[0])]
+                    } else {
+                        let mut bytes = vec![0x48,0x89,modrm(0b01,*r,*memr)];
+                        bytes.extend(disp.to_le_bytes());
+                        bytes
+                    }
+                }
                 _ => todo!("{self}"),
             },
             Self::Push(op1) => match op1 {
@@ -325,8 +343,8 @@ impl Instr {
             }
             Self::Cqo => vec![0x48, 0x99],
             Self::Idiv(op1) => match op1 {
-                Opr::R64(r) => vec![0x48, 0xf7, modrm_ex(7, *r)],
-                Opr::R32(r) => vec![0xf7, modrm_ex(7, *r)],
+                Opr::R64(r) => vec![0x48, 0xf7, modrm_ex(0b11, 7, *r)],
+                Opr::R32(r) => vec![0xf7, modrm_ex(0b11, 7, *r)],
                 _ => todo!(),
             },
             Self::Add(op1, op2) => match (op1, op2) {
@@ -341,7 +359,7 @@ impl Instr {
                 }
                 (Opr::R64(r1), Opr::Imm32(val)) => {
                     if *val < u8::MAX as i32 {
-                        vec![0x48, 0x83, modrm_ex(5, *r1)]
+                        vec![0x48, 0x83, modrm_ex(0b11, 5, *r1)]
                     } else {
                         unimplemented!();
                     }
@@ -368,19 +386,19 @@ impl Instr {
             },
             Self::Sar(op1, op2) => match (op1, op2) {
                 (Opr::R64(r1), Opr::R8(Reg::CL)) => {
-                    vec![0x48, 0xd3, modrm_ex(7, *r1)]
+                    vec![0x48, 0xd3, modrm_ex(0b11, 7, *r1)]
                 }
                 _ => unimplemented!(),
             },
             Self::Sal(op1, op2) => match (op1, op2) {
                 (Opr::R64(r1), Opr::R8(Reg::CL)) => {
-                    vec![0x48, 0xd3, modrm_ex(6, *r1)]
+                    vec![0x48, 0xd3, modrm_ex(0b11, 6, *r1)]
                 }
                 _ => unimplemented!(),
             },
             Self::Shr(op1, op2) => match (op1, op2) {
                 (Opr::R64(r1), Opr::R8(Reg::CL)) => {
-                    vec![0x48, 0xd3, modrm_ex(5, *r1)]
+                    vec![0x48, 0xd3, modrm_ex(0b11, 5, *r1)]
                 }
                 _ => unimplemented!(),
             },
