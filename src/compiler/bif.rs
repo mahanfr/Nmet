@@ -1,5 +1,6 @@
 use crate::{
-    codegen::{instructions::MemAddr, mnmemonic::Mnemonic::*, register::Reg::*, Codegen}, memq, memb, mem,
+    codegen::{instructions::MemAddr, mnmemonic::Mnemonic::*, register::Reg::*, Codegen},
+    mem, memb, memq,
 };
 
 #[derive(Hash, PartialEq, Eq)]

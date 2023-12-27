@@ -150,8 +150,9 @@ fn compile_inline_asm(cc: &mut CompilerContext, instr: &String) -> Result<(), St
                     //     mem_word(&v_map.vtype),
                     //     v_map.offset + v_map.vtype.size()
                     // );
-                    let mem_acss = MemAddr::new_disp_s(v_map.vtype.item_size(), RBP, v_map.stack_offset())
-                        .to_string();
+                    let mem_acss =
+                        MemAddr::new_disp_s(v_map.vtype.item_size(), RBP, v_map.stack_offset())
+                            .to_string();
                     let mut temp = String::new();
                     temp.push_str(chars[0..(first_index)].iter().collect::<String>().as_str());
                     temp.push_str(mem_acss.as_str());

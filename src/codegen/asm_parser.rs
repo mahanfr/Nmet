@@ -1,9 +1,9 @@
 use std::str::FromStr;
 
-use crate::lexer::{Lexer, TokenType} ;
+use crate::lexer::{Lexer, TokenType};
 
 use super::{
-    instructions::{Instr, Opr, MemAddr},
+    instructions::{Instr, MemAddr, Opr},
     mnmemonic::Mnemonic,
     register::Reg,
 };
@@ -211,11 +211,15 @@ fn test_mnemonic_parsing() {
         parse_asm("mov rax, [rbx]".to_string())
     );
     assert_eq!(
-        Instr::new_instr2(Mnemonic::Mov, Reg::RAX, MemAddr::new_disp_s(8,Reg::RBX, 2)),
+        Instr::new_instr2(Mnemonic::Mov, Reg::RAX, MemAddr::new_disp_s(8, Reg::RBX, 2)),
         parse_asm("mov rax, qword [rbx+2]".to_string())
     );
     assert_eq!(
-        Instr::new_instr2(Mnemonic::Mov, Reg::RAX, MemAddr::new_sib_s(8, Reg::RBX, 2, Reg::RAX, 4)),
+        Instr::new_instr2(
+            Mnemonic::Mov,
+            Reg::RAX,
+            MemAddr::new_sib_s(8, Reg::RBX, 2, Reg::RAX, 4)
+        ),
         parse_asm("mov rax, qword [rbx+2 + rax*4]".to_string())
     );
 }
