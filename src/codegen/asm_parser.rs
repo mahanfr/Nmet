@@ -1,13 +1,9 @@
 use std::str::FromStr;
 
-#[allow(unused_imports)]
-use crate::{
-    lexer::{Lexer, TokenType},
-    mem, memq,
-};
+use crate::lexer::{Lexer, TokenType} ;
 
 use super::{
-    instructions::{Instr, Opr},
+    instructions::{Instr, Opr, MemAddr},
     mnmemonic::Mnemonic,
     register::Reg,
 };
@@ -87,7 +83,7 @@ fn parse_mem(lexer: &mut Lexer, size: u8) -> Opr {
     let r = Reg::from_str(&lexer.get_token().literal).unwrap();
     lexer.match_token(TokenType::Identifier);
     let res: Opr = match lexer.get_token_type() {
-        TokenType::CBracket => Opr::MemAddr(size, r),
+        TokenType::CBracket => Opr::Mem(MemAddr::new_s(size, r)),
         TokenType::Plus | TokenType::Minus => {
             let sign = lexer.get_token_type();
             lexer.next_token();
@@ -99,13 +95,13 @@ fn parse_mem(lexer: &mut Lexer, size: u8) -> Opr {
             }
             lexer.next_token();
             if lexer.get_token_type() == TokenType::CBracket {
-                Opr::MemDisp(size, r, val)
+                Opr::Mem(MemAddr::new_disp_s(size, r, val))
             } else if lexer.get_token_type() == TokenType::Plus {
                 lexer.match_token(TokenType::Plus);
                 let r2 = Reg::from_str(&lexer.get_token().literal).unwrap();
                 lexer.match_token(TokenType::Identifier);
                 if lexer.get_token_type() == TokenType::CBracket {
-                    Opr::MemDispSib(size, r, val, r2, 1)
+                    Opr::Mem(MemAddr::new_sib_s(size, r, val, r2, 1))
                 } else {
                     lexer.match_token(TokenType::Multi);
                     let TokenType::Int(scale) = lexer.get_token_type() else {
@@ -115,7 +111,7 @@ fn parse_mem(lexer: &mut Lexer, size: u8) -> Opr {
                         panic!("unexpected scale for a register");
                     }
                     lexer.next_token();
-                    Opr::MemDispSib(size, r, val, r2, scale as u8)
+                    Opr::Mem(MemAddr::new_sib_s(size, r, val, r2, scale as u8))
                 }
             } else {
                 panic!("unsupported operator \"{}\"!", lexer.get_token().literal);
@@ -211,15 +207,15 @@ fn test_mnemonic_parsing() {
         parse_asm("push rax".to_string())
     );
     assert_eq!(
-        Instr::new_instr2(Mnemonic::Mov, Reg::RAX, mem!(Reg::RBX)),
+        Instr::new_instr2(Mnemonic::Mov, Reg::RAX, MemAddr::new(Reg::RBX)),
         parse_asm("mov rax, [rbx]".to_string())
     );
     assert_eq!(
-        Instr::new_instr2(Mnemonic::Mov, Reg::RAX, memq!(Reg::RBX, 2)),
+        Instr::new_instr2(Mnemonic::Mov, Reg::RAX, MemAddr::new_disp_s(8,Reg::RBX, 2)),
         parse_asm("mov rax, qword [rbx+2]".to_string())
     );
     assert_eq!(
-        Instr::new_instr2(Mnemonic::Mov, Reg::RAX, memq!(Reg::RBX, 2, Reg::RAX, 4)),
+        Instr::new_instr2(Mnemonic::Mov, Reg::RAX, MemAddr::new_sib_s(8, Reg::RBX, 2, Reg::RAX, 4)),
         parse_asm("mov rax, qword [rbx+2 + rax*4]".to_string())
     );
 }

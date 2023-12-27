@@ -46,7 +46,6 @@ pub enum MemOp {
     NegDispSib(Reg, usize, Reg, usize),
     PosDispSib(Reg, usize, Reg, usize),
 }
-mem![RAX - 4 + RBX * 4]
 impl From<Reg> for MemOp {
     fn from(val: Reg) -> MemOp {
         MemOp::Single(val)

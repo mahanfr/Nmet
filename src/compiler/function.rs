@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     codegen::{
-        instructions::{Instr, Opr},
+        instructions::{Instr, MemAddr},
         mnmemonic::Mnemonic::*,
         register::Reg::*,
     },
@@ -32,7 +32,7 @@ pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
             //     mem_word(&map.vtype),
             //     map.offset + map.vtype.size()
             // );
-            let mem_acss = Opr::MemDisp(map.vtype.item_size(), RBP, map.stack_offset());
+            let mem_acss = MemAddr::new_disp_s(map.vtype.item_size(), RBP, map.stack_offset());
             let reg = function_args_register_sized(args_count, &map.vtype);
             cc.codegen.instr2(Mov, mem_acss, reg);
         } else {

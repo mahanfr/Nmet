@@ -1,7 +1,7 @@
 use crate::{
     codegen::{
         asm_parser::parse_asm,
-        instructions::Opr,
+        instructions::MemAddr,
         mnmemonic::Mnemonic::*,
         register::Reg::{self, *},
     },
@@ -150,7 +150,7 @@ fn compile_inline_asm(cc: &mut CompilerContext, instr: &String) -> Result<(), St
                     //     mem_word(&v_map.vtype),
                     //     v_map.offset + v_map.vtype.size()
                     // );
-                    let mem_acss = Opr::MemDisp(v_map.vtype.item_size(), RBP, v_map.stack_offset())
+                    let mem_acss = MemAddr::new_disp_s(v_map.vtype.item_size(), RBP, v_map.stack_offset())
                         .to_string();
                     let mut temp = String::new();
                     temp.push_str(chars[0..(first_index)].iter().collect::<String>().as_str());
@@ -208,7 +208,7 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
             //     v_map.offset + v_map.vtype.size(),
             //     v_map.vtype.item_size()
             // )
-            Opr::MemDispSib(
+            MemAddr::new_sib_s(
                 v_map.vtype.item_size(),
                 RBP,
                 v_map.stack_offset(),
@@ -222,7 +222,7 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
             cc.codegen.instr2(Add, RDX, v_map.offset_inner);
             reg = Reg::AX_sized(&v_map.vtype_inner);
             // format!("{} [rdx]", mem_word(&v_map.vtype_inner))
-            Opr::MemAddr(v_map.vtype_inner.item_size(), RDX)
+            MemAddr::new_s(v_map.vtype_inner.item_size(), RDX)
         }
         _ => {
             reg = Reg::AX_sized(&v_map.vtype);
@@ -231,7 +231,7 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
             //     mem_word(&v_map.vtype),
             //     v_map.offset + v_map.vtype.size()
             // )
-            Opr::MemDisp(v_map.vtype.item_size(), RBP, v_map.stack_offset())
+            MemAddr::new_disp_s(v_map.vtype.item_size(), RBP, v_map.stack_offset())
         }
     };
     cc.codegen.instr1(Pop, RAX);
@@ -247,26 +247,26 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
         }
         AssignOp::MultiEq => {
             let b_reg = Reg::BX_sized(&v_map.vtype);
-            cc.codegen.instr2(Mov, b_reg, &mem_acss);
+            cc.codegen.instr2(Mov, b_reg, mem_acss);
             cc.codegen.instr2(Imul, reg, b_reg);
-            cc.codegen.instr2(Mov, &mem_acss, reg);
+            cc.codegen.instr2(Mov, mem_acss, reg);
         }
         AssignOp::DevideEq => {
             let b_reg = Reg::BX_sized(&v_map.vtype);
             cc.codegen.instr2(Mov, b_reg, reg);
-            cc.codegen.instr2(Mov, reg, &mem_acss);
+            cc.codegen.instr2(Mov, reg, mem_acss);
             cc.codegen.instr0(Cqo);
             cc.codegen.instr1(Idiv, RBX);
-            cc.codegen.instr2(Mov, &mem_acss, reg);
+            cc.codegen.instr2(Mov, mem_acss, reg);
         }
         AssignOp::ModEq => {
             let b_reg = Reg::BX_sized(&v_map.vtype);
             cc.codegen.instr2(Mov, b_reg, reg);
-            cc.codegen.instr2(Mov, reg, &mem_acss);
+            cc.codegen.instr2(Mov, reg, mem_acss);
             cc.codegen.instr0(Cqo);
             cc.codegen.instr1(Idiv, RBX);
             let d_reg = Reg::DX_sized(&v_map.vtype);
-            cc.codegen.instr2(Mov, &mem_acss, d_reg);
+            cc.codegen.instr2(Mov, mem_acss, d_reg);
         }
     }
 }

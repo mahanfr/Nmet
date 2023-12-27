@@ -1,6 +1,6 @@
 use crate::{
     codegen::{
-        instructions::Opr,
+        instructions::MemAddr,
         mnmemonic::Mnemonic::*,
         register::Reg::{self, *},
     },
@@ -32,7 +32,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             //     mem_word(&v_map.vtype),
             //     v_map.offset + v_map.vtype.size()
             // );
-            let mem_acss = Opr::MemDisp(v_map.vtype.item_size(), RBP, v_map.stack_offset());
+            let mem_acss = MemAddr::new_disp_s(v_map.vtype.item_size(), RBP, v_map.stack_offset());
             cc.codegen
                 .instr2(Mov, Reg::AX_sized(&v_map.vtype), mem_acss);
             cc.codegen.instr1(Push, RAX);
@@ -75,7 +75,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             cc.codegen.instr2(
                 Mov,
                 Reg::AX_sized(&actype),
-                Opr::MemAddr(actype.item_size(), RDX),
+                MemAddr::new_s(actype.item_size(), RDX),
             );
             // cc.instruct_buf.push(asm!(
             //     "mov {}, {} [rdx]",

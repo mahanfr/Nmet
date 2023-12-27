@@ -1,8 +1,7 @@
 use crate::{
     codegen::{
-        instructions::Opr,
         mnmemonic::Mnemonic::*,
-        register::Reg::{self, *},
+        register::Reg::{self, *}, instructions::MemAddr,
     },
     compiler::VariableMap,
     error_handeling::error,
