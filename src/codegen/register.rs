@@ -56,6 +56,10 @@ pub enum Reg {
 #[allow(dead_code)]
 #[allow(non_snake_case)]
 impl Reg {
+    pub fn size(&self) -> u8 {
+        (*self as u8 & 0xf0) >> 1
+    }
+
     pub fn upcode32(&self) -> u8 {
         *self as u8 & 0x0f
     }
