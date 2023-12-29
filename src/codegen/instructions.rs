@@ -100,14 +100,23 @@ macro_rules! memb {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MemAddr {
+    addr_type: MemAddrType,
     size: u8,
     register: Reg,
-    disp: Option<i32>,
+    disp: i32,
     s_register: Option<Reg>,
-    scale: Option<u8>,
+    scale: u8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum MemAddrType {
+    Address,
+    Disp,
+    Sib,
 }
 
 impl MemAddr {
+
     fn validate_size(size: &u8) -> bool {
         matches!(size, 0 | 1 | 2 | 4 | 8)
     }
@@ -118,11 +127,12 @@ impl MemAddr {
 
     pub fn new(reg: Reg) -> Self {
         Self {
+            addr_type: MemAddrType::Address,
             size: 0,
             register: reg,
-            disp: None,
+            disp: 0,
             s_register: None,
-            scale: None,
+            scale: 1,
         }
     }
 
@@ -137,7 +147,8 @@ impl MemAddr {
 
     pub fn new_disp(reg: Reg, disp: i32) -> Self {
         let mut res = Self::new(reg);
-        res.disp = Some(disp);
+        res.addr_type =  MemAddrType::Disp;
+        res.disp = disp;
         res
     }
 
@@ -155,11 +166,12 @@ impl MemAddr {
             panic!("unexpected value for scale to size");
         }
         Self {
+            addr_type: MemAddrType::Sib,
             size: 0,
             register: reg,
-            disp: Some(disp),
+            disp,
             s_register: Some(reg_s),
-            scale: Some(scale),
+            scale,
         }
     }
 
@@ -197,19 +209,19 @@ impl Display for MemAddr {
         }
         view.push('[');
         view.push_str(self.register.to_string().as_str());
-        if let Some(disp) = self.disp {
-            if disp < 0 {
+        if self.disp != 0 {
+            if self.disp < 0 {
                 view.push_str(" - ");
             } else {
                 view.push_str(" + ");
             }
-            view.push_str(disp.abs().to_string().as_str());
+            view.push_str(self.disp.abs().to_string().as_str());
         }
         if let Some(reg) = self.s_register {
             view.push_str(" + ");
             view.push_str(reg.to_string().as_str());
             view.push_str(" * ");
-            view.push_str(self.scale.unwrap().to_string().as_str());
+            view.push_str(self.scale.to_string().as_str());
         }
         view.push(']');
         write!(f, "{view}")
@@ -235,6 +247,12 @@ pub enum Opr {
     Imm64(i64),
     Imm32(i32),
     Lable(String),
+}
+
+impl Opr {
+    fn is_reg(&self) -> bool {
+        matches!(self, Self::R(_))
+    }
 }
 
 impl From<MemAddr> for Opr {
@@ -412,11 +430,25 @@ fn assemble_mov(op1: &Opr, op2: &Opr) -> Vec<u8> {
             bytes.extend(vec![0x89, modrm(0b11,r1, r2)]);
             bytes
         }
-        (Opr::Mem(mem_addr), Opr::R(r)) => {
+        (Opr::Mem(mem_addr), Opr::R(r)) | (Opr::R(r), Opr::Mem(mem_addr)) => {
             let mut bytes = vec![];
-            if mem_addr.size == 32 || r.size() == 32 {
-                if let Some(disp) = mem_addr.disp {
-                    bytes.push(0x89);
+            match (mem_addr.size , r.size()) {
+                (64,_) | (_,64) => bytes.push(0x48),
+                (32,_) | (_,32) => (),
+                (16,_) | (_,16) => unimplemented!(),
+                (8,_)  | (_,8) => unimplemented!(),
+                _ => unreachable!(),
+            }
+            if op1.is_reg() {
+                bytes.push(0x8B);
+            } else if op2.is_reg() && r.size() > 8 {
+                bytes.push(0x89);
+            } else if op2.is_reg() && r.size() == 8 {
+                bytes.push(0x88);
+            }
+            match mem_addr.addr_type {
+                MemAddrType::Disp => {
+                    let disp = mem_addr.disp;
                     bytes.push(modrm(0b01, &mem_addr.register, r));
                     if disp.abs() < i8::MAX as i32 {
                         bytes.push(disp.to_le_bytes()[0]);
@@ -424,25 +456,28 @@ fn assemble_mov(op1: &Opr, op2: &Opr) -> Vec<u8> {
                         bytes.extend(disp.to_le_bytes());
                     }
                     bytes
-                } else {
+                },
+                MemAddrType::Sib => {
                     todo!();
-                }
-            } else {
-                todo!();
+                },
+                MemAddrType::Address => unimplemented!(),
             }
         }
         (Opr::Mem(mem_addr), Opr::Imm32(val)) => {
             bytes.push(0x48);
             bytes.push(0x89);
-            if let Some(disp) = mem_addr.disp {
-                bytes.push(modrm_ex(0b01, 0, &mem_addr.register));
-                if disp.abs() < i8::MAX as i32 {
-                    bytes.push(disp.to_le_bytes()[0]);
-                } else {
-                    bytes.extend(disp.to_le_bytes());
-                }
-            } else {
-                unimplemented!()
+            match mem_addr.addr_type {
+                MemAddrType::Disp => {
+                    let disp = mem_addr.disp;
+                    bytes.push(modrm_ex(0b01, 0, &mem_addr.register));
+                    if disp.abs() < i8::MAX as i32 {
+                        bytes.push(disp.to_le_bytes()[0]);
+                    } else {
+                        bytes.extend(disp.to_le_bytes());
+                    }
+                },
+                MemAddrType::Sib => unimplemented!(),
+                MemAddrType::Address => unimplemented!(),
             }
             bytes.extend(val.to_le_bytes());
             bytes
@@ -471,19 +506,22 @@ fn assemble_sub(op1: &Opr, op2: &Opr) -> Vec<u8> {
         }
         (Opr::R(r), Opr::Mem(mem_addr)) => {
             add_rex(&mut bytes, mem_addr.size * 8);
-            if let Some(disp) = mem_addr.disp {
-                if disp.abs() < i8::MAX as i32 {
-                    vec![
-                        0x2b,
-                        modrm(0b01, r, &mem_addr.register),
-                        (disp.to_le_bytes()[0]),
-                    ]
-                } else {
-                    bytes.extend(disp.to_le_bytes());
-                    bytes
-                }
-            } else {
-                unimplemented!()
+            match mem_addr.addr_type {
+                MemAddrType::Disp => {
+                    let disp = mem_addr.disp;
+                    if disp.abs() < i8::MAX as i32 {
+                        vec![
+                            0x2b,
+                            modrm(0b01, r, &mem_addr.register),
+                            (disp.to_le_bytes()[0]),
+                        ]
+                    } else {
+                        bytes.extend(disp.to_le_bytes());
+                        bytes
+                    }
+                },
+                MemAddrType::Sib => unimplemented!(),
+                MemAddrType::Address => unimplemented!(),
             }
         }
         _ => unimplemented!(),
@@ -591,6 +629,14 @@ impl Instr {
                     add_rex(&mut bytes, r1.size());
                     bytes
                 }
+                (Opr::R(r1), Opr::Imm32(val)) => {
+                    let mut bytes = vec![];
+                    add_rex(&mut bytes, r1.size());
+                    bytes.push(0xc1);
+                    bytes.push(modrm_ex(0b11, 4, r1));
+                    bytes.push(val.to_le_bytes()[0]);
+                    bytes
+                },
                 _ => unimplemented!(),
             },
             Self::Shr(op1, op2) => match (op1, op2) {
@@ -599,8 +645,45 @@ impl Instr {
                     add_rex(&mut bytes, r1.size());
                     bytes
                 }
+                (Opr::R(r1), Opr::Imm32(val)) => {
+                    let mut bytes = vec![];
+                    add_rex(&mut bytes, r1.size());
+                    bytes.push(0xc1);
+                    bytes.push(modrm_ex(0b11, 5, r1));
+                    bytes.push(val.to_le_bytes()[0]);
+                    bytes
+                },
                 _ => unimplemented!(),
             },
+            Self::Mul(op1) => {
+                if let Opr::R(Reg::RDX) = op1 {
+                    vec![0x48, 0xf7, 0xe2]
+                } else {
+                    unimplemented!()
+                }
+            },
+            Self::Lea(op1, op2) => match (op1, op2) {
+                (Opr::R(r), Opr::Mem(mem_addr)) => {
+                    let mut bytes = vec![];
+                    add_rex(&mut bytes, r.size());
+                    bytes.push(0x8d);
+                    match mem_addr.addr_type {
+                        MemAddrType::Disp => {
+                            let disp = mem_addr.disp;
+                            bytes.push(modrm(0b01, &mem_addr.register, r));
+                            if disp.abs() < i8::MAX as i32 {
+                                bytes.push(disp.to_le_bytes()[0]);
+                            } else {
+                                bytes.extend(disp.to_le_bytes());
+                            }
+                            bytes
+                        },
+                        MemAddrType::Sib => unimplemented!(),
+                        MemAddrType::Address => unimplemented!(),
+                    }
+                },
+                _ => unreachable!("instruction (Lea) dose not support {op1}, {op2} as arguments"),
+            }
             Self::Call(_) => unreachable!("It should be handeled on higher level"),
             Self::Lable(_) => unreachable!("It should be handeled on higher level"),
             Self::Syscall => {

@@ -1,13 +1,13 @@
 
 func main() {
-    var a1 = 11 % 2;
-    var a2 = 1 + 1;
-    var a3 = 4 - 1;
-    var a4 = 8 / 2;
-    var a5 = 1 * 5;
-    var a6 = 3 + 2 * 3 / (3 - 1);
-    var a7 = 7 | 7;
-    var a8 = 15 & 8;
-    var a9 = 32 >> 2 + 1;
-    var a10 = 2 << 2 + 2;
+    print 11 % 2;
+    print 1 + 1;
+    print 4 - 1;
+    print 8 / 2;
+    print 1 * 5;
+    print 3 + 2 * 3 / (3 - 1);
+    print 7 | 7;
+    print 15 & 8;
+    print 32 >> 2 + 1;
+    print 2 << 2 + 2;
 }
