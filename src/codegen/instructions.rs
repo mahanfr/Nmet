@@ -411,6 +411,22 @@ fn modrm(modr: u8, r1: &Reg, r2: &Reg) -> u8 {
     res
 }
 
+fn sib(scale: u8, index_reg: &Reg, ref_reg: &Reg) -> u8 {
+    let ss = match scale {
+        8 => 0b11,
+        4 => 0b10,
+        2 => 0b01,
+        1 => 0b00,
+        _ => unreachable!(),
+    };
+    let mut res = ss & 0b11;
+    res <<= 3;
+    res |= index_reg.upcode32() & 0b111;
+    res <<= 3;
+    res |= ref_reg.upcode32() & 0b111;
+    res
+}
+
 fn assemble_mov(op1: &Opr, op2: &Opr) -> Vec<u8> {
     let mut bytes = vec![];
     match (op1, op2) {
@@ -436,7 +452,7 @@ fn assemble_mov(op1: &Opr, op2: &Opr) -> Vec<u8> {
                 (64,_) | (_,64) => bytes.push(0x48),
                 (32,_) | (_,32) => (),
                 (16,_) | (_,16) => unimplemented!(),
-                (8,_)  | (_,8) => unimplemented!(),
+                (8,_)  | (_,8) => (),
                 _ => unreachable!(),
             }
             if op1.is_reg() {
@@ -458,14 +474,27 @@ fn assemble_mov(op1: &Opr, op2: &Opr) -> Vec<u8> {
                     bytes
                 },
                 MemAddrType::Sib => {
-                    todo!();
+                    let disp = mem_addr.disp;
+                    let reg = mem_addr.s_register.unwrap();
+                    bytes.push(modrm(0b01,&Reg::RSP,&r));
+                    bytes.push(sib(mem_addr.scale, &reg, &mem_addr.register));
+                    bytes.push(disp.to_le_bytes()[0]);
+                    bytes
                 },
                 MemAddrType::Address => unimplemented!(),
             }
         }
         (Opr::Mem(mem_addr), Opr::Imm32(val)) => {
-            bytes.push(0x48);
-            bytes.push(0x89);
+            if mem_addr.size == 1 {
+                bytes.push(0xc6);
+            } else if mem_addr.size == 4 {
+                bytes.push(0x89);
+            } else if mem_addr.size == 8 {
+                bytes.push(0x48);
+                bytes.push(0x89);
+            } else {
+                unimplemented!();
+            }
             match mem_addr.addr_type {
                 MemAddrType::Disp => {
                     let disp = mem_addr.disp;
@@ -475,12 +504,20 @@ fn assemble_mov(op1: &Opr, op2: &Opr) -> Vec<u8> {
                     } else {
                         bytes.extend(disp.to_le_bytes());
                     }
+                    bytes.extend(val.to_le_bytes());
+                    bytes
                 },
-                MemAddrType::Sib => unimplemented!(),
+                MemAddrType::Sib => {
+                    let disp = mem_addr.disp;
+                    let reg = mem_addr.s_register.unwrap();
+                    bytes.push(modrm(0b01,&Reg::RSP,&reg));
+                    bytes.push(sib(mem_addr.scale,&reg,&mem_addr.register));
+                    bytes.push(disp.to_le_bytes()[0]);
+                    bytes.push(val.to_le_bytes()[0]);
+                    bytes
+                },
                 MemAddrType::Address => unimplemented!(),
             }
-            bytes.extend(val.to_le_bytes());
-            bytes
         }
         _ => unimplemented!("mov {op1}, {op2}"),
     }
@@ -587,6 +624,9 @@ impl Instr {
                     let mut bytes = vec![0x01, modrm(0b11, r1, r2)];
                     add_rex(&mut bytes, r1.size());
                     bytes
+                }
+                (Opr::Mem(mem_addr), Opr::Imm32(val)) => {
+                    todo!()
                 }
                 _ => unimplemented!(),
             },
