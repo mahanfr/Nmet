@@ -10,3 +10,4 @@ description = "A general purpose statically typed and compiled programming langu
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+x86 = {path = "./x86"}

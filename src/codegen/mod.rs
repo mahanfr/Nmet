@@ -2,7 +2,7 @@ pub mod asm_parser;
 pub mod instructions;
 pub mod mnmemonic;
 pub mod register;
-// pub mod assembler;
+pub mod assembler;
 
 use std::fmt::Display;
 
