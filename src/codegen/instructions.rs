@@ -250,7 +250,18 @@ pub enum Opr {
 }
 
 impl Opr {
-    fn is_reg(&self) -> bool {
+    #[allow(dead_code)]
+    pub fn is_8bit(&self) -> bool {
+        match self {
+            Self::R(r) => matches!(r.size(), 1),
+            Self::Mem(mem) => matches!(mem.size, 1),
+            Self::Imm32(val) => (i8::MIN as i32..i8::MAX as i32).contains(val),
+            Self::Imm64(_) => false,
+            Self::Lable(_) => unreachable!(),
+        }    
+    }
+    
+    pub fn is_reg(&self) -> bool {
         matches!(self, Self::R(_))
     }
 }
@@ -580,7 +591,62 @@ fn add_rex(bytes: &mut Vec<u8>, size: u8) {
     }
 }
 
+#[allow(dead_code)]
+pub struct OpcodeInfo {
+    opcode: u16,
+    opcode_size: u8,
+    extention: Option<u8>,
+}
+
+#[allow(dead_code)]
+impl OpcodeInfo {
+    pub fn new(opcode: u16, ex: Option<u8>) -> Self {
+        let op_size;
+        if opcode > 0xff {
+            op_size = 2;
+        }else {
+            op_size = 1;
+        }
+        Self {
+            opcode,
+            opcode_size: op_size,
+            extention: ex,
+        }
+    }
+}
+
 impl Instr {
+    // REX 89 "r" r/m16-64 r/16-64
+    // REX 8B "r" r16-64 r/m16-64
+    // REX b8+r r16-64 imm16-64
+    // REX c7 "0" r/m16-64 imm16-32
+    //
+    // 88 "r" r/m8 r8
+    // 8A "r" r8 r/m8
+    // B0+r r8 imm8
+    // c6 "0" r/m8 imm8
+    pub fn _opcode(&self) -> OpcodeInfo {
+        match self {
+            Self::Mov(op1,op2) => {
+                if op1.is_8bit() && op2.is_8bit() {
+                    match (op1,op2) {
+                        (Opr::R(_) | Opr::Mem(_), Opr::R(_)) => 
+                            OpcodeInfo::new(0x88, None), 
+                        (Opr::R(_) , Opr::Mem(_)) => 
+                            OpcodeInfo::new(0x8A, None),
+                        (Opr::R(r) , Opr::Imm32(_)) => 
+                            OpcodeInfo::new((0xb0 + r.opcode()) as u16,None),
+                        (Opr::Mem(_), Opr::Imm32(_)) => 
+                            OpcodeInfo::new(0xc6,Some(0)),
+                        _ => unreachable!()
+                    }
+                } else {
+                   todo!() 
+                }
+            },
+            _ => todo!()
+        }
+    }
     pub fn assemble(&self) -> Vec<u8> {
         match self {
             Self::Mov(op1, op2) => assemble_mov(op1, op2),
@@ -625,7 +691,7 @@ impl Instr {
                     add_rex(&mut bytes, r1.size());
                     bytes
                 }
-                (Opr::Mem(mem_addr), Opr::Imm32(val)) => {
+                (Opr::Mem(_mem_addr), Opr::Imm32(_val)) => {
                     todo!()
                 }
                 _ => unimplemented!(),
@@ -732,6 +798,7 @@ impl Instr {
             _ => todo!("{self:?}"),
         }
     }
+
 
     pub fn new_instr0(mnem: Mnemonic) -> Self {
         match mnem {

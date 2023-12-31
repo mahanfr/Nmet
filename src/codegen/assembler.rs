@@ -11,3 +11,20 @@
 // B0+r r8 imm8
 // c6 "0" r/m8 imm8
 
+use super::instructions::Opr;
+
+
+fn _mov8(op1: &Opr, op2: &Opr) -> Vec<u8> {
+    vec![]
+}
+
+fn _mov(op1: &Opr,op2: &Opr) -> Vec<u8> {
+    vec![]
+}
+
+pub fn mov(op1: &Opr, op2: &Opr) -> Vec<u8> {
+    if op1.is_8bit() && op2.is_8bit() {
+        return _mov8(op1,op2);
+    }
+    _mov(op1,op2)
+}

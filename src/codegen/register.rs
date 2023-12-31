@@ -37,14 +37,14 @@ pub enum Reg {
     DI = 0x27,
     R8W = 0x28,
     R9W = 0x29,
-    AH = 0x00,
     AL = 0x10,
-    CH = 0x01,
     CL = 0x11,
-    DH = 0x02,
     DL = 0x12,
-    BH = 0x03,
     BL = 0x13,
+    AH = 0x00,
+    CH = 0x01,
+    DH = 0x02,
+    BH = 0x03,
     SPL = 0x14,
     BPL = 0x15,
     SIL = 0x16,
@@ -60,8 +60,36 @@ impl Reg {
         (*self as u8 & 0xf0) >> 1
     }
 
+    pub fn size_bit(&self) -> &'static u8 {
+        match self {
+            Self::RAX | Self::RCX | Self::RDX | Self::RBX 
+            | Self::RSP | Self::RBP | Self::RSI | Self::RDI 
+            | Self::R8  | Self::R9 => &64u8,
+            Self::EAX | Self::ECX | Self::EDX | Self::EBX | Self::ESP 
+            | Self::EBP | Self::ESI | Self::EDI | Self::R8D | Self::R9D => &32u8,
+            Self::AX | Self::CX | Self::DX | Self::BX | Self::SP | Self::BP | Self::SI | Self::DI | Self::R8W | Self::R9W => &16u8, 
+            Self::AL | Self::CL | Self::DL | Self::BL | Self::SPL | Self::BPL | Self::SIL | Self::DIL | Self::R8B | Self::R9B => &8u8,
+            Self::AH| Self::CH| Self::DH| Self::BH => &4u8,
+        }
+    }
+
     pub fn upcode32(&self) -> u8 {
         *self as u8 & 0x0f
+    }
+    
+    pub fn opcode(&self) -> &'static u8 {
+        match self {
+            Self::RAX | Self::EAX | Self::AX | Self::AL => &0u8,
+            Self::RCX | Self::ECX | Self::CX | Self::CL => &1u8,
+            Self::RDX | Self::EDX | Self::DX | Self::DL => &2u8,
+            Self::RBX | Self::EBX | Self::BX | Self::BL => &3u8,
+            Self::RSP | Self::ESP | Self::SP | Self::SPL | Self::AH => &4u8,
+            Self::RBP | Self::EBP | Self::BP | Self::BPL | Self::CH => &5u8,
+            Self::RSI | Self::ESI | Self::SI | Self::SIL | Self::DH => &6u8,
+            Self::RDI | Self::EDI | Self::DI | Self::DIL | Self::BH => &7u8,
+            Self::R8  | Self::R8D | Self::R8W | Self::R8B => &0u8,
+            Self::R9  | Self::R9D | Self::R9W | Self::R9B => &0u8,
+        }
     }
 
     pub fn AX_sized(vtype: &VariableType) -> Self {
