@@ -1,6 +1,6 @@
-use std::{fs, collections::HashSet};
+use proc_macro::{Group, Ident, Literal, Punct, Span, TokenStream, TokenTree};
 use quote::quote;
-use proc_macro::{TokenStream, TokenTree, Ident, Span, Group, Punct, Literal};
+use std::{collections::HashSet, fs};
 
 #[allow(dead_code)]
 enum __ModrmType {
@@ -15,9 +15,7 @@ impl __ModrmType {
             "r" => Self::Modrm,
             "n" => Self::None,
             "a" => Self::Add,
-            _ => {
-               Self::Ext(u8::from_str_radix(str, 10).unwrap())
-            }
+            _ => Self::Ext(str.parse::<u8>().unwrap()),
         }
     }
 
@@ -26,9 +24,7 @@ impl __ModrmType {
             Self::None => quote!(ModrmType::None).into(),
             Self::Add => quote!(ModrmType::Add).into(),
             Self::Modrm => quote!(ModrmType::Modrm).into(),
-            Self::Ext(ex) => {
-                quote!(ModrmType::Ext(#ex)).into()
-            },
+            Self::Ext(ex) => quote!(ModrmType::Ext(#ex)).into(),
         }
     }
 }
@@ -89,59 +85,61 @@ pub fn import_instructions(args: TokenStream, input: TokenStream) -> TokenStream
     let mut args = args.into_iter();
     let content;
     if let Some(TokenTree::Literal(l)) = args.next() {
-        content = fs::read_to_string(l.to_string().replace('"',""))
-            .expect("File not found");
+        content = fs::read_to_string(l.to_string().replace('"', "")).expect("File not found");
     } else {
         panic!("expected a path in macro attributes!");
     }
-    let ast : syn::DeriveInput = syn::parse(input).unwrap();
+    let ast: syn::DeriveInput = syn::parse(input).unwrap();
     let enums_data = __internal_extract_enum(&content);
     let mut ts = TokenStream::new();
-    ts.extend(__internal_define_insns_enum(&ast, enums_data.1).into_iter());
+    ts.extend(__internal_define_insns_enum(&ast, enums_data.1));
     let internal_functions = generate_instr_functions(&enums_data.0);
     ts.extend(impl_instructions(&ast, internal_functions));
     ts
 }
 
-fn generate_instr_functions(data: &Vec<InstrData>) -> TokenStream {
+fn generate_instr_functions(data: &[InstrData]) -> TokenStream {
     let mut ts = TokenStream::new();
     ts.extend(generate_instr_opcode_function(data));
     ts
 }
 
-fn generate_instr_opcode_function(data: &Vec<InstrData>) -> TokenStream {
+fn generate_instr_opcode_function(data: &[InstrData]) -> TokenStream {
     let mut ts = TokenStream::new();
     let mut items = TokenStream::new();
     for item in data.iter() {
         let mut output = TokenStream::new();
         output.extend(vec![
             TokenTree::Literal(Literal::u16_suffixed(item.opcode)),
-            TokenTree::Punct(Punct::new(',',proc_macro::Spacing::Alone)),
+            TokenTree::Punct(Punct::new(',', proc_macro::Spacing::Alone)),
         ]);
         output.extend(item.modrm.to_ts());
-        
-        let cond = generate_condition(&item);
+
+        let cond = generate_condition(item);
 
         let case = vec![
             TokenTree::Ident(Ident::new("Self", Span::call_site())),
-            TokenTree::Punct(Punct::new(':',proc_macro::Spacing::Joint)),
-            TokenTree::Punct(Punct::new(':',proc_macro::Spacing::Alone)),
+            TokenTree::Punct(Punct::new(':', proc_macro::Spacing::Joint)),
+            TokenTree::Punct(Punct::new(':', proc_macro::Spacing::Alone)),
             TokenTree::Ident(Ident::new(item.name.as_str(), Span::call_site())),
             TokenTree::Group(Group::new(proc_macro::Delimiter::Parenthesis, cond)),
-            TokenTree::Punct(Punct::new('=',proc_macro::Spacing::Joint)),
-            TokenTree::Punct(Punct::new('>',proc_macro::Spacing::Alone)),
+            TokenTree::Punct(Punct::new('=', proc_macro::Spacing::Joint)),
+            TokenTree::Punct(Punct::new('>', proc_macro::Spacing::Alone)),
             TokenTree::Group(Group::new(proc_macro::Delimiter::Parenthesis, output)),
-            TokenTree::Punct(Punct::new(',',proc_macro::Spacing::Alone)),
+            TokenTree::Punct(Punct::new(',', proc_macro::Spacing::Alone)),
         ];
         items.extend(case);
     }
     items.extend(vec![
         TokenTree::Ident(Ident::new("_", Span::call_site())),
-        TokenTree::Punct(Punct::new('=',proc_macro::Spacing::Joint)),
-        TokenTree::Punct(Punct::new('>',proc_macro::Spacing::Alone)),
+        TokenTree::Punct(Punct::new('=', proc_macro::Spacing::Joint)),
+        TokenTree::Punct(Punct::new('>', proc_macro::Spacing::Alone)),
         TokenTree::Ident(Ident::new("unreachable", Span::call_site())),
-        TokenTree::Punct(Punct::new('!',proc_macro::Spacing::Alone)),
-        TokenTree::Group(Group::new(proc_macro::Delimiter::Parenthesis, TokenStream::new())),
+        TokenTree::Punct(Punct::new('!', proc_macro::Spacing::Alone)),
+        TokenTree::Group(Group::new(
+            proc_macro::Delimiter::Parenthesis,
+            TokenStream::new(),
+        )),
     ]);
     let mut matches = TokenStream::new();
     matches.extend(vec![
@@ -153,21 +151,23 @@ fn generate_instr_opcode_function(data: &Vec<InstrData>) -> TokenStream {
     func.extend(vec![
         TokenTree::Ident(Ident::new("fn", Span::call_site())),
         TokenTree::Ident(Ident::new("opcode", Span::call_site())),
-        TokenTree::Group(Group::new(proc_macro::Delimiter::Parenthesis, 
-            TokenStream::from_iter(
-                vec![
-                    TokenTree::Punct(Punct::new('&',proc_macro::Spacing::Alone)),
-                    TokenTree::Ident(Ident::new("self", Span::call_site()))
-                ]
-            )
+        TokenTree::Group(Group::new(
+            proc_macro::Delimiter::Parenthesis,
+            TokenStream::from_iter(vec![
+                TokenTree::Punct(Punct::new('&', proc_macro::Spacing::Alone)),
+                TokenTree::Ident(Ident::new("self", Span::call_site())),
+            ]),
         )),
         TokenTree::Punct(Punct::new('-', proc_macro::Spacing::Joint)),
         TokenTree::Punct(Punct::new('>', proc_macro::Spacing::Alone)),
-        TokenTree::Group(Group::new(proc_macro::Delimiter::Parenthesis, TokenStream::from_iter(vec![
-             TokenTree::Ident(Ident::new("u16", Span::call_site())),
-             TokenTree::Punct(Punct::new(',',proc_macro::Spacing::Alone)),
-             TokenTree::Ident(Ident::new("ModrmType", Span::call_site())),
-        ]))),
+        TokenTree::Group(Group::new(
+            proc_macro::Delimiter::Parenthesis,
+            TokenStream::from_iter(vec![
+                TokenTree::Ident(Ident::new("u16", Span::call_site())),
+                TokenTree::Punct(Punct::new(',', proc_macro::Spacing::Alone)),
+                TokenTree::Ident(Ident::new("ModrmType", Span::call_site())),
+            ]),
+        )),
         TokenTree::Group(Group::new(proc_macro::Delimiter::Brace, matches)),
     ]);
     ts.extend(func);
@@ -179,16 +179,25 @@ fn generate_condition(item: &InstrData) -> TokenStream {
     if item.airity == 0 {
         return tk;
     }
-    for (index,val) in item.op1_accepted.iter().enumerate() {
+    for (index, val) in item.op1_accepted.iter().enumerate() {
         if index != 0 {
-            tk.extend(vec![TokenTree::Punct(Punct::new('|',proc_macro::Spacing::Alone))]);
+            tk.extend(vec![TokenTree::Punct(Punct::new(
+                '|',
+                proc_macro::Spacing::Alone,
+            ))]);
         }
         tk.extend(val.to_ts());
     }
-    tk.extend(vec![TokenTree::Punct(Punct::new(',',proc_macro::Spacing::Alone))]);
-    for (index,val) in item.op2_accepted.iter().enumerate() {
+    tk.extend(vec![TokenTree::Punct(Punct::new(
+        ',',
+        proc_macro::Spacing::Alone,
+    ))]);
+    for (index, val) in item.op2_accepted.iter().enumerate() {
         if index != 0 {
-            tk.extend(vec![TokenTree::Punct(Punct::new('|',proc_macro::Spacing::Alone))]);
+            tk.extend(vec![TokenTree::Punct(Punct::new(
+                '|',
+                proc_macro::Spacing::Alone,
+            ))]);
         }
         tk.extend(val.to_ts());
     }
@@ -200,9 +209,9 @@ fn __internal_define_insns_enum(ast: &syn::DeriveInput, fileds: TokenStream) -> 
     let vis = &ast.vis;
 
     let mut token_vec = TokenStream::new();
-    
+
     let enum_def = quote!(
-        #vis enum #name 
+        #vis enum #name
     );
     let enum_def_tk_stream: TokenStream = enum_def.into();
     let block = Group::new(proc_macro::Delimiter::Brace, fileds);
@@ -219,30 +228,30 @@ fn impl_instructions(ast: &syn::DeriveInput, internal_functions: TokenStream) ->
     let block = Group::new(proc_macro::Delimiter::Brace, internal_functions);
     ts.extend(vec![TokenTree::Group(block)]);
     ts
-}   
+}
 
 fn __internal_extract_opcode(num_str: &str) -> u16 {
-    u16::from_str_radix(&num_str, 16).unwrap()
+    u16::from_str_radix(num_str, 16).unwrap()
 }
 
 fn __internal_single_op(data: &str) -> Vec<__AcceptedOprator> {
     let mut list = Vec::new();
-    for opt in data.trim().split('/').into_iter() {
+    for opt in data.trim().split('/') {
         list.push(__AcceptedOprator::from_str(opt));
     }
     list
 }
 
 fn __internal_extract_op_info(data: &str) -> (Vec<__AcceptedOprator>, Vec<__AcceptedOprator>) {
-    let new_data = data.replace('(',"").replace(')',"");
+    let new_data = data.replace(['(', ')'], "");
     let mut split_data = new_data.split(',');
     let Some(op1) = split_data.next() else {
-        return (vec![],vec![]);
+        return (vec![], vec![]);
     };
     let Some(op2) = split_data.next() else {
         return (__internal_single_op(op1), vec![]);
     };
-    return (__internal_single_op(op1), __internal_single_op(op2));
+    (__internal_single_op(op1), __internal_single_op(op2))
 }
 
 fn __internal_set_enum_value_type(airity: u8) -> TokenStream {
@@ -270,26 +279,26 @@ fn __internal_extract_enum(content: &str) -> (Vec<InstrData>, TokenStream) {
         }
         let mut tokens = line.split('|');
         let name = tokens.next().unwrap().trim().to_string();
-        let opcode = __internal_extract_opcode(
-            &tokens.next().unwrap().trim().to_string()
-        );
-        let modrm = __ModrmType::from_str(
-            &tokens.next().unwrap().trim().to_string()
-        );
-        let airity = u8::from_str_radix(&tokens.next().unwrap().trim().to_string(), 16).unwrap();
-        let data = __internal_extract_op_info(&tokens.next().unwrap().trim().to_string());
+        let opcode = __internal_extract_opcode(tokens.next().unwrap().trim());
+        let modrm = __ModrmType::from_str(tokens.next().unwrap().trim());
+        let airity = u8::from_str_radix(tokens.next().unwrap().trim(), 16).unwrap();
+        let data = __internal_extract_op_info(tokens.next().unwrap().trim());
         if enum_set.get(&name).is_none() {
-            gen.extend(
-                vec![
-                    TokenTree::Ident(Ident::new(name.as_str(), Span::call_site())),
-                    //TokenTree::Punct(Punct::new(',', proc_macro::Spacing::Alone))
-                ]
-            );
+            gen.extend(vec![
+                TokenTree::Ident(Ident::new(name.as_str(), Span::call_site())),
+                //TokenTree::Punct(Punct::new(',', proc_macro::Spacing::Alone))
+            ]);
             gen.extend(__internal_set_enum_value_type(airity).into_iter());
             enum_set.insert(name.clone());
         }
-        instr_data.push(InstrData { name, opcode, airity, op1_accepted: data.0, op2_accepted: data.1, modrm})
+        instr_data.push(InstrData {
+            name,
+            opcode,
+            airity,
+            op1_accepted: data.0,
+            op2_accepted: data.1,
+            modrm,
+        })
     }
-    (instr_data,gen)
+    (instr_data, gen)
 }
-
