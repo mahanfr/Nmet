@@ -23,6 +23,14 @@ pub static VERSION: &str = "v0.0.1-Beta";
 pub static COPYRIGHT: &str = "Mahan Farzaneh 2023-2024";
 pub static DEBUG: bool = true;
 
+fn assembler_target() -> &'static str {
+    if cfg!(windows) {
+        "win64"
+    } else {
+        "elf64"
+    }
+}
+
 /// Compiles the given file into an executable
 fn compile_command(arg: &mut CliArgs) {
     if arg.get().starts_with('-') {
@@ -50,9 +58,9 @@ fn compile_command(arg: &mut CliArgs) {
 /// Runs External commands for generating the executable
 pub fn compile_to_exc(path: String) {
     let program_name = get_program_name(path);
-    println!("[info] Assembling for elf64 - generaiting output.o");
+    println!("[info] Assembling for {} - generaiting output.o", assembler_target());
     let nasm_output = Command::new("nasm")
-        .arg("-felf64")
+        .arg(format!("-f{}",assembler_target()))
         .arg("-o")
         .arg(format!("./build/{}.o", program_name))
         .arg(format!("./build/{}.asm", program_name))
@@ -70,10 +78,11 @@ pub fn compile_to_exc(path: String) {
         .output()
         .expect("Can not link using ld command!");
     if !linker_output.status.success() {
-        println!("[error] Failed to Assemble: Status code non zero");
+        println!("[error] Failed to Link Exectable: Status code non zero");
         println!("{}", String::from_utf8(linker_output.stderr).unwrap());
+    } else {
+        println!("[sucsees] Executable File Has been Generated!");
     }
-    println!("[sucsees] Executable File Has been Generated!");
 }
 
 /// Run The Program Directly after generating the executable
