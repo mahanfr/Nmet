@@ -90,11 +90,13 @@ pub fn import_instructions(args: TokenStream, input: TokenStream) -> TokenStream
         panic!("expected a path in macro attributes!");
     }
     let ast: syn::DeriveInput = syn::parse(input).unwrap();
-    let enums_data = __internal_extract_enum(&content);
+    let (instrs_list, enum_tokens) = __internal_extract_enum(&content);
     let mut ts = TokenStream::new();
-    ts.extend(__internal_define_insns_enum(&ast, enums_data.1));
-    let internal_functions = generate_instr_functions(&enums_data.0);
+    ts.extend(__internal_define_insns_enum(&ast, enum_tokens));
+    let internal_functions = generate_instr_functions(&instrs_list);
     ts.extend(impl_instructions(&ast, internal_functions));
+    let fmt_internals = impl_enum_fmt_internals(&instrs_list);
+    ts.extend(impl_display(&ast, fmt_internals));
     ts
 }
 
@@ -228,6 +230,105 @@ fn impl_instructions(ast: &syn::DeriveInput, internal_functions: TokenStream) ->
     let block = Group::new(proc_macro::Delimiter::Brace, internal_functions);
     ts.extend(vec![TokenTree::Group(block)]);
     ts
+}
+
+fn impl_enum_fmt_internals(instr_list: &[InstrData]) -> TokenStream {
+    let mut block = TokenStream::new();
+    let mut enum_set: HashSet<String> = HashSet::new();
+    for item in instr_list.iter() {
+        if enum_set.get(&item.name).is_none() {
+            enum_set.insert(item.name.clone());
+        } else {
+            continue;
+        }
+
+        let enum_ident = match item.airity {
+            // Syscall
+            0 => TokenStream::from_iter(vec![TokenTree::Ident(Ident::new(
+                &item.name,
+                Span::call_site(),
+            ))]),
+            // Push(opr1)
+            1 => TokenStream::from_iter(vec![
+                TokenTree::Ident(Ident::new(&item.name, Span::call_site())),
+                TokenTree::Group(Group::new(
+                    proc_macro::Delimiter::Parenthesis,
+                    TokenStream::from_iter(vec![TokenTree::Ident(Ident::new(
+                        "opr1",
+                        Span::call_site(),
+                    ))]),
+                )),
+            ]),
+            // Mov(opr1, opr2)
+            2 => TokenStream::from_iter(vec![
+                TokenTree::Ident(Ident::new(&item.name, Span::call_site())),
+                TokenTree::Group(Group::new(
+                    proc_macro::Delimiter::Parenthesis,
+                    TokenStream::from_iter(vec![
+                        TokenTree::Ident(Ident::new("opr1", Span::call_site())),
+                        TokenTree::Punct(Punct::new(',', proc_macro::Spacing::Alone)),
+                        TokenTree::Ident(Ident::new("opr2", Span::call_site())),
+                    ]),
+                )),
+            ]),
+            _ => unreachable!(),
+        };
+
+        let formater = match item.airity {
+            0 => item.name.to_lowercase().to_string(),
+            1 => format!("{} {{opr1}}", item.name.to_lowercase()),
+            2 => format!("{} {{opr1}}, {{opr2}}", item.name.to_lowercase()),
+            _ => unreachable!(),
+        };
+
+        let mut item_ts = TokenStream::from_iter(vec![
+            // Self::Mov
+            TokenTree::Ident(Ident::new("Self", Span::call_site())),
+            TokenTree::Punct(Punct::new(':', proc_macro::Spacing::Joint)),
+            TokenTree::Punct(Punct::new(':', proc_macro::Spacing::Alone)),
+        ]);
+        item_ts.extend(enum_ident);
+        item_ts.extend(vec![
+            // =>
+            TokenTree::Punct(Punct::new('=', proc_macro::Spacing::Joint)),
+            TokenTree::Punct(Punct::new('>', proc_macro::Spacing::Alone)),
+            // write!
+            TokenTree::Ident(Ident::new("write", Span::call_site())),
+            TokenTree::Punct(Punct::new('!', proc_macro::Spacing::Alone)),
+            TokenTree::Group(Group::new(
+                proc_macro::Delimiter::Parenthesis,
+                TokenStream::from_iter(vec![
+                    TokenTree::Ident(Ident::new("f", Span::call_site())),
+                    TokenTree::Punct(Punct::new(',', proc_macro::Spacing::Alone)),
+                    TokenTree::Literal(Literal::string(&formater)),
+                ]),
+            )),
+            TokenTree::Punct(Punct::new(',', proc_macro::Spacing::Alone)),
+        ]);
+        block.extend(item_ts);
+    }
+
+    TokenStream::from_iter(vec![
+        TokenTree::Ident(Ident::new("match", Span::call_site())),
+        TokenTree::Ident(Ident::new("self", Span::call_site())),
+        TokenTree::Group(Group::new(proc_macro::Delimiter::Brace, block)),
+    ])
+}
+
+fn impl_display(ast: &syn::DeriveInput, fmt_internals: TokenStream) -> TokenStream {
+    let name = &ast.ident;
+    let mut tk: TokenStream = quote!(impl Display for #name).into();
+    let mut disp_fn: TokenStream =
+        quote!(fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result).into();
+    disp_fn.extend(vec![TokenTree::Group(Group::new(
+        proc_macro::Delimiter::Brace,
+        fmt_internals,
+    ))]);
+    tk.extend(vec![TokenTree::Group(Group::new(
+        proc_macro::Delimiter::Brace,
+        disp_fn,
+    ))]);
+    tk
 }
 
 fn __internal_extract_opcode(num_str: &str) -> u16 {

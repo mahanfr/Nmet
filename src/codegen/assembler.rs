@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use x86::import_instructions;
 
 use super::{register::Reg, instructions::MemAddr};
@@ -22,5 +24,20 @@ enum Opr {
     Imm64(i64),
 }
 
+impl Display for Opr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::R64(r) | Self::R32(r) | Self::R16(r) | Self::R8(r) => r.fmt(f),
+            Self::Mem(m) => m.fmt(f),
+            Self::Imm8(val) | Self::Imm32(val) | Self::Imm64(val) => val.fmt(f),
+        }
+    }
+}
+
 #[import_instructions("./x86/instrs.txt")]
 pub enum Insns {}
+
+#[test]
+fn test() {
+    assert!(true);
+}
