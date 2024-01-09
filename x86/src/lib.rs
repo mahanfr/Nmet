@@ -176,19 +176,27 @@ fn generate_instr_opcode_function(data: &[InstrData]) -> TokenStream {
         ]);
         output.extend(item.modrm.to_ts());
 
-        let cond = generate_condition(item);
+        let cond;
+        if item.airity == 0 {
+            cond = TokenStream::new();
+        }else {
+            let cnd = generate_condition(item);
+            cond = TokenTree::Group(Group::new(proc_macro::Delimiter::Parenthesis, cnd)).into();
+        }
 
-        let case = vec![
+        let mut case = TokenStream::from_iter(vec![
             TokenTree::Ident(Ident::new("Self", Span::call_site())),
             TokenTree::Punct(Punct::new(':', proc_macro::Spacing::Joint)),
             TokenTree::Punct(Punct::new(':', proc_macro::Spacing::Alone)),
             TokenTree::Ident(Ident::new(item.name.as_str(), Span::call_site())),
-            TokenTree::Group(Group::new(proc_macro::Delimiter::Parenthesis, cond)),
+        ]);
+        case.extend(cond);
+        case.extend(vec![
             TokenTree::Punct(Punct::new('=', proc_macro::Spacing::Joint)),
             TokenTree::Punct(Punct::new('>', proc_macro::Spacing::Alone)),
             TokenTree::Group(Group::new(proc_macro::Delimiter::Parenthesis, output)),
             TokenTree::Punct(Punct::new(',', proc_macro::Spacing::Alone)),
-        ];
+        ]);
         items.extend(case);
     }
     items.extend(vec![
@@ -405,6 +413,9 @@ fn __internal_single_op(data: &str) -> Vec<__AcceptedOprator> {
 
 fn __internal_extract_op_info(data: &str) -> (Vec<__AcceptedOprator>, Vec<__AcceptedOprator>) {
     let new_data = data.replace(['(', ')'], "");
+    if new_data.is_empty() {
+        return (vec![], vec![]);
+    }
     let mut split_data = new_data.split(',');
     let Some(op1) = split_data.next() else {
         return (vec![], vec![]);

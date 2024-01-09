@@ -25,6 +25,44 @@ enum Opr {
     Imm64(i64),
 }
 
+impl From<Reg> for Opr {
+    fn from(val: Reg) -> Opr {
+        match val.size_bit() {
+            64 => Self::R64(val),
+            32 => Self::R32(val),
+            16 => Self::R16(val),
+            8 => Self::R8(val),
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl From<usize> for Opr {
+    fn from(val: usize) -> Opr {
+        if val as u64 <= u8::MAX as u64 {
+            Self::Imm8(val as i64)
+        } else if val as u64 <= u32::MAX as u64 {
+            Self::Imm32(val as i64)
+        } else {
+            Self::Imm64(val as i64)
+        }
+    }
+}
+impl From<i32> for Opr {
+    fn from(val: i32) -> Opr {
+        if val <= u8::MAX as i32 && val >= i8::MIN as i32{
+            Self::Imm8(val as i64)
+        } else {
+            Self::Imm32(val as i64)
+        }
+    }
+}
+impl From<i64> for Opr {
+    fn from(val: i64) -> Opr {
+        Self::Imm64(val)
+    }
+}
+
 impl Display for Opr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -40,6 +78,7 @@ pub enum Insns {}
 
 #[test]
 fn test() {
+    assert_eq!("syscall", Insns::Syscall.to_string());
     assert_eq!("mov rax, rbx", 
-               Insns::Mov(Opr::R64(Reg::RAX), Opr::R64(Reg::RBX)).to_string());
+               Insns::mov(Reg::RAX, Reg::RBX).to_string());
 }
