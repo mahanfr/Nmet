@@ -1,3 +1,7 @@
+// Copywrite 2023-2024 MIT license
+// Extention of Nmet Compiler
+// proc-macro for generating Instrs Enum from file "./instr.txt"
+
 use proc_macro::{Group, Ident, Literal, Punct, Span, TokenStream, TokenTree};
 use quote::quote;
 use std::{collections::HashSet, fs};
@@ -91,10 +95,13 @@ pub fn import_instructions(args: TokenStream, input: TokenStream) -> TokenStream
     }
     let ast: syn::DeriveInput = syn::parse(input).unwrap();
     let (instrs_list, enum_tokens) = __internal_extract_enum(&content);
-    let mut ts = TokenStream::new();
+    // Enum Generation
+    let mut ts : TokenStream = quote!(#[derive(Debug, PartialEq, Clone, Copy)]).into();
     ts.extend(__internal_define_insns_enum(&ast, enum_tokens));
+    // Impl of Enum
     let internal_functions = generate_instr_functions(&instrs_list);
     ts.extend(impl_instructions(&ast, internal_functions));
+    // Impl of Display for the Enum
     let fmt_internals = impl_enum_fmt_internals(&instrs_list);
     ts.extend(impl_display(&ast, fmt_internals));
     ts
@@ -103,6 +110,57 @@ pub fn import_instructions(args: TokenStream, input: TokenStream) -> TokenStream
 fn generate_instr_functions(data: &[InstrData]) -> TokenStream {
     let mut ts = TokenStream::new();
     ts.extend(generate_instr_opcode_function(data));
+    ts.extend(generate_instr_helper_functions(data));
+    ts
+}
+
+fn generate_instr_helper_functions(data: &[InstrData]) -> TokenStream {
+    let mut ts = TokenStream::new();
+    let mut set = HashSet::<String>::new();
+    for item in data.iter() {
+        if set.get(&item.name).is_none() {
+            set.insert(item.name.clone());
+        } else {
+            continue;
+        }
+        let mut fn_args = TokenStream::new();
+        let mut fn_iternal = TokenStream::from_iter(vec![
+            TokenTree::Ident(Ident::new("Self", Span::call_site())),
+            TokenTree::Punct(Punct::new(':',proc_macro::Spacing::Joint)),
+            TokenTree::Punct(Punct::new(':',proc_macro::Spacing::Alone)),
+            TokenTree::Ident(Ident::new(&item.name, Span::call_site())),
+        ]);
+        match item.airity {
+            0 => (),
+            1 => {
+                let q1: TokenStream = quote!(op1: impl Into<Opr>).into();
+                let q2: TokenStream = quote!(op1.into()).into();
+                fn_args.extend(q1);
+                fn_iternal.extend(vec![
+                   TokenTree::Group(Group::new(proc_macro::Delimiter::Parenthesis, q2)),
+                ]);
+            },
+            2 => {
+                let q1: TokenStream = quote!(op1: impl Into<Opr>, op2: impl Into<Opr>).into();
+                let q2: TokenStream = quote!(op1.into(), op2.into()).into();
+                fn_args.extend(q1);
+                fn_iternal.extend(vec![
+                   TokenTree::Group(Group::new(proc_macro::Delimiter::Parenthesis, q2)),
+                ]);
+            },
+            _ => unreachable!(),
+        }
+        let fn_name = item.name.to_lowercase();
+        ts.extend(vec![
+            TokenTree::Ident(Ident::new("fn",Span::call_site())),
+            TokenTree::Ident(Ident::new(&fn_name, Span::call_site())),
+            TokenTree::Group(Group::new(proc_macro::Delimiter::Parenthesis, fn_args)),
+            TokenTree::Punct(Punct::new('-', proc_macro::Spacing::Joint)),
+            TokenTree::Punct(Punct::new('>', proc_macro::Spacing::Alone)),
+            TokenTree::Ident(Ident::new("Self",Span::call_site())),
+            TokenTree::Group(Group::new(proc_macro::Delimiter::Brace, fn_iternal)),
+        ]);
+    }
     ts
 }
 
@@ -307,7 +365,7 @@ fn impl_enum_fmt_internals(instr_list: &[InstrData]) -> TokenStream {
         ]);
         block.extend(item_ts);
     }
-
+    
     TokenStream::from_iter(vec![
         TokenTree::Ident(Ident::new("match", Span::call_site())),
         TokenTree::Ident(Ident::new("self", Span::call_site())),

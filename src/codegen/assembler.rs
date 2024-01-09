@@ -13,6 +13,7 @@ enum ModrmType {
 }
 
 #[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum Opr {
     R64(Reg),
     R32(Reg),
@@ -39,5 +40,6 @@ pub enum Insns {}
 
 #[test]
 fn test() {
-    assert!(true);
+    assert_eq!("mov rax, rbx", 
+               Insns::Mov(Opr::R64(Reg::RAX), Opr::R64(Reg::RBX)).to_string());
 }
