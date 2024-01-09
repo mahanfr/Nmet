@@ -152,6 +152,7 @@ fn generate_instr_helper_functions(data: &[InstrData]) -> TokenStream {
         }
         let fn_name = item.name.to_lowercase();
         ts.extend(vec![
+            TokenTree::Ident(Ident::new("pub",Span::call_site())),
             TokenTree::Ident(Ident::new("fn",Span::call_site())),
             TokenTree::Ident(Ident::new(&fn_name, Span::call_site())),
             TokenTree::Group(Group::new(proc_macro::Delimiter::Parenthesis, fn_args)),
@@ -209,6 +210,7 @@ fn generate_instr_opcode_function(data: &[InstrData]) -> TokenStream {
     ]);
     let mut func = TokenStream::new();
     func.extend(vec![
+        TokenTree::Ident(Ident::new("pub",Span::call_site())),
         TokenTree::Ident(Ident::new("fn", Span::call_site())),
         TokenTree::Ident(Ident::new("opcode", Span::call_site())),
         TokenTree::Group(Group::new(
