@@ -77,8 +77,16 @@ impl Display for Opr {
 pub enum Insns {}
 
 #[test]
-fn test() {
+fn test_enum_varients() {
     assert_eq!("syscall", Insns::Syscall.to_string());
     assert_eq!("mov rax, rbx", 
                Insns::mov(Reg::RAX, Reg::RBX).to_string());
+}
+
+#[test]
+fn test_new_instr() {
+    assert_eq!(
+        Insns::Mov(Opr::R64(Reg::RAX), Opr::R64(Reg::RBX)),
+        Insns::new("mov", vec![Opr::R64(Reg::RAX), Opr::R64(Reg::RBX)])
+    );
 }

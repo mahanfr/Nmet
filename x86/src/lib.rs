@@ -109,9 +109,60 @@ pub fn import_instructions(args: TokenStream, input: TokenStream) -> TokenStream
 
 fn generate_instr_functions(data: &[InstrData]) -> TokenStream {
     let mut ts = TokenStream::new();
+    ts.extend(generate_new_instr_function(data));
     ts.extend(generate_instr_opcode_function(data));
     ts.extend(generate_instr_helper_functions(data));
     ts
+}
+
+fn generate_new_instr_function(data: &[InstrData]) -> TokenStream {
+    let mut func: TokenStream = quote!(pub fn new(mnemonic: &str, oprators: Vec<Opr>) -> Self).into();
+    let mut set = HashSet::<String>::new();
+    let mut inner_block : TokenStream = quote!(match mnemonic).into();
+    let mut inner_match = TokenStream::new();
+    for item in data.iter() {
+        if set.get(&item.name).is_none() {
+            set.insert(item.name.clone());
+        } else {
+            continue;
+        }
+        
+        let enum_tuple: TokenStream = match item.airity {
+            0 => TokenStream::new(),
+            1 => quote!{(oprators[0])}.into(),
+            2 => quote!{(oprators[0], oprators[1])}.into(),
+            _ => unreachable!(),
+        };
+
+        inner_match.extend(vec![
+            TokenTree::Literal(Literal::string(&item.name.to_lowercase())),
+            TokenTree::Punct(Punct::new('=', proc_macro::Spacing::Joint)),
+            TokenTree::Punct(Punct::new('>', proc_macro::Spacing::Alone)),
+            TokenTree::Ident(Ident::new("Self", Span::call_site())),
+            TokenTree::Punct(Punct::new(':', proc_macro::Spacing::Joint)),
+            TokenTree::Punct(Punct::new(':', proc_macro::Spacing::Alone)),
+            TokenTree::Ident(Ident::new(&item.name, Span::call_site())),
+        ]);
+        inner_match.extend(enum_tuple);
+        inner_match.extend(vec![
+            TokenTree::Punct(Punct::new(',', proc_macro::Spacing::Alone)),
+        ]);
+    }
+    inner_match.extend(vec![
+        TokenTree::Ident(Ident::new("_", Span::call_site())),
+        TokenTree::Punct(Punct::new('=', proc_macro::Spacing::Joint)),
+        TokenTree::Punct(Punct::new('>', proc_macro::Spacing::Alone)),
+        TokenTree::Ident(Ident::new("unreachable", Span::call_site())),
+        TokenTree::Punct(Punct::new('!', proc_macro::Spacing::Alone)),
+        TokenTree::Group(Group::new(proc_macro::Delimiter::Parenthesis, TokenStream::new())),
+    ]);
+    inner_block.extend(vec![
+        TokenTree::Group(Group::new(proc_macro::Delimiter::Brace, inner_match)),
+    ]);
+    func.extend(vec![
+        TokenTree::Group(Group::new(proc_macro::Delimiter::Brace, inner_block)),
+    ]);
+    func
 }
 
 fn generate_instr_helper_functions(data: &[InstrData]) -> TokenStream {

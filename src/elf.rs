@@ -91,7 +91,7 @@ fn generate_text_section(cc: &CompilerContext) -> Vec<u8> {
                     }
                 }
             }
-            _ => bytes.extend(instr.assemble()),
+            _ => todo!(),
         }
     }
     bytes
