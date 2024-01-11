@@ -3,8 +3,8 @@ use std::str::FromStr;
 use crate::lexer::{Lexer, TokenType};
 
 use super::{
-    instructions::{Instr, MemAddr, Opr},
-    mnmemonic::Mnemonic,
+    instructions::{Instr, Opr},
+    memory::MemAddr,
     register::Reg,
 };
 
@@ -27,22 +27,13 @@ pub fn parse_asm(source: String) -> Instr {
         }
     }
     //mnmemonic.to_string()
-    if airty == 2 {
-        Instr::new_instr2(mnmemonic, ops[0].clone(), ops[1].clone())
-        //format!("{mnmemonic} {}, {}", ops[0], ops[1])
-    } else if airty == 1 {
-        Instr::new_instr1(mnmemonic, ops[0].clone())
-        //format!("{mnmemonic} {}", ops[0])
-    } else {
-        Instr::new_instr0(mnmemonic)
-        // format!("{mnmemonic}")
-    }
+    Instr::new(&mnmemonic, ops.clone())
 }
 
-fn parse_mnemonic(lexer: &mut Lexer) -> Mnemonic {
+fn parse_mnemonic(lexer: &mut Lexer) -> String {
     let ident = lexer.next_token();
     lexer.match_token(TokenType::Identifier);
-    Mnemonic::from_str(&ident.literal).unwrap()
+    ident.literal
 }
 
 fn parse_op(lexer: &mut Lexer) -> Opr {
@@ -123,100 +114,30 @@ fn parse_mem(lexer: &mut Lexer, size: u8) -> Opr {
     res
 }
 
-// fn parse_factor(lexer: &mut Lexer) -> Opr {
-//     let r = Reg::from_str(&lexer.get_token().literal).unwrap();
-//     lexer.match_token(TokenType::Identifier);
-//     match lexer.get_token_type() {
-//         TokenType::CBracket => {
-//             // lexer.match_token(TokenType::CBracket);
-//             Opr::MemAddr(r)
-//         }
-//         TokenType::Plus => {
-//             lexer.match_token(TokenType::Plus);
-//             let TokenType::Int(offset) = lexer.get_token_type() else {
-//                 panic!("Unsupported Operation! {}", lexer.get_token().literal);
-//             };
-//             lexer.next_token();
-//             Opr::MemDisp(r, offset)
-//         }
-//         TokenType::Minus => {
-//             lexer.match_token(TokenType::Minus);
-//             let TokenType::Int(offset) = lexer.get_token_type() else {
-//                 panic!("Unsupported Operation! {}", lexer.get_token().literal);
-//             };
-//             lexer.next_token();
-//             Opr::MemDisp(r, -offset)
-//         }
-//         TokenType::Multi => {
-//             lexer.match_token(TokenType::Multi);
-//             let TokenType::Int(offset) = lexer.get_token_type() else {
-//                 panic!("Unsupported Operation! {}", lexer.get_token().literal);
-//             };
-//             lexer.next_token();
-//
-//             MemOp::Multi(r, offset as usize)
-//         }
-//         _ => panic!("Unsupported Register Operation!"),
-//     }
-// }
-//
-// fn parse_memop(lexer: &mut Lexer) -> MemOp {
-//     lexer.match_token(TokenType::OBracket);
-//     match lexer.get_token_type() {
-//         TokenType::Identifier => {
-//             let m1 = parse_factor(lexer);
-//             match lexer.get_token_type() {
-//                 TokenType::Plus => {
-//                     lexer.match_token(TokenType::Plus);
-//                     let m2 = parse_factor(lexer);
-//                     MemOp::Add(Box::new(m1), Box::new(m2))
-//                 }
-//                 TokenType::Minus => {
-//                     lexer.match_token(TokenType::Minus);
-//                     let m2 = parse_factor(lexer);
-//                     MemOp::Sub(Box::new(m1), Box::new(m2))
-//                 }
-//                 TokenType::CBracket => {
-//                     lexer.match_token(TokenType::CBracket);
-//                     m1
-//                 }
-//                 _ => panic!("Unknown Memory operation!"),
-//             }
-//         }
-//         _ => {
-//             panic!(
-//                 "Unsupported ASM memory operation {}!",
-//                 lexer.get_token().literal
-//             );
-//         }
-//     }
-// }
-
 #[test]
 fn test_mnemonic_parsing() {
     assert_eq!(
-        Instr::new_instr2(Mnemonic::Mov, Reg::RAX, 1),
+        Instr::mov(Reg::RAX, Opr::Imm8(1)),
         parse_asm("mov rax, 1".to_string())
     );
     assert_eq!(
-        Instr::new_instr0(Mnemonic::Syscall),
+        Instr::syscall(),
         parse_asm("syscall".to_string())
     );
     assert_eq!(
-        Instr::new_instr1(Mnemonic::Push, Reg::RAX),
+        Instr::push(Reg::RAX),
         parse_asm("push rax".to_string())
     );
     assert_eq!(
-        Instr::new_instr2(Mnemonic::Mov, Reg::RAX, MemAddr::new(Reg::RBX)),
+        Instr::mov(Reg::RAX, MemAddr::new(Reg::RBX)),
         parse_asm("mov rax, [rbx]".to_string())
     );
     assert_eq!(
-        Instr::new_instr2(Mnemonic::Mov, Reg::RAX, MemAddr::new_disp_s(8, Reg::RBX, 2)),
+        Instr::mov(Reg::RAX, MemAddr::new_disp_s(8, Reg::RBX, 2)),
         parse_asm("mov rax, qword [rbx+2]".to_string())
     );
     assert_eq!(
-        Instr::new_instr2(
-            Mnemonic::Mov,
+        Instr::mov(
             Reg::RAX,
             MemAddr::new_sib_s(8, Reg::RBX, 2, Reg::RAX, 4)
         ),

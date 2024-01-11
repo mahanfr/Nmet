@@ -1,6 +1,7 @@
 use crate::{
     codegen::{
-        instructions::MemAddr,
+        instructions::Instr,
+        memory::MemAddr,
         mnmemonic::Mnemonic::*,
         register::Reg::{self, *},
     },
@@ -34,8 +35,8 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             // );
             let mem_acss = MemAddr::new_disp_s(v_map.vtype.item_size(), RBP, v_map.stack_offset());
             cc.codegen
-                .instr2(Mov, Reg::AX_sized(&v_map.vtype), mem_acss);
-            cc.codegen.instr1(Push, RAX);
+                .push_instr(Instr::mov(Reg::AX_sized(&v_map.vtype), mem_acss));
+            cc.codegen.push_instr(Instr::push(RAX));
             v_map.vtype
         }
         ExprType::Access(ident, ac) => {
@@ -70,32 +71,32 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             }
             // cc.instruct_buf
             //     .push(asm!("mov rdx, [rbp-{}]", v_map.offset + v_map.vtype.size()));
-            cc.codegen.instr2(Mov, RDX, mem!(RBP, v_map.stack_offset()));
-            cc.codegen.instr2(Add, RDX, offset);
-            cc.codegen.instr2(
-                Mov,
+            cc.codegen.push_instr(Instr::mov(RDX, mem!(RBP, v_map.stack_offset())));
+            cc.codegen.push_instr(Instr::add(RDX, offset));
+            cc.codegen.push_instr(
+                Instr::mov(
                 Reg::AX_sized(&actype),
                 MemAddr::new_s(actype.item_size(), RDX),
-            );
+            ));
             // cc.instruct_buf.push(asm!(
             //     "mov {}, {} [rdx]",
             //     rbs("a", &actype),
             //     mem_word(&actype)
             // ));
-            cc.codegen.instr1(Push, RAX);
+            cc.codegen.push_instr(Instr::push(RAX));
             actype
         }
         ExprType::Bool(b) => {
-            cc.codegen.instr1(Push, *b as i32);
+            cc.codegen.push_instr(Instr::push(*b as i32));
             VariableType::Bool
         }
         ExprType::Char(x) => {
-            cc.codegen.instr1(Push, *x as i32);
+            cc.codegen.push_instr(Instr::push(*x as i32));
             VariableType::Char
         }
         ExprType::Int(x) => {
             // push x
-            cc.codegen.instr1(Push, *x);
+            cc.codegen.push_instr(Instr::push(*x));
             VariableType::Int
         }
         ExprType::Float(_) => {
@@ -106,8 +107,8 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
         ExprType::Compare(c) => {
             let left_type = compile_expr(cc, c.left.as_ref());
             let right_type = compile_expr(cc, c.right.as_ref());
-            cc.codegen.instr2(Mov, RCX, 0);
-            cc.codegen.instr2(Mov, RDX, 1);
+            cc.codegen.push_instr(Instr::mov(RCX, 0));
+            cc.codegen.push_instr(Instr::mov(RDX, 1));
             let mut reg_type = left_type.clone();
             if right_type != left_type {
                 if right_type.is_numeric() && left_type.is_numeric() {
@@ -127,87 +128,87 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                 }
             }
             // Make sure rbx is first so the order is correct
-            cc.codegen.instr1(Pop, RBX);
-            cc.codegen.instr1(Pop, RAX);
+            cc.codegen.push_instr(Instr::pop(RBX));
+            cc.codegen.push_instr(Instr::pop(RAX));
             cc.codegen
-                .instr2(Cmp, Reg::AX_sized(&reg_type), Reg::BX_sized(&reg_type));
+                .push_instr(Instr::cmp(Reg::AX_sized(&reg_type), Reg::BX_sized(&reg_type)));
             match c.op {
                 CompareOp::Eq => {
-                    cc.codegen.instr2(Cmove, RCX, RDX);
+                    cc.codegen.push_instr(Instr::cmove(RCX, RDX));
                 }
                 CompareOp::NotEq => {
-                    cc.codegen.instr2(Cmovne, RCX, RDX);
+                    cc.codegen.push_instr(Instr::cmovne(RCX, RDX));
                 }
                 CompareOp::Bigger => {
-                    cc.codegen.instr2(Cmovg, RCX, RDX);
+                    cc.codegen.push_instr(Instr::cmovg(RCX, RDX));
                 }
                 CompareOp::Smaller => {
-                    cc.codegen.instr2(Cmovl, RCX, RDX);
+                    cc.codegen.push_instr(Instr::cmovl(RCX, RDX));
                 }
                 CompareOp::BiggerEq => {
-                    cc.codegen.instr2(Cmovge, RCX, RDX);
+                    cc.codegen.push_instr(Instr::cmovge(RCX, RDX));
                 }
                 CompareOp::SmallerEq => {
-                    cc.codegen.instr2(Cmovle, RCX, RDX);
+                    cc.codegen.push_instr(Instr::cmovle(RCX, RDX));
                 }
             }
-            cc.codegen.instr1(Push, RCX);
+            cc.codegen.push_instr(Instr::push(RCX));
             VariableType::Bool
         }
         ExprType::Binary(b) => {
             let left_type = compile_expr(cc, b.left.as_ref());
             let right_type = compile_expr(cc, b.right.as_ref());
-            cc.codegen.instr1(Pop, RBX);
-            cc.codegen.instr1(Pop, RAX);
+            cc.codegen.push_instr(Instr::pop(RBX));
+            cc.codegen.push_instr(Instr::pop(RAX));
             match b.op {
                 Op::Plus => {
-                    cc.codegen.instr2(Add, RAX, RBX);
-                    cc.codegen.instr1(Push, RAX);
+                    cc.codegen.push_instr(Instr::add(RAX, RBX));
+                    cc.codegen.push_instr(Instr::push(RAX));
                 }
                 Op::Sub => {
-                    cc.codegen.instr2(Sub, RAX, RBX);
-                    cc.codegen.instr1(Push, RAX);
+                    cc.codegen.push_instr(Instr::sub(RAX, RBX));
+                    cc.codegen.push_instr(Instr::push(RAX));
                 }
                 Op::Multi => {
-                    cc.codegen.instr2(Imul, RAX, RBX);
-                    cc.codegen.instr1(Push, RAX);
+                    cc.codegen.push_instr(Instr::imul(RAX, RBX));
+                    cc.codegen.push_instr(Instr::push(RAX));
                 }
                 Op::Devide => {
-                    cc.codegen.instr0(Cqo);
-                    cc.codegen.instr1(Idiv, RBX);
-                    cc.codegen.instr1(Push, RAX);
+                    cc.codegen.push_instr(Instr::Cqo);
+                    cc.codegen.push_instr(Instr::idiv(RBX));
+                    cc.codegen.push_instr(Instr::push(RAX));
                 }
                 Op::Mod => {
-                    cc.codegen.instr0(Cqo);
-                    cc.codegen.instr1(Idiv, RBX);
-                    cc.codegen.instr1(Push, RDX);
+                    cc.codegen.push_instr(Instr::Cqo);
+                    cc.codegen.push_instr(Instr::idiv(RBX));
+                    cc.codegen.push_instr(Instr::push(RDX));
                 }
                 Op::Or => {
-                    cc.codegen.instr2(Or, RAX, RBX);
-                    cc.codegen.instr1(Push, RAX);
+                    cc.codegen.push_instr(Instr::or(RAX, RBX));
+                    cc.codegen.push_instr(Instr::push(RAX));
                 }
                 Op::And => {
-                    cc.codegen.instr2(And, RAX, RBX);
-                    cc.codegen.instr1(Push, RAX);
+                    cc.codegen.push_instr(Instr::and(RAX, RBX));
+                    cc.codegen.push_instr(Instr::push(RAX));
                 }
                 Op::Lsh => {
-                    cc.codegen.instr2(Mov, RCX, RBX);
-                    cc.codegen.instr2(Sal, RAX, CL);
-                    cc.codegen.instr1(Push, RAX);
+                    cc.codegen.push_instr(Instr::mov(RCX, RBX));
+                    cc.codegen.push_instr(Instr::sal(RAX, CL));
+                    cc.codegen.push_instr(Instr::push(RAX));
                 }
                 Op::Rsh => {
-                    cc.codegen.instr2(Mov, RCX, RBX);
-                    cc.codegen.instr2(Sar, RAX, CL);
-                    cc.codegen.instr1(Push, RAX);
+                    cc.codegen.push_instr(Instr::mov(RCX, RBX));
+                    cc.codegen.push_instr(Instr::sar(RAX, CL));
+                    cc.codegen.push_instr(Instr::push(RAX));
                 }
                 Op::LogicalOr => {
-                    cc.codegen.instr2(Or, RAX, RBX);
-                    cc.codegen.instr1(Push, RAX);
+                    cc.codegen.push_instr(Instr::or(RAX, RBX));
+                    cc.codegen.push_instr(Instr::push(RAX));
                     return VariableType::Bool;
                 }
                 Op::LogicalAnd => {
-                    cc.codegen.instr2(And, RAX, RBX);
-                    cc.codegen.instr1(Push, RAX);
+                    cc.codegen.push_instr(Instr::and(RAX, RBX));
+                    cc.codegen.push_instr(Instr::push(RAX));
                     return VariableType::Bool;
                 }
                 Op::Not => {
@@ -232,17 +233,18 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
         ExprType::String(str) => {
             let data_array = asmfy_string(str);
             let id = cc.codegen.add_data_seg(data_array, 8);
-            cc.codegen.instr1(Push, format!("data{id}"));
-            cc.codegen.instr1(Push, format!("len{id}"));
+            // assert!(false, "Not Implemented yet!");
+            cc.codegen.asm_push(format!("data{id}"));
+            cc.codegen.asm_push(format!("len{id}"));
             VariableType::String
         }
         ExprType::Unary(u) => {
             let right_type = compile_expr(cc, &u.right);
-            cc.codegen.instr1(Pop, RAX);
+            cc.codegen.push_instr(Instr::pop(RAX));
             match u.op {
                 Op::Sub => {
-                    cc.codegen.instr1(Neg, RAX);
-                    cc.codegen.instr1(Push, RAX);
+                    cc.codegen.push_instr(Instr::neg(RAX));
+                    cc.codegen.push_instr(Instr::push(RAX));
                     if right_type == VariableType::UInt {
                         return VariableType::Int;
                     } else {
@@ -250,11 +252,11 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                     }
                 }
                 Op::Plus => {
-                    cc.codegen.instr1(Push, RAX);
+                    cc.codegen.push_instr(Instr::push(RAX));
                 }
                 Op::Not => {
-                    cc.codegen.instr1(Not, RAX);
-                    cc.codegen.instr1(Push, RAX);
+                    cc.codegen.push_instr(Instr::not(RAX));
+                    cc.codegen.push_instr(Instr::push(RAX));
                 }
                 _ => {
                     unreachable!();
@@ -284,9 +286,9 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                     todo!("Changed!");
                 }
                 VariableType::Pointer => {
-                    cc.codegen.instr1(Pop, RAX);
-                    cc.codegen.instr2(Mov, RCX, memq!(RAX));
-                    cc.codegen.instr1(Push, RCX);
+                    cc.codegen.push_instr(Instr::pop(RAX));
+                    cc.codegen.push_instr(Instr::mov(RCX, memq!(RAX)));
+                    cc.codegen.push_instr(Instr::push(RCX));
                 }
                 _ => {
                     error(format!("Expected a Pointer found ({t})"), expr.loc.clone());
@@ -302,7 +304,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                 );
             });
             compile_expr(cc, &ai.indexer);
-            cc.codegen.instr1(Pop, RBX);
+            cc.codegen.push_instr(Instr::pop(RBX));
             // cc.instruct_buf
             //     .push(asm!("mov rdx, [rbp-{}]", v_map.offset + v_map.vtype.size()));
             // cc.instruct_buf
@@ -318,8 +320,8 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             // );
             let mem_acss = mem!(RBP, v_map.stack_offset(), RBX, v_map.vtype.item_size());
             let reg = Reg::AX_sized(&v_map.vtype);
-            cc.codegen.instr2(Mov, reg, mem_acss);
-            cc.codegen.instr1(Push, RAX);
+            cc.codegen.push_instr(Instr::mov(reg, mem_acss));
+            cc.codegen.push_instr(Instr::push(RAX));
             match v_map.vtype {
                 VariableType::Array(t, _) => t.as_ref().clone(),
                 _ => unreachable!(),
@@ -342,14 +344,14 @@ fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) {
                     //cc.codegen.push(RAX);
 
                     //cc.codegen.mov(RAX, RBP);
-                    cc.codegen.instr2(Lea, RAX, mem!(RBP, v_map.stack_offset()));
-                    cc.codegen.instr1(Push, RAX);
+                    cc.codegen.push_instr(Instr::lea(RAX, mem!(RBP, v_map.stack_offset())));
+                    cc.codegen.push_instr(Instr::push(RAX));
                 }
                 _ => {
-                    cc.codegen.instr2(Mov, RAX, RBP);
+                    cc.codegen.push_instr(Instr::mov(RAX, RBP));
                     cc.codegen
-                        .instr2(Sub, RAX, v_map.offset + v_map.vtype.size());
-                    cc.codegen.instr1(Push, RAX);
+                        .push_instr(Instr::sub(RAX, v_map.offset + v_map.vtype.size()));
+                    cc.codegen.push_instr(Instr::push(RAX));
                 }
             }
         }
@@ -368,11 +370,11 @@ fn compile_function_call(
         compile_expr(cc, arg);
         match arg.etype {
             ExprType::String(_) => {
-                cc.codegen.instr1(Pop, RAX);
-                cc.codegen.instr1(Pop, function_args_register(index));
+                cc.codegen.push_instr(Instr::pop(RAX));
+                cc.codegen.push_instr(Instr::pop(function_args_register(index)));
             }
             _ => {
-                cc.codegen.instr1(Pop, function_args_register(index));
+                cc.codegen.push_instr(Instr::pop(function_args_register(index)));
             }
         }
     }
@@ -383,10 +385,11 @@ fn compile_function_call(
             &fc.ident, "Make sure you are calling the correct function"
         ));
     };
-    cc.codegen.instr2(Mov, RAX, 0);
-    cc.codegen.instr1(Call, fc.ident.clone());
+    cc.codegen.push_instr(Instr::mov(RAX, 0));
+    // assert!(false, "Not Implemented yet!");
+    cc.codegen.call(fc.ident.clone());
     if fun.ret_type != VariableType::Void {
-        cc.codegen.instr1(Push, RAX);
+        cc.codegen.push_instr(Instr::push(RAX));
     }
     Ok(fun.ret_type.clone())
 }

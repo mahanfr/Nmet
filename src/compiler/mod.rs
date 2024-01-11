@@ -5,7 +5,7 @@ mod stmts;
 mod variables;
 
 use crate::codegen::instructions::Instr;
-use crate::codegen::{mnmemonic::Mnemonic::*, register::Reg, Codegen};
+use crate::codegen::{register::Reg, Codegen};
 use crate::compiler::{bif::Bif, function::compile_function};
 use crate::elf::generate_elf;
 use crate::error_handeling::error;
@@ -81,7 +81,6 @@ pub fn compile_to_elf(path: String) {
 
     compile(&mut compiler_context, path.clone());
     impl_bifs(&mut compiler_context);
-    optimize(&mut compiler_context.codegen);
     generate_elf(path, &compiler_context);
 }
 
@@ -90,7 +89,6 @@ pub fn compile_to_asm(path: String) {
 
     compile(&mut compiler_context, path.clone());
     impl_bifs(&mut compiler_context);
-    optimize(&mut compiler_context.codegen);
     x86_64_nasm_generator(path, compiler_context.codegen).unwrap();
 }
 
@@ -100,49 +98,6 @@ pub fn impl_bifs(cc: &mut CompilerContext) {
     }
 }
 
-fn optimize(code: &mut Codegen) {
-    for i in 0..(code.instruct_buf.len() - 2) {
-        let Instr::Push(op_a) = code.instruct_buf[i].clone() else {
-            continue;
-        };
-        let Instr::Pop(op_b) = code.instruct_buf[i + 1].clone() else {
-            continue;
-        };
-        if op_a == op_b {
-            code.instruct_buf[i] = Instr::Nop;
-            code.instruct_buf[i + 1] = Instr::Nop;
-        } else {
-            code.instruct_buf[i] = Instr::new_instr2(Mov, op_b, op_a);
-            code.instruct_buf[i + 1] = Instr::Nop;
-        }
-    }
-    code.instruct_buf.retain(|x| x != &Instr::Nop);
-}
-
-// fn x86_64_nasm_cleanup(code: &mut Codegen) {
-//     for i in 0..(code.instruct_buf.len() - 2) {
-//         if code.instruct_buf[i].trim_start().starts_with("push")
-//             && code.instruct_buf[i + 1].trim_start().starts_with("pop")
-//         {
-//             let merged: String = merge_instr(&code.instruct_buf[i], &code.instruct_buf[i + 1]);
-//             code.instruct_buf[i].clear();
-//             code.instruct_buf[i + 1] = merged;
-//         }
-//     }
-//     code.instruct_buf.retain(|x| !x.is_empty());
-// }
-//
-// fn merge_instr(ins1: &str, inst2: &str) -> String {
-//     let data1 = ins1.split(' ').last().unwrap();
-//     let data2 = inst2.split(' ').last().unwrap();
-//     if data1 == data2 {
-//         String::new()
-//     } else {
-//         Instr::new_instr2(Mnemonic::Mov, data2.to_string(), data1.to_string()).to_string().to_string()
-//         // format!("    mov {data2}, {data1}")
-//     }
-// }
-//
 pub fn function_args_register_sized(arg_numer: usize, vtype: &VariableType) -> Reg {
     match arg_numer {
         0 => Reg::DI_sized(vtype),
@@ -251,7 +206,9 @@ fn compile_block(cc: &mut CompilerContext, block: &Block, block_type: BlockType)
                 let mut did_break: bool = false;
                 for s_block in cc.scoped_blocks.iter().rev() {
                     if let BlockType::Loop(loc) = s_block.block_type {
-                        cc.codegen.instr1(Jmp, format!(".LE{}", loc.1));
+                        // assert!(false, "Not Implemented yet!");
+                        cc.codegen.jmp(format!(".LE{}", loc.1));
+                        //cc.codegen.push_instr(Instr::jmp(0));
                         did_break = true;
                         break;
                     }
@@ -264,7 +221,9 @@ fn compile_block(cc: &mut CompilerContext, block: &Block, block_type: BlockType)
                 let mut did_cont: bool = false;
                 for s_block in cc.scoped_blocks.iter().rev() {
                     if let BlockType::Loop(loc) = s_block.block_type {
-                        cc.codegen.instr1(Jmp, format!(".L{}", loc.0));
+                        // assert!(false, "Not Implemented yet!");
+                        cc.codegen.jmp(format!(".L{}", loc.0));
+                        //cc.codegen.push_instr(Instr::jmp(0));
                         did_cont = true;
                         break;
                     }

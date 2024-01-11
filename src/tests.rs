@@ -6,7 +6,7 @@ fn generate_asm(path: impl ToString) {
     compile_to_exc(path.to_string());
     let program_name = get_program_name(path);
     remove_file(format!("./build/{}.o", program_name)).unwrap_or_else(|_| ());
-    remove_file(format!("./build/{}.asm", program_name)).unwrap_or_else(|_| ());
+    //remove_file(format!("./build/{}.asm", program_name)).unwrap_or_else(|_| ());
 }
 
 #[test]

@@ -2,22 +2,25 @@ pub mod asm_parser;
 pub mod instructions;
 pub mod mnmemonic;
 pub mod register;
-pub mod assembler;
+pub mod memory;
 
-use std::fmt::Display;
+use std::{fmt::Display, collections::HashMap};
 
-use self::{
-    instructions::{Instr, Opr},
-    mnmemonic::Mnemonic,
-};
+use self::instructions::{Instr, Opr};
+
+type RelocatableInstr = (String, usize);
 
 #[allow(dead_code)]
 #[derive(Clone)]
 pub struct Codegen {
-    pub instruct_buf: Vec<Instr>,
+    instruct_buf: Vec<Instr>,
+    instruct_bytes: Vec<u8>,
+    pub instruct_asm: String,
     pub data_buf: Vec<String>,
     pub bss_buf: Vec<String>,
-    pub last_lable: String,
+    pub lables_map: HashMap<String, usize>,
+    unknown_ref: HashMap<String, Vec<RelocatableInstr>>,
+    last_lable: String,
 }
 
 #[allow(dead_code)]
@@ -25,8 +28,12 @@ impl Codegen {
     pub fn new() -> Self {
         Self {
             instruct_buf: Vec::new(),
+            instruct_bytes: Vec::new(),
+            instruct_asm: String::new(),
             bss_buf: Vec::new(),
             data_buf: Vec::new(),
+            unknown_ref: HashMap::new(),
+            lables_map: HashMap::new(),
             last_lable: String::new(),
         }
     }
@@ -74,30 +81,71 @@ impl Codegen {
         } else {
             Err("index out of bounds!".into())
         }
+    } 
+
+    fn __relocatable_instr(&mut self, lable: String, mnmemonic: &str) {
+        self.instruct_asm.push_str(format!("    {mnmemonic} {lable}\n").as_str());
+        let key = match lable.starts_with('.') {
+            true => format!("{}{lable}",self.last_lable),
+            false => lable,
+        };
+       match self.lables_map.get(&key) {
+            Some(loc) => {
+                let opr: Opr = (*loc).into();
+                self.instruct_buf.push(Instr::new(mnmemonic, vec![opr]));
+            }
+            None => {
+                self.instruct_buf.push(Instr::jmp(0));
+                let this_loc = self.instruct_buf.len() - 1;
+                self.unknown_ref
+                    .entry(key)
+                    .or_insert(Vec::new())
+                    .push((mnmemonic.to_string(), this_loc));
+            }
+       }
     }
 
-    pub fn instr0(&mut self, mnem: Mnemonic) {
-        self.instruct_buf.push(Instr::new_instr0(mnem));
+    pub fn jmp(&mut self, lable: impl Display) {
+        self.__relocatable_instr(lable.to_string(), "jmp");
     }
 
-    pub fn instr1(&mut self, mnem: Mnemonic, op1: impl Into<Opr>) {
-        self.instruct_buf.push(Instr::new_instr1(mnem, op1));
+    pub fn jz(&mut self, lable: impl Display) {
+        self.__relocatable_instr(lable.to_string(), "jz");
     }
 
-    pub fn instr2(&mut self, mnem: Mnemonic, op1: impl Into<Opr>, op2: impl Into<Opr>) {
-        self.instruct_buf.push(Instr::new_instr2(mnem, op1, op2));
+    pub fn jne(&mut self, lable: impl Display) {
+        self.__relocatable_instr(lable.to_string(), "jne");
+    }
+
+    pub fn call(&mut self, lable: impl Display) {
+        self.__relocatable_instr(lable.to_string(), "call");
+    }
+
+    pub fn asm_push(&mut self, lable: impl Display) {
+        self.instruct_asm.push_str(format!("    push {lable}\n").as_str());
+    }
+
+    pub fn asm_mov(&mut self, opr: impl Into<Opr>, lable: impl Display) {
+        self.instruct_asm.push_str(format!("    mov {}, {lable}\n",opr.into()).as_str());
+    }
+
+    pub fn push_instr(&mut self, instr: Instr) {
+        self.instruct_asm.push_str(format!("    {instr}\n").as_str());
+        self.instruct_buf.push(instr);
     }
 
     pub fn set_lable(&mut self, lable: impl Display) {
-        self.instruct_buf.push(Instr::Lable(lable.to_string()));
+        let lable = lable.to_string();
+        self.instruct_asm.push_str(format!("{lable}:\n").as_str());
+        // let key = match lable.starts_with('.') {
+        //     true => format!("{}{lable}",self.last_lable),
+        //     false => lable,
+        // };
+        // if let Some(rel_items) = self.unknown_ref.remove(&key) {
+        //     for item in rel_items.iter() {
+        //         self.instruct_buf[item.1] = Instr::new(&item.0, vec![])
+        //     }
+        // }
+        // self.lables_map.insert(key, self.instruct_buf.len());
     }
 }
-/*
-       let lable_string = lable.to_string();
-       if lable_string.starts_with(".") {
-           if self.last_lable.is_empty() {
-               panic!("Unknown jump location from {lable_string}");
-           }
-           self.instruct_buf.push(Instr::Lable(format!("{}{}",self.last_lable,lable.to_string())));
-       } else {
-* */
