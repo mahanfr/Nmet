@@ -2,7 +2,6 @@ import "./std/syscalls/file" :: syscall_write, syscall_close
 import "./std/syscalls/proc" :: syscall_exit
 import "./std/syscalls/socket" :: syscall_socket, syscall_bind, 
         syscall_listen, syscall_accept
-import "./std/core" :: print_int
 
 func main() {
     var sfd = syscall_socket(2,1,0);
@@ -13,13 +12,26 @@ func main() {
     ~ port 6969 
     server_addr[2] = 0x1b;
     server_addr[3] = 0x39;
+    server_addr[4] = 0;
+    server_addr[5] = 0;
+    server_addr[6] = 0;
+    server_addr[7] = 0;
+    server_addr[8] = 0;
+    server_addr[9] = 0;
+    server_addr[10] = 0;
+    server_addr[11] = 0;
+    server_addr[12] = 0;
+    server_addr[13] = 0;
+    server_addr[14] = 0;
+    server_addr[15] = 0;
+    print &server_addr;
     syscall_bind(sfd, &server_addr, 16);
     syscall_listen(sfd, 10);
     var addr @[char,16];
     var addr_sz @[int,1];
     addr_sz[0] = 16;
     var client_fd = syscall_accept(sfd, &addr, &addr_sz);
-    if client_fd < 0 {
+    if client_fd <= 0 {
         print "Error: cannot accept user request!\n";
         syscall_exit(-1);
     } else {

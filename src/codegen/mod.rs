@@ -23,7 +23,6 @@ pub struct Codegen {
     last_lable: String,
 }
 
-#[allow(dead_code)]
 impl Codegen {
     pub fn new() -> Self {
         Self {
@@ -38,8 +37,8 @@ impl Codegen {
         }
     }
 
-    pub fn get_id(&mut self) -> usize {
-        self.instruct_buf.len()
+    pub fn get_id(&self) -> usize {
+        self.instruct_asm.len()
     }
 
     pub fn add_data_seg(&mut self, data: impl ToString, _size: usize) -> u64 {
@@ -55,33 +54,6 @@ impl Codegen {
         self.bss_buf.push(format!("{}: resb {}", bss_tag, size));
         bss_tag
     }
-
-    pub fn place_holder(&mut self) -> usize {
-        self.instruct_buf.push(Instr::Nop);
-        self.instruct_buf.len() - 1
-    }
-
-    pub fn insert_raw(&mut self, instr: Instr) {
-        self.instruct_buf.push(instr);
-    }
-
-    pub fn replace(&mut self, index: usize, instr: Instr) -> Result<(), String> {
-        if index < self.instruct_buf.len() - 1 {
-            self.instruct_buf[index] = instr;
-            Ok(())
-        } else {
-            Err("index out of bounds!".into())
-        }
-    }
-
-    pub fn insert_into_raw(&mut self, index: usize, instr: Instr) -> Result<(), String> {
-        if index < self.instruct_buf.len() - 1 {
-            self.instruct_buf[index] = instr;
-            Ok(())
-        } else {
-            Err("index out of bounds!".into())
-        }
-    } 
 
     fn __relocatable_instr(&mut self, lable: String, mnmemonic: &str) {
         self.instruct_asm.push_str(format!("    {mnmemonic} {lable}\n").as_str());

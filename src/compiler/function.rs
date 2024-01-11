@@ -4,7 +4,6 @@ use crate::{
     codegen::{
         instructions::Instr,
         memory::MemAddr,
-        mnmemonic::Mnemonic::*,
         register::Reg::*,
     },
     compiler::{ScopeBlock, VariableMap},
@@ -15,7 +14,7 @@ use crate::{
     },
 };
 
-use super::{compile_block, frame_size, function_args_register_sized, CompilerContext};
+use super::{compile_block, function_args_register_sized, CompilerContext};
 
 pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
     for (args_count, arg) in args.iter().enumerate() {
@@ -45,6 +44,7 @@ pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
         }
         cc.variables_map.insert(ident, map);
         cc.mem_offset += 8;
+        cc.codegen.push_instr(Instr::sub(RSP, 8));
     }
 }
 

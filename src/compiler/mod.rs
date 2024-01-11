@@ -4,7 +4,6 @@ mod function;
 mod stmts;
 mod variables;
 
-use crate::codegen::instructions::Instr;
 use crate::codegen::{register::Reg, Codegen};
 use crate::compiler::{bif::Bif, function::compile_function};
 use crate::elf::generate_elf;
@@ -122,7 +121,7 @@ pub fn function_args_register(arg_numer: usize) -> Reg {
     }
 }
 
-fn frame_size(mem_offset: usize) -> usize {
+fn _frame_size(mem_offset: usize) -> usize {
     2 << mem_offset.ilog2() as usize
 }
 

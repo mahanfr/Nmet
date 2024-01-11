@@ -3,7 +3,6 @@ use crate::{
         asm_parser::parse_asm,
         instructions::Instr,
         memory::MemAddr,
-        mnmemonic::Mnemonic::*,
         register::Reg::{self, *},
     },
     compiler::VariableMap,
@@ -171,9 +170,9 @@ fn compile_inline_asm(cc: &mut CompilerContext, instr: &String) -> Result<(), St
                 index += 1;
             }
         }
-        cc.codegen.insert_raw(parse_asm(final_instr));
+        cc.codegen.push_instr(parse_asm(final_instr));
     } else {
-        cc.codegen.insert_raw(parse_asm(instr.into()));
+        cc.codegen.push_instr(parse_asm(instr.into()));
     }
     Ok(())
 }

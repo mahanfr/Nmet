@@ -2,7 +2,6 @@ use crate::{
     codegen::{
         instructions::Instr,
         memory::MemAddr,
-        mnmemonic::Mnemonic::*,
         register::Reg::{self, *},
     },
     compiler::VariableMap,
