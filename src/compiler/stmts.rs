@@ -1,5 +1,6 @@
 use crate::{
     codegen::{
+        mnemonic::Mnemonic::*,
         asm_parser::parse_asm,
         instructions::Instr,
         memory::MemAddr,
@@ -36,8 +37,8 @@ fn compile_if_stmt(cc: &mut CompilerContext, ifs: &IFStmt, exit_tag: usize) {
         ElseBlock::None => exit_tag,
         _ => cc.codegen.get_id(),
     };
-    cc.codegen.push_instr(Instr::pop(RAX));
-    cc.codegen.push_instr(Instr::test(RAX, RAX));
+    cc.codegen.push_instr(Instr::new1(Pop,RAX));
+    cc.codegen.push_instr(Instr::new2(Test,RAX, RAX));
     // assert!(false, "Not implmented yet!");
     cc.codegen.jz(format!(".L{next_tag}"));
 
@@ -72,17 +73,17 @@ pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) {
             compile_expr(cc, e);
             match e.etype {
                 ExprType::String(_) => {
-                    cc.codegen.push_instr(Instr::mov(RAX, 1));
-                    cc.codegen.push_instr(Instr::mov(RDI, 1));
-                    cc.codegen.push_instr(Instr::pop(RBX));
-                    cc.codegen.push_instr(Instr::pop(RCX));
-                    cc.codegen.push_instr(Instr::mov(RSI, RCX));
-                    cc.codegen.push_instr(Instr::mov(RDX, RBX));
-                    cc.codegen.push_instr(Instr::Syscall);
+                    cc.codegen.push_instr(Instr::new2(Mov,RAX, 1));
+                    cc.codegen.push_instr(Instr::new2(Mov,RDI, 1));
+                    cc.codegen.push_instr(Instr::new1(Pop,RBX));
+                    cc.codegen.push_instr(Instr::new1(Pop,RCX));
+                    cc.codegen.push_instr(Instr::new2(Mov,RSI, RCX));
+                    cc.codegen.push_instr(Instr::new2(Mov,RDX, RBX));
+                    cc.codegen.push_instr(Instr::new0(Syscall));
                 }
                 _ => {
                     cc.bif_set.insert(Bif::Print);
-                    cc.codegen.push_instr(Instr::pop(RDI));
+                    cc.codegen.push_instr(Instr::new1(Pop,RDI));
                     // assert!(false, "Not Implemented yet!");
                     cc.codegen.call("print");
                 }
@@ -109,9 +110,9 @@ pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) {
         },
         StmtType::Return(e) => {
             compile_expr(cc, e);
-            cc.codegen.push_instr(Instr::pop(RAX));
-            cc.codegen.push_instr(Instr::Leave);
-            cc.codegen.push_instr(Instr::Ret);
+            cc.codegen.push_instr(Instr::new1(Pop,RAX));
+            cc.codegen.push_instr(Instr::new0(Leave));
+            cc.codegen.push_instr(Instr::new0(Ret));
         }
         StmtType::InlineAsm(instructs) => {
             for instr in instructs {
@@ -191,8 +192,8 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) {
         Ok(_) => (),
         Err(msg) => error(msg, w_stmt.condition.loc.clone()),
     }
-    cc.codegen.push_instr(Instr::pop(RAX));
-    cc.codegen.push_instr(Instr::test(RAX, RAX));
+    cc.codegen.push_instr(Instr::new1(Pop,RAX));
+    cc.codegen.push_instr(Instr::new2(Test,RAX, RAX));
     // assert!(false, "Not implemented yet!");
     // TODO: MAKE Sure this works!
     cc.codegen.jne(format!(".L{block_tag}"));
@@ -226,8 +227,8 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
         }
         VariableType::Custom(_) => {
             cc.codegen
-                .push_instr(Instr::mov(RDX, mem!(RBP, -(v_map.offset as i32 + 8))));
-            cc.codegen.push_instr(Instr::add(RDX, v_map.offset_inner));
+                .push_instr(Instr::new2(Mov,RDX, mem!(RBP, -(v_map.offset as i32 + 8))));
+            cc.codegen.push_instr(Instr::new2(Add,RDX, v_map.offset_inner));
             reg = Reg::AX_sized(&v_map.vtype_inner);
             // format!("{} [rdx]", mem_word(&v_map.vtype_inner))
             MemAddr::new_s(v_map.vtype_inner.item_size(), RDX)
@@ -242,39 +243,39 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
             MemAddr::new_disp_s(v_map.vtype.item_size(), RBP, v_map.stack_offset())
         }
     };
-    cc.codegen.push_instr(Instr::pop(RAX));
+    cc.codegen.push_instr(Instr::new1(Pop,RAX));
     match op {
         AssignOp::Eq => {
-            cc.codegen.push_instr(Instr::mov(mem_acss, reg));
+            cc.codegen.push_instr(Instr::new2(Mov,mem_acss, reg));
         }
         AssignOp::PlusEq => {
-            cc.codegen.push_instr(Instr::add(mem_acss, reg));
+            cc.codegen.push_instr(Instr::new2(Add,mem_acss, reg));
         }
         AssignOp::SubEq => {
-            cc.codegen.push_instr(Instr::sub(mem_acss, reg));
+            cc.codegen.push_instr(Instr::new2(Sub,mem_acss, reg));
         }
         AssignOp::MultiEq => {
             let b_reg = Reg::BX_sized(&v_map.vtype);
-            cc.codegen.push_instr(Instr::mov(b_reg, mem_acss));
-            cc.codegen.push_instr(Instr::imul(reg, b_reg));
-            cc.codegen.push_instr(Instr::mov(mem_acss, reg));
+            cc.codegen.push_instr(Instr::new2(Mov,b_reg, mem_acss));
+            cc.codegen.push_instr(Instr::new2(Imul,reg, b_reg));
+            cc.codegen.push_instr(Instr::new2(Mov,mem_acss, reg));
         }
         AssignOp::DevideEq => {
             let b_reg = Reg::BX_sized(&v_map.vtype);
-            cc.codegen.push_instr(Instr::mov(b_reg, reg));
-            cc.codegen.push_instr(Instr::mov(reg, mem_acss));
-            cc.codegen.push_instr(Instr::Cqo);
-            cc.codegen.push_instr(Instr::idiv(RBX));
-            cc.codegen.push_instr(Instr::mov(mem_acss, reg));
+            cc.codegen.push_instr(Instr::new2(Mov,b_reg, reg));
+            cc.codegen.push_instr(Instr::new2(Mov,reg, mem_acss));
+            cc.codegen.push_instr(Instr::new0(Cqo));
+            cc.codegen.push_instr(Instr::new1(Idiv,RBX));
+            cc.codegen.push_instr(Instr::new2(Mov,mem_acss, reg));
         }
         AssignOp::ModEq => {
             let b_reg = Reg::BX_sized(&v_map.vtype);
-            cc.codegen.push_instr(Instr::mov(b_reg, reg));
-            cc.codegen.push_instr(Instr::mov(reg, mem_acss));
-            cc.codegen.push_instr(Instr::Cqo);
-            cc.codegen.push_instr(Instr::idiv(RBX));
+            cc.codegen.push_instr(Instr::new2(Mov,b_reg, reg));
+            cc.codegen.push_instr(Instr::new2(Mov,reg, mem_acss));
+            cc.codegen.push_instr(Instr::new0(Cqo));
+            cc.codegen.push_instr(Instr::new1(Idiv,RBX));
             let d_reg = Reg::DX_sized(&v_map.vtype);
-            cc.codegen.push_instr(Instr::mov(mem_acss, d_reg));
+            cc.codegen.push_instr(Instr::new2(Mov,mem_acss, d_reg));
         }
     }
 }
@@ -312,7 +313,7 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Strin
                 _ => unreachable!(),
             }
             compile_expr(cc, &ai.indexer);
-            cc.codegen.push_instr(Instr::pop(RBX));
+            cc.codegen.push_instr(Instr::new1(Pop,RBX));
             assgin_op(cc, &assign.op, &v_map);
             Ok(())
         }

@@ -1,12 +1,12 @@
 pub mod asm_parser;
 pub mod instructions;
-pub mod mnmemonic;
+pub mod mnemonic;
 pub mod register;
 pub mod memory;
-
+pub mod opcodes;
 use std::{fmt::Display, collections::HashMap};
 
-use self::instructions::{Instr, Opr};
+use self::{instructions::{Instr, Opr}, mnemonic::Mnemonic};
 
 type RelocatableInstr = (String, usize);
 
@@ -55,7 +55,7 @@ impl Codegen {
         bss_tag
     }
 
-    fn __relocatable_instr(&mut self, lable: String, mnmemonic: &str) {
+    fn __relocatable_instr(&mut self, lable: String, mnmemonic: Mnemonic) {
         self.instruct_asm.push_str(format!("    {mnmemonic} {lable}\n").as_str());
         let key = match lable.starts_with('.') {
             true => format!("{}{lable}",self.last_lable),
@@ -64,10 +64,10 @@ impl Codegen {
        match self.lables_map.get(&key) {
             Some(loc) => {
                 let opr: Opr = (*loc).into();
-                self.instruct_buf.push(Instr::new(mnmemonic, vec![opr]));
+                self.instruct_buf.push(Instr::new1(mnmemonic, opr));
             }
             None => {
-                self.instruct_buf.push(Instr::jmp(0));
+                self.instruct_buf.push(Instr::new0(Mnemonic::Nop));
                 let this_loc = self.instruct_buf.len() - 1;
                 self.unknown_ref
                     .entry(key)
@@ -78,19 +78,19 @@ impl Codegen {
     }
 
     pub fn jmp(&mut self, lable: impl Display) {
-        self.__relocatable_instr(lable.to_string(), "jmp");
+        self.__relocatable_instr(lable.to_string(), Mnemonic::Jmp);
     }
 
     pub fn jz(&mut self, lable: impl Display) {
-        self.__relocatable_instr(lable.to_string(), "jz");
+        self.__relocatable_instr(lable.to_string(), Mnemonic::Jz);
     }
 
     pub fn jne(&mut self, lable: impl Display) {
-        self.__relocatable_instr(lable.to_string(), "jne");
+        self.__relocatable_instr(lable.to_string(), Mnemonic::Jne);
     }
 
     pub fn call(&mut self, lable: impl Display) {
-        self.__relocatable_instr(lable.to_string(), "call");
+        self.__relocatable_instr(lable.to_string(), Mnemonic::Call);
     }
 
     pub fn asm_push(&mut self, lable: impl Display) {

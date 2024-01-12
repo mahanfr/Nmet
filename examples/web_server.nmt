@@ -24,26 +24,27 @@ func main() {
     server_addr[13] = 0;
     server_addr[14] = 0;
     server_addr[15] = 0;
-    print &server_addr;
     syscall_bind(sfd, &server_addr, 16);
     syscall_listen(sfd, 10);
     var addr @[char,16];
     var addr_sz @[int,1];
     addr_sz[0] = 16;
-    var client_fd = syscall_accept(sfd, &addr, &addr_sz);
-    if client_fd <= 0 {
-        print "Error: cannot accept user request!\n";
-        syscall_exit(-1);
-    } else {
-        print "Client Connected!\n";
-        syscall_write(client_fd, "HTTP/1.1 200 OK\r\n",17);
-        syscall_write(client_fd, "Server: Powerd by Nmet\r\n",24);
-        syscall_write(client_fd, "Content-Type: text/html\r\n",25);
-        syscall_write(client_fd, "Content-Length: 30\r\n");
-        syscall_write(client_fd, "\r\n",2);
-        syscall_write(client_fd, "<h1>Hello World Form Nmet</h1>",30);
-        
-        syscall_close(client_fd);
+    while true {
+        var client_fd = syscall_accept(sfd, &addr, &addr_sz);
+        if client_fd <= 0 {
+            print "Error: cannot accept user request!\n";
+            syscall_exit(-1);
+        } else {
+            print "Client Connected!\n";
+            syscall_write(client_fd, "HTTP/1.1 200 OK\r\n",17);
+            syscall_write(client_fd, "Server: Powerd by Nmet\r\n",24);
+            syscall_write(client_fd, "Content-Type: text/html\r\n",25);
+            syscall_write(client_fd, "Content-Length: 30\r\n");
+            syscall_write(client_fd, "\r\n",2);
+            syscall_write(client_fd, "<h1>Hello World Form Nmet</h1>",30);
+            
+            syscall_close(client_fd);
+        }
     }
     syscall_close(sfd);
 }

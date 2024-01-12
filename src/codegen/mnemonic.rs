@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{str::FromStr, fmt::Display};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -28,6 +28,7 @@ pub enum Mnemonic {
     Cqo,
     Neg,
     Not,
+    Nop,
     Call,
     Jmp,
     Jz,
@@ -36,6 +37,47 @@ pub enum Mnemonic {
     Syscall,
     Leave,
     Ret,
+}
+
+impl Display for Mnemonic {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Lea => write!(f,"lea"),
+            Self::Mov => write!(f,"mov"),
+            Self::Cmove => write!(f,"cmove"),
+            Self::Cmovne => write!(f,"cmovne"),
+            Self::Cmovg => write!(f,"cmovg"),
+            Self::Cmovl => write!(f,"cmovl"),
+            Self::Cmovge => write!(f,"cmovge"),
+            Self::Cmovle => write!(f,"cmovle"),
+            Self::Push => write!(f,"push"),
+            Self::Pop => write!(f,"pop"),
+            Self::Add => write!(f,"add"),
+            Self::Sub => write!(f,"sub"),
+            Self::Imul => write!(f,"imul"),
+            Self::Idiv => write!(f,"idiv"),
+            Self::Mul => write!(f,"mul"),
+            Self::Or => write!(f,"or"),
+            Self::And => write!(f,"and"),
+            Self::Sal => write!(f,"sal"),
+            Self::Sar => write!(f,"sar"),
+            Self::Shr => write!(f,"shr"),
+            Self::Cmp => write!(f,"cmp"),
+            Self::Test => write!(f,"test"),
+            Self::Cqo => write!(f,"cqo"),
+            Self::Neg => write!(f,"neg"),
+            Self::Not => write!(f,"not"),
+            Self::Call => write!(f,"call"),
+            Self::Jmp => write!(f,"jmp"),
+            Self::Jz => write!(f,"jz"),
+            Self::Jnz => write!(f,"jnz"),
+            Self::Jne => write!(f,"jne"),
+            Self::Syscall => write!(f,"syscall"),
+            Self::Leave => write!(f,"leave"),
+            Self::Ret => write!(f,"ret"),
+            Self::Nop => write!(f, "nop"),
+        }
+    }
 }
 
 impl FromStr for Mnemonic {

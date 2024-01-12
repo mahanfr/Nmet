@@ -1,11 +1,10 @@
 use std::fmt::Display;
 
-use x86::import_instructions;
-
-use super::{register::Reg, memory::MemAddr};
+#[allow(unused_imports)]
+use super::{mnemonic::Mnemonic::{*,self}, register::Reg, memory::MemAddr};
 
 #[allow(dead_code)]
-enum ModrmType {
+pub enum ModrmType {
     Ext(u8),
     Add,
     Modrm,
@@ -79,20 +78,82 @@ impl Display for Opr {
     }
 }
 
-#[import_instructions("./x86/instrs.txt")]
-pub enum Instr {}
+#[derive(Debug,Clone, Copy, PartialEq)]
+pub enum Oprs {
+    None,
+    One(Opr),
+    Two(Opr, Opr),
+}
+
+impl Display for Oprs {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::None => write!(f,""),
+            Self::One(opr) => write!(f, "{opr}"),
+            Self::Two(opr1, opr2) => write!(f, "{opr1}, {opr2}"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Instr {
+    pub mnem: Mnemonic,
+    pub oprs: Oprs,
+}
+
+impl Display for Instr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if Oprs::None == self.oprs {
+            write!(f, "{}",self.mnem)
+        } else {
+            write!(f, "{} {}",self.mnem, self.oprs)
+        }
+    }
+}
+
+impl Instr {
+    pub fn new(mnem: Mnemonic, oprs: Oprs) -> Self {
+        Self {
+            mnem,
+            oprs,
+        }
+    }
+
+    pub fn new0(mnem: Mnemonic) -> Self {
+        Self {
+            mnem,
+            oprs: Oprs::None,
+        }
+    }
+
+    pub fn new1(mnem: Mnemonic, opr: impl Into<Opr>) -> Self {
+        Self {
+            mnem,
+            oprs: Oprs::One(opr.into()),
+        }
+    }
+
+    pub fn new2(mnem: Mnemonic, opr1: impl Into<Opr>, opr2: impl Into<Opr>) -> Self {
+        Self {
+            mnem,
+            oprs: Oprs::Two(opr1.into(), opr2.into()),
+        }
+    }
+}
+// #[import_instructions("./x86/instrs.txt")]
+// pub enum Instr {}
 
 #[test]
 fn test_enum_varients() {
-    assert_eq!("syscall", Instr::Syscall.to_string());
-    assert_eq!("mov rax, rbx", 
-               Instr::mov(Reg::RAX, Reg::RBX).to_string());
+    assert_eq!("syscall", Instr::new0(Syscall).to_string());
+    assert_eq!("mov rax, rbx",
+               Instr::new2(Mov,Reg::RAX, Reg::RBX).to_string());
 }
 
 #[test]
 fn test_new_instr() {
     assert_eq!(
-        Instr::Mov(Opr::R64(Reg::RAX), Opr::R64(Reg::RBX)),
-        Instr::new("mov", vec![Opr::R64(Reg::RAX), Opr::R64(Reg::RBX)])
+        Instr::new2(Mov,Opr::R64(Reg::RAX), Opr::R64(Reg::RBX)),
+        Instr::new(Mov, Oprs::Two(Opr::R64(Reg::RAX), Opr::R64(Reg::RBX)))
     );
 }
