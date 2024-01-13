@@ -32,7 +32,7 @@ impl From<MemAddr> for Opr {
 
 impl From<Reg> for Opr {
     fn from(val: Reg) -> Opr {
-        match val.size_bit() {
+        match val.size() {
             64 => Self::R64(val),
             32 => Self::R32(val),
             16 => Self::R16(val),
@@ -139,6 +139,7 @@ impl Instr {
             oprs: Oprs::Two(opr1.into(), opr2.into()),
         }
     }
+
 }
 // #[import_instructions("./x86/instrs.txt")]
 // pub enum Instr {}

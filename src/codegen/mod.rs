@@ -4,6 +4,7 @@ pub mod mnemonic;
 pub mod register;
 pub mod memory;
 pub mod opcodes;
+pub mod assemble;
 use std::{fmt::Display, collections::HashMap};
 
 use self::{instructions::{Instr, Opr}, mnemonic::Mnemonic};

@@ -53,30 +53,31 @@ pub enum Reg {
     R9B = 0x19,
 }
 
-#[allow(dead_code)]
 #[allow(non_snake_case)]
 impl Reg {
-    pub fn size(&self) -> u8 {
-        (*self as u8 & 0xf0) >> 1
+
+    pub fn is_new_8bit_reg(&self) -> bool {
+        matches!(self, Self::SPL| Self::BPL | Self::SIL | Self::DIL)
     }
 
-    pub fn size_bit(&self) -> &'static u8 {
+    pub fn is_extended(&self) -> bool {
+        matches!(self, Self::R8 | Self::R9 | Self::R8D | Self::R9D
+            | Self::R8W | Self::R9W | Self::R8B | Self::R9B)
+    }
+
+    pub fn size(&self) -> u8 {
         match self {
             Self::RAX | Self::RCX | Self::RDX | Self::RBX 
             | Self::RSP | Self::RBP | Self::RSI | Self::RDI 
-            | Self::R8  | Self::R9 => &64u8,
+            | Self::R8  | Self::R9 => 64u8,
             Self::EAX | Self::ECX | Self::EDX | Self::EBX | Self::ESP 
-            | Self::EBP | Self::ESI | Self::EDI | Self::R8D | Self::R9D => &32u8,
-            Self::AX | Self::CX | Self::DX | Self::BX | Self::SP | Self::BP | Self::SI | Self::DI | Self::R8W | Self::R9W => &16u8, 
-            Self::AL | Self::CL | Self::DL | Self::BL | Self::SPL | Self::BPL | Self::SIL | Self::DIL | Self::R8B | Self::R9B => &8u8,
-            Self::AH| Self::CH| Self::DH| Self::BH => &4u8,
+            | Self::EBP | Self::ESI | Self::EDI | Self::R8D | Self::R9D => 32u8,
+            Self::AX | Self::CX | Self::DX | Self::BX | Self::SP | Self::BP | Self::SI | Self::DI | Self::R8W | Self::R9W => 16u8, 
+            Self::AL | Self::CL | Self::DL | Self::BL | Self::SPL | Self::BPL | Self::SIL | Self::DIL | Self::R8B | Self::R9B => 8u8,
+            Self::AH| Self::CH| Self::DH| Self::BH => 8u8,
         }
     }
 
-    pub fn upcode32(&self) -> u8 {
-        *self as u8 & 0x0f
-    }
-    
     pub fn opcode(&self) -> &'static u8 {
         match self {
             Self::RAX | Self::EAX | Self::AX | Self::AL => &0u8,

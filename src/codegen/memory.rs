@@ -97,12 +97,12 @@ macro_rules! memb {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MemAddr {
-    addr_type: MemAddrType,
-    size: u8,
-    register: Reg,
-    disp: i32,
-    s_register: Option<Reg>,
-    scale: u8,
+    pub addr_type: MemAddrType,
+    pub size: u8,
+    pub register: Reg,
+    pub disp: i32,
+    pub s_register: Option<Reg>,
+    pub scale: u8,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

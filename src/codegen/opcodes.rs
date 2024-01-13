@@ -44,7 +44,7 @@ pub fn opcode(instr: &Instr) -> (u16, ModrmType) {
         (Jz, One(Imm32(_))) => (0x0f84, ModrmType::None),
         (Jz, One(Imm8(_))) => (0x74, ModrmType::None),
         (Test, Two(rm_16_64!(), r_16_64!())) => (0x85, Modrm),
-        (Cqo, Oprs::None) => (0x99, ModrmType::None),
+        (Cqo, Oprs::None) => (0x4899, ModrmType::None),
         _ => unimplemented!("{instr}"),
     }
 }
