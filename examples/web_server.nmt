@@ -1,6 +1,6 @@
 import "./std/syscalls/file" :: syscall_write, syscall_close
 import "./std/syscalls/proc" :: syscall_exit
-import "./std/syscalls/socket" :: syscall_socket, syscall_bind, 
+import "./std/syscalls/socket" :: syscall_socket, syscall_bind,
         syscall_listen, syscall_accept
 
 func main() {
@@ -9,7 +9,7 @@ func main() {
     ~ AF_INET = 2 in u16
     server_addr[0] = 2;
     server_addr[1] = 0;
-    ~ port 6969 
+    ~ port 6969
     server_addr[2] = 0x1b;
     server_addr[3] = 0x39;
     server_addr[4] = 0;
@@ -42,7 +42,7 @@ func main() {
             syscall_write(client_fd, "Content-Length: 30\r\n");
             syscall_write(client_fd, "\r\n",2);
             syscall_write(client_fd, "<h1>Hello World Form Nmet</h1>",30);
-            
+
             syscall_close(client_fd);
         }
     }
