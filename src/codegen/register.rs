@@ -55,26 +55,67 @@ pub enum Reg {
 
 #[allow(non_snake_case)]
 impl Reg {
-
     pub fn is_new_8bit_reg(&self) -> bool {
-        matches!(self, Self::SPL| Self::BPL | Self::SIL | Self::DIL)
+        matches!(self, Self::SPL | Self::BPL | Self::SIL | Self::DIL)
     }
 
     pub fn is_extended(&self) -> bool {
-        matches!(self, Self::R8 | Self::R9 | Self::R8D | Self::R9D
-            | Self::R8W | Self::R9W | Self::R8B | Self::R9B)
+        matches!(
+            self,
+            Self::R8
+                | Self::R9
+                | Self::R8D
+                | Self::R9D
+                | Self::R8W
+                | Self::R9W
+                | Self::R8B
+                | Self::R9B
+        )
     }
 
     pub fn size(&self) -> u8 {
         match self {
-            Self::RAX | Self::RCX | Self::RDX | Self::RBX 
-            | Self::RSP | Self::RBP | Self::RSI | Self::RDI 
-            | Self::R8  | Self::R9 => 64u8,
-            Self::EAX | Self::ECX | Self::EDX | Self::EBX | Self::ESP 
-            | Self::EBP | Self::ESI | Self::EDI | Self::R8D | Self::R9D => 32u8,
-            Self::AX | Self::CX | Self::DX | Self::BX | Self::SP | Self::BP | Self::SI | Self::DI | Self::R8W | Self::R9W => 16u8, 
-            Self::AL | Self::CL | Self::DL | Self::BL | Self::SPL | Self::BPL | Self::SIL | Self::DIL | Self::R8B | Self::R9B => 8u8,
-            Self::AH| Self::CH| Self::DH| Self::BH => 8u8,
+            Self::RAX
+            | Self::RCX
+            | Self::RDX
+            | Self::RBX
+            | Self::RSP
+            | Self::RBP
+            | Self::RSI
+            | Self::RDI
+            | Self::R8
+            | Self::R9 => 64u8,
+            Self::EAX
+            | Self::ECX
+            | Self::EDX
+            | Self::EBX
+            | Self::ESP
+            | Self::EBP
+            | Self::ESI
+            | Self::EDI
+            | Self::R8D
+            | Self::R9D => 32u8,
+            Self::AX
+            | Self::CX
+            | Self::DX
+            | Self::BX
+            | Self::SP
+            | Self::BP
+            | Self::SI
+            | Self::DI
+            | Self::R8W
+            | Self::R9W => 16u8,
+            Self::AL
+            | Self::CL
+            | Self::DL
+            | Self::BL
+            | Self::SPL
+            | Self::BPL
+            | Self::SIL
+            | Self::DIL
+            | Self::R8B
+            | Self::R9B => 8u8,
+            Self::AH | Self::CH | Self::DH | Self::BH => 8u8,
         }
     }
 
@@ -88,102 +129,82 @@ impl Reg {
             Self::RBP | Self::EBP | Self::BP | Self::BPL | Self::CH => 5u8,
             Self::RSI | Self::ESI | Self::SI | Self::SIL | Self::DH => 6u8,
             Self::RDI | Self::EDI | Self::DI | Self::DIL | Self::BH => 7u8,
-            Self::R8  | Self::R8D | Self::R8W | Self::R8B => 0u8,
-            Self::R9  | Self::R9D | Self::R9W | Self::R9B => 1u8,
+            Self::R8 | Self::R8D | Self::R8W | Self::R8B => 0u8,
+            Self::R9 | Self::R9D | Self::R9W | Self::R9B => 1u8,
         }
     }
 
     pub fn convert(&self, size: u8) -> Self {
         match self {
-            Self::RAX | Self::EAX | Self::AX | Self::AL => {
-                match size {
-                    1 => Self::AL,
-                    2 => Self::AX,
-                    4 => Self::EAX,
-                    8 => Self::RAX,
-                    _ => unreachable!(),
-                }
+            Self::RAX | Self::EAX | Self::AX | Self::AL => match size {
+                1 => Self::AL,
+                2 => Self::AX,
+                4 => Self::EAX,
+                8 => Self::RAX,
+                _ => unreachable!(),
             },
-            Self::RCX | Self::ECX | Self::CX | Self::CL => {
-                match size {
-                    1 => Self::CL,
-                    2 => Self::CX,
-                    4 => Self::ECX,
-                    8 => Self::RCX,
-                    _ => unreachable!(),
-                }
+            Self::RCX | Self::ECX | Self::CX | Self::CL => match size {
+                1 => Self::CL,
+                2 => Self::CX,
+                4 => Self::ECX,
+                8 => Self::RCX,
+                _ => unreachable!(),
             },
-            Self::RDX | Self::EDX | Self::DX | Self::DL => {
-                match size {
-                    1 => Self::DL,
-                    2 => Self::DX,
-                    4 => Self::EDX,
-                    8 => Self::RDX,
-                    _ => unreachable!(),
-                }
+            Self::RDX | Self::EDX | Self::DX | Self::DL => match size {
+                1 => Self::DL,
+                2 => Self::DX,
+                4 => Self::EDX,
+                8 => Self::RDX,
+                _ => unreachable!(),
             },
-            Self::RBX | Self::EBX | Self::BX | Self::BL => {
-                match size {
-                    1 => Self::BL,
-                    2 => Self::BX,
-                    4 => Self::EBX,
-                    8 => Self::RBX,
-                    _ => unreachable!(),
-                }
+            Self::RBX | Self::EBX | Self::BX | Self::BL => match size {
+                1 => Self::BL,
+                2 => Self::BX,
+                4 => Self::EBX,
+                8 => Self::RBX,
+                _ => unreachable!(),
             },
-            Self::RSP | Self::ESP | Self::SP | Self::SPL | Self::AH => {
-                match size {
-                    1 => Self::SPL,
-                    2 => Self::SP,
-                    4 => Self::ESP,
-                    8 => Self::RSP,
-                    _ => unreachable!(),
-                }
+            Self::RSP | Self::ESP | Self::SP | Self::SPL | Self::AH => match size {
+                1 => Self::SPL,
+                2 => Self::SP,
+                4 => Self::ESP,
+                8 => Self::RSP,
+                _ => unreachable!(),
             },
-            Self::RBP | Self::EBP | Self::BP | Self::BPL | Self::CH => {
-                match size {
-                    1 => Self::BPL,
-                    2 => Self::BP,
-                    4 => Self::EBP,
-                    8 => Self::RBP,
-                    _ => unreachable!(),
-                }
+            Self::RBP | Self::EBP | Self::BP | Self::BPL | Self::CH => match size {
+                1 => Self::BPL,
+                2 => Self::BP,
+                4 => Self::EBP,
+                8 => Self::RBP,
+                _ => unreachable!(),
             },
-            Self::RSI | Self::ESI | Self::SI | Self::SIL | Self::DH => {
-                match size {
-                    1 => Self::SIL,
-                    2 => Self::SI,
-                    4 => Self::ESI,
-                    8 => Self::RSI,
-                    _ => unreachable!(),
-                }
+            Self::RSI | Self::ESI | Self::SI | Self::SIL | Self::DH => match size {
+                1 => Self::SIL,
+                2 => Self::SI,
+                4 => Self::ESI,
+                8 => Self::RSI,
+                _ => unreachable!(),
             },
-            Self::RDI | Self::EDI | Self::DI | Self::DIL | Self::BH => {
-                match size {
-                    1 => Self::DIL,
-                    2 => Self::DI,
-                    4 => Self::EDI,
-                    8 => Self::RDI,
-                    _ => unreachable!(),
-                }
+            Self::RDI | Self::EDI | Self::DI | Self::DIL | Self::BH => match size {
+                1 => Self::DIL,
+                2 => Self::DI,
+                4 => Self::EDI,
+                8 => Self::RDI,
+                _ => unreachable!(),
             },
-            Self::R8  | Self::R8D | Self::R8W | Self::R8B => {
-                match size {
-                    1 => Self::R8B,
-                    2 => Self::R8W,
-                    4 => Self::R8D,
-                    8 => Self::R8,
-                    _ => unreachable!(),
-                }
+            Self::R8 | Self::R8D | Self::R8W | Self::R8B => match size {
+                1 => Self::R8B,
+                2 => Self::R8W,
+                4 => Self::R8D,
+                8 => Self::R8,
+                _ => unreachable!(),
             },
-            Self::R9  | Self::R9D | Self::R9W | Self::R9B => {
-                match size {
-                    1 => Self::R9B,
-                    2 => Self::R9W,
-                    4 => Self::R9D,
-                    8 => Self::R9,
-                    _ => unreachable!(),
-                }
+            Self::R9 | Self::R9D | Self::R9W | Self::R9B => match size {
+                1 => Self::R9B,
+                2 => Self::R9W,
+                4 => Self::R9D,
+                8 => Self::R9,
+                _ => unreachable!(),
             },
         }
     }

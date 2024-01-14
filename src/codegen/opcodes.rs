@@ -1,11 +1,35 @@
 use crate::codegen::Opr::*;
 
-use super::{mnemonic::Mnemonic::{self, *}, instructions::{Oprs::{self,*}, Instr, ModrmType::{self,*}}, register::Reg};
+use super::{
+    instructions::{
+        Instr,
+        ModrmType::{self, *},
+        Oprs::{self, *},
+    },
+    mnemonic::Mnemonic::{self, *},
+    register::Reg,
+};
 
-macro_rules! rm_8 { () => {R8(_) | Mem(_)}; }
-macro_rules! rm_16_64 { () => {R64(_) | R32(_) | R16(_) | Mem(_)}; }
-macro_rules! r_16_64 { () => {R64(_) | R32(_) | R16(_)}; }
-macro_rules! r_16_32 { () => {R32(_) | R16(_)}; }
+macro_rules! rm_8 {
+    () => {
+        R8(_) | Mem(_)
+    };
+}
+macro_rules! rm_16_64 {
+    () => {
+        R64(_) | R32(_) | R16(_) | Mem(_)
+    };
+}
+macro_rules! r_16_64 {
+    () => {
+        R64(_) | R32(_) | R16(_)
+    };
+}
+macro_rules! r_16_32 {
+    () => {
+        R32(_) | R16(_)
+    };
+}
 
 pub fn opcode(instr: &Instr) -> (u16, ModrmType) {
     match (instr.mnem, instr.oprs) {
@@ -17,8 +41,8 @@ pub fn opcode(instr: &Instr) -> (u16, ModrmType) {
         (Sub, Two(rm_16_64!(), r_16_32!())) => (0x81, Ext(5)),
         (Idiv, One(R64(Reg::RDX))) => (0xf7, Ext(7)),
         (Syscall, Oprs::None) => (0x0f05, ModrmType::None),
-        (Leave, Oprs::None) => (0xc9,ModrmType::None),
-        (Nop, Oprs::None) => (0x90,ModrmType::None),
+        (Leave, Oprs::None) => (0xc9, ModrmType::None),
+        (Nop, Oprs::None) => (0x90, ModrmType::None),
         (Mul, One(R64(Reg::RDX))) => (0xf7, Ext(4)),
         (Imul, Two(r_16_64!(), rm_16_64!())) => (0x0faf, Modrm),
         (Or, Two(rm_16_64!(), r_16_64!())) => (0x09, Modrm),
@@ -48,4 +72,3 @@ pub fn opcode(instr: &Instr) -> (u16, ModrmType) {
         _ => unimplemented!("{instr}"),
     }
 }
-

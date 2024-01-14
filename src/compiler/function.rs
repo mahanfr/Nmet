@@ -1,12 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    codegen::{
-        instructions::Instr,
-        memory::MemAddr,
-        register::Reg::*,
-        mnemonic::Mnemonic::*,
-    },
+    codegen::{instructions::Instr, memory::MemAddr, mnemonic::Mnemonic::*, register::Reg::*},
     compiler::{ScopeBlock, VariableMap},
     parser::{
         block::BlockType,
@@ -45,7 +40,7 @@ pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
         }
         cc.variables_map.insert(ident, map);
         cc.mem_offset += 8;
-        cc.codegen.push_instr(Instr::new2(Sub,RSP, 8));
+        cc.codegen.push_instr(Instr::new2(Sub, RSP, 8));
     }
 }
 
@@ -77,8 +72,8 @@ pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
     // if !cc.variables_map.is_empty() {
     // }
     if f.ident == "main" {
-        cc.codegen.push_instr(Instr::new2(Mov,RAX, 60));
-        cc.codegen.push_instr(Instr::new2(Mov,RDI, 0));
+        cc.codegen.push_instr(Instr::new2(Mov, RAX, 60));
+        cc.codegen.push_instr(Instr::new2(Mov, RDI, 0));
         cc.codegen.push_instr(Instr::new0(Syscall));
     } else {
         // revert rbp

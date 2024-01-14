@@ -58,9 +58,12 @@ fn compile_command(arg: &mut CliArgs) {
 /// Runs External commands for generating the executable
 pub fn compile_to_exc(path: String) {
     let program_name = get_program_name(path);
-    println!("[info] Assembling for {} - generaiting output.o", assembler_target());
+    println!(
+        "[info] Assembling for {} - generaiting output.o",
+        assembler_target()
+    );
     let nasm_output = Command::new("nasm")
-        .arg(format!("-f{}",assembler_target()))
+        .arg(format!("-f{}", assembler_target()))
         .arg("-o")
         .arg(format!("./build/{}.o", program_name))
         .arg(format!("./build/{}.asm", program_name))

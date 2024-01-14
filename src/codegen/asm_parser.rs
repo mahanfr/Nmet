@@ -6,8 +6,8 @@ use crate::lexer::{Lexer, TokenType};
 use super::{
     instructions::{Instr, Opr, Oprs},
     memory::MemAddr,
-    register::Reg,
     mnemonic::Mnemonic::{self, *},
+    register::Reg,
 };
 
 pub fn parse_asm(source: String) -> Instr {
@@ -127,10 +127,7 @@ fn test_mnemonic_parsing() {
         Instr::new2(Mov, Reg::RAX, Opr::Imm8(1)),
         parse_asm("mov rax, 1".to_string())
     );
-    assert_eq!(
-        Instr::new0(Syscall),
-        parse_asm("syscall".to_string())
-    );
+    assert_eq!(Instr::new0(Syscall), parse_asm("syscall".to_string()));
     assert_eq!(
         Instr::new1(Push, Reg::RAX),
         parse_asm("push rax".to_string())

@@ -1,4 +1,9 @@
-use super::{instructions::{Instr, Oprs, Opr, ModrmType}, mnemonic::Mnemonic, opcodes::opcode, memory::{MemAddrType, MemAddr}};
+use super::{
+    instructions::{Instr, ModrmType, Opr, Oprs},
+    memory::{MemAddr, MemAddrType},
+    mnemonic::Mnemonic,
+    opcodes::opcode,
+};
 
 macro_rules! Register {
     ($a:ident) => {
@@ -20,20 +25,18 @@ pub fn assemble_instr(instr: &Instr) -> Vec<u8> {
     let (mut opcode, modrmtype) = opcode(&ninstr);
     let mut modrm_val = Vec::<u8>::new();
     match modrmtype {
-        ModrmType::Add => {
-            match instr.oprs {
-                Oprs::One(Register!(r)) | Oprs::Two(Register!(r), _) => {
-                    opcode += r.opcode() as u16;
-                }
-                _ => unreachable!("{instr}: Unecxpected behavior!"),
+        ModrmType::Add => match instr.oprs {
+            Oprs::One(Register!(r)) | Oprs::Two(Register!(r), _) => {
+                opcode += r.opcode() as u16;
             }
+            _ => unreachable!("{instr}: Unecxpected behavior!"),
         },
         ModrmType::Modrm => {
             modrm_val = modrm(&instr.oprs);
-        },
+        }
         ModrmType::Ext(ex) => {
             modrm_val = modrm_ex(ex, &instr.oprs);
-        },
+        }
         ModrmType::None => (),
     }
     if opcode <= 0xff {
@@ -52,9 +55,9 @@ pub fn assemble_instr(instr: &Instr) -> Vec<u8> {
                     bytes.extend(val.to_le_bytes());
                 }
             } else {
-                bytes.extend(val.to_le_bytes().iter().take(size/8));
+                bytes.extend(val.to_le_bytes().iter().take(size / 8));
             }
-        },
+        }
         _ => (),
     }
     bytes.extend(modrm_val);
@@ -66,64 +69,92 @@ fn rex(instr: &Instr) -> Vec<u8> {
         Oprs::Two(Register!(r1), Register!(r2)) => {
             let mut bytes = vec![];
             let mut rex: u8 = 0x40;
-            if r1.is_extended() { rex |= 0b0100; }
-            if r2.is_extended() { rex |= 0b0001; }
-            if r1.size() == 64 { rex |= 0b1000; }
-            if r1.size() == 16 { bytes.push(0x66); }
+            if r1.is_extended() {
+                rex |= 0b0100;
+            }
+            if r2.is_extended() {
+                rex |= 0b0001;
+            }
+            if r1.size() == 64 {
+                rex |= 0b1000;
+            }
+            if r1.size() == 16 {
+                bytes.push(0x66);
+            }
             if rex != 0x40 || r1.is_new_8bit_reg() || r2.is_new_8bit_reg() {
                 bytes.push(rex);
             }
             bytes
-        },
-        Oprs::Two(Register!(r1), Opr::Mem(mem))
-            | Oprs::Two(Opr::Mem(mem), Register!(r1)) => { 
+        }
+        Oprs::Two(Register!(r1), Opr::Mem(mem)) | Oprs::Two(Opr::Mem(mem), Register!(r1)) => {
             let mut bytes = vec![];
             let mut rex: u8 = 0x40;
-            if r1.is_extended() { rex |= 0b0100; }
-            if mem.register.is_extended() { rex |= 0b0001; }
+            if r1.is_extended() {
+                rex |= 0b0100;
+            }
+            if mem.register.is_extended() {
+                rex |= 0b0001;
+            }
             if let Some(s_reg) = mem.s_register {
                 if s_reg.is_extended() {
                     rex |= 0b0010;
                 }
             };
-            if r1.size() == 64 { rex |= 0b1000; }
-            if r1.size() == 16 { bytes.push(0x66); }
+            if r1.size() == 64 {
+                rex |= 0b1000;
+            }
+            if r1.size() == 16 {
+                bytes.push(0x66);
+            }
             if rex != 0x40 {
                 bytes.push(rex);
             }
             bytes
-        },
+        }
         Oprs::Two(Register!(r), _) => {
             let mut bytes = vec![];
             let mut rex: u8 = 0x40;
-            if r.is_extended() { rex |= 0b0100; }
-            if r.size() == 64 { rex |= 0b1000; }
-            if r.size() == 16 { bytes.push(0x66); }
+            if r.is_extended() {
+                rex |= 0b0100;
+            }
+            if r.size() == 64 {
+                rex |= 0b1000;
+            }
+            if r.size() == 16 {
+                bytes.push(0x66);
+            }
             if rex != 0x40 || r.is_new_8bit_reg() {
                 bytes.push(rex);
             }
             bytes
-        },
-        Oprs::Two(Opr::Mem(mem), _) | 
-            Oprs::One(Opr::Mem(mem)) => {
-                let mut bytes = vec![];
-                let mut rex: u8 = 0x40;
-                if mem.register.is_extended() { rex |= 0b0100; }
-                if let Some(s_reg) = mem.s_register {
-                    if s_reg.is_extended() {
-                        rex |= 0b0010;
-                    }
-                };
-                if mem.size * 8 == 64 { rex |= 0b1000; }
-                if mem.size * 8 == 16 { bytes.push(0x66); }
-                if rex != 0x40 {
-                    bytes.push(rex);
+        }
+        Oprs::Two(Opr::Mem(mem), _) | Oprs::One(Opr::Mem(mem)) => {
+            let mut bytes = vec![];
+            let mut rex: u8 = 0x40;
+            if mem.register.is_extended() {
+                rex |= 0b0100;
+            }
+            if let Some(s_reg) = mem.s_register {
+                if s_reg.is_extended() {
+                    rex |= 0b0010;
                 }
-                bytes
-            },
+            };
+            if mem.size * 8 == 64 {
+                rex |= 0b1000;
+            }
+            if mem.size * 8 == 16 {
+                bytes.push(0x66);
+            }
+            if rex != 0x40 {
+                bytes.push(rex);
+            }
+            bytes
+        }
         Oprs::One(Register!(r)) => {
             let mut rex: u8 = 0x40;
-            if r.is_extended() { rex |= 0b0100; }
+            if r.is_extended() {
+                rex |= 0b0100;
+            }
             if rex != 0x40 {
                 vec![rex];
             }
@@ -141,10 +172,10 @@ fn validate_opr_sizes(instr: &Instr) -> usize {
         match op1 {
             Opr::R64(r) | Opr::R32(r) | Opr::R16(r) | Opr::R8(r) => {
                 lhs_size = r.size();
-            },
+            }
             Opr::Mem(mem) => {
                 lhs_size = mem.size * 8;
-            },
+            }
             Opr::Imm8(_) | Opr::Imm32(_) | Opr::Imm64(_) => {
                 panic!("Error: First opr for instr ({instr}) can not be an Immidiate value!");
             }
@@ -152,18 +183,18 @@ fn validate_opr_sizes(instr: &Instr) -> usize {
         match op2 {
             Opr::R64(r) | Opr::R32(r) | Opr::R16(r) | Opr::R8(r) => {
                 rhs_size = r.size();
-            },
+            }
             Opr::Mem(mem) => {
                 if mem.size != 0 {
                     rhs_size = mem.size * 8;
                 } else {
                     rhs_size = lhs_size;
                 }
-            },
+            }
             Opr::Imm8(_) | Opr::Imm32(_) | Opr::Imm64(_) => {
                 if lhs_size != 0 {
                     rhs_size = lhs_size;
-                }else {
+                } else {
                     panic!("Error: oprand size is unknown for instr ({instr})!");
                 }
             }
@@ -178,15 +209,14 @@ fn validate_opr_sizes(instr: &Instr) -> usize {
     } else {
         0
     }
-
 }
 
 fn align_imm_oprs_to_reg(instr: &Instr) -> Instr {
     match (instr.mnem, instr.oprs) {
         (Mnemonic::Mov, Oprs::Two(Opr::R64(r), Opr::Imm32(val) | Opr::Imm8(val))) => {
             Instr::new2(Mnemonic::Mov, Opr::R32(r.convert(8)), Opr::Imm32(val));
-        }, 
-        _ => ()
+        }
+        _ => (),
     }
     *instr
 }
@@ -194,14 +224,12 @@ fn align_imm_oprs_to_reg(instr: &Instr) -> Instr {
 fn modrm(oprs: &Oprs) -> Vec<u8> {
     match oprs {
         Oprs::Two(Register!(r1), Register!(r2)) => {
-           vec![_modrm(0b11, r1.opcode(), r2.opcode())] 
-        },
+            vec![_modrm(0b11, r1.opcode(), r2.opcode())]
+        }
         Oprs::Two(Register!(r), Opr::Mem(mem)) | Oprs::Two(Register!(r), Opr::Mem(mem)) => {
             _mem_modrm(r.opcode(), mem)
-        },
-        Oprs::Two(Opr::Mem(mem), _) | Oprs::One(Opr::Mem(mem)) => {
-            _mem_modrm(0, mem)
         }
+        Oprs::Two(Opr::Mem(mem), _) | Oprs::One(Opr::Mem(mem)) => _mem_modrm(0, mem),
         _ => unreachable!(),
     }
 }
@@ -209,24 +237,22 @@ fn modrm(oprs: &Oprs) -> Vec<u8> {
 fn modrm_ex(ex: u8, oprs: &Oprs) -> Vec<u8> {
     match oprs {
         Oprs::Two(Register!(r1), _) | Oprs::One(Register!(r1)) => {
-           vec![_modrm(0b11, ex, r1.opcode())] 
-        },
-        Oprs::Two(Opr::Mem(mem), _) | Oprs::One(Opr::Mem(mem)) => {
-            _mem_modrm(ex, mem)
+            vec![_modrm(0b11, ex, r1.opcode())]
         }
+        Oprs::Two(Opr::Mem(mem), _) | Oprs::One(Opr::Mem(mem)) => _mem_modrm(ex, mem),
         _ => unreachable!(),
     }
 }
 
-fn _mem_modrm(r:u8, mem: &MemAddr) -> Vec<u8> {
+fn _mem_modrm(r: u8, mem: &MemAddr) -> Vec<u8> {
     match mem.addr_type {
         MemAddrType::Address => {
             if mem.register.opcode() != 0x04 && mem.register.opcode() != 0x05 {
-                vec![_modrm(0b11,mem.register.opcode(), r)]
+                vec![_modrm(0b11, mem.register.opcode(), r)]
             } else {
                 unreachable!();
             }
-        },
+        }
         MemAddrType::Disp => {
             if mem.disp >= i8::MIN as i32 && mem.disp <= i8::MAX as i32 {
                 if mem.register.opcode() != 0x4 {
@@ -244,7 +270,7 @@ fn _mem_modrm(r:u8, mem: &MemAddr) -> Vec<u8> {
                     unreachable!();
                 }
             }
-        },
+        }
         MemAddrType::Sib => {
             let mut bytes = vec![];
             if mem.disp == 0 {
@@ -261,7 +287,7 @@ fn _mem_modrm(r:u8, mem: &MemAddr) -> Vec<u8> {
                 bytes.extend(mem.disp.to_le_bytes());
                 bytes
             }
-        },
+        }
     }
 }
 

@@ -113,7 +113,6 @@ pub enum MemAddrType {
 }
 
 impl MemAddr {
-
     fn validate_size(size: &u8) -> bool {
         matches!(size, 0 | 1 | 2 | 4 | 8)
     }
@@ -144,7 +143,7 @@ impl MemAddr {
 
     pub fn new_disp(reg: Reg, disp: i32) -> Self {
         let mut res = Self::new(reg);
-        res.addr_type =  MemAddrType::Disp;
+        res.addr_type = MemAddrType::Disp;
         res.disp = disp;
         res
     }
@@ -224,4 +223,3 @@ impl Display for MemAddr {
         write!(f, "{view}")
     }
 }
-
