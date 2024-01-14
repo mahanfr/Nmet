@@ -167,7 +167,7 @@ fn rex(instr: &Instr) -> Vec<u8> {
 
 fn validate_opr_sizes(instr: &Instr) -> usize {
     if let Oprs::Two(op1, op2) = instr.oprs {
-        let lhs_size;
+        let mut lhs_size;
         let rhs_size;
         match op1 {
             Opr::R64(r) | Opr::R32(r) | Opr::R16(r) | Opr::R8(r) => {
@@ -183,6 +183,9 @@ fn validate_opr_sizes(instr: &Instr) -> usize {
         match op2 {
             Opr::R64(r) | Opr::R32(r) | Opr::R16(r) | Opr::R8(r) => {
                 rhs_size = r.size();
+                if lhs_size == 0 {
+                    lhs_size = rhs_size;
+                }
             }
             Opr::Mem(mem) => {
                 if mem.size != 0 {
@@ -200,9 +203,6 @@ fn validate_opr_sizes(instr: &Instr) -> usize {
             }
         }
         if rhs_size == 0 || lhs_size == 0 {
-            panic!("Error: oprand size is unknown for instr ({instr})!");
-        }
-        if rhs_size != lhs_size {
             panic!("Error: oprand size is unknown for instr ({instr})!");
         }
         lhs_size as usize

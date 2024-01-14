@@ -9,7 +9,7 @@ use std::{collections::HashMap, fmt::Display};
 
 use self::{
     instructions::{Instr, Opr},
-    mnemonic::Mnemonic,
+    mnemonic::Mnemonic, assemble::assemble_instr,
 };
 
 type RelocatableInstr = (String, usize);
@@ -30,8 +30,7 @@ impl InstrData {
             mnemonic: instr.mnem,
             is_compelete: true,
             refrence: String::new(),
-            // bytes: assemble_instr(&instr),
-            bytes: Vec::new(),
+            bytes: assemble_instr(&instr),
             display: instr.to_string(),
         }
     }
