@@ -78,18 +78,113 @@ impl Reg {
         }
     }
 
-    pub fn opcode(&self) -> &'static u8 {
+    pub fn opcode(&self) -> u8 {
         match self {
-            Self::RAX | Self::EAX | Self::AX | Self::AL => &0u8,
-            Self::RCX | Self::ECX | Self::CX | Self::CL => &1u8,
-            Self::RDX | Self::EDX | Self::DX | Self::DL => &2u8,
-            Self::RBX | Self::EBX | Self::BX | Self::BL => &3u8,
-            Self::RSP | Self::ESP | Self::SP | Self::SPL | Self::AH => &4u8,
-            Self::RBP | Self::EBP | Self::BP | Self::BPL | Self::CH => &5u8,
-            Self::RSI | Self::ESI | Self::SI | Self::SIL | Self::DH => &6u8,
-            Self::RDI | Self::EDI | Self::DI | Self::DIL | Self::BH => &7u8,
-            Self::R8  | Self::R8D | Self::R8W | Self::R8B => &0u8,
-            Self::R9  | Self::R9D | Self::R9W | Self::R9B => &0u8,
+            Self::RAX | Self::EAX | Self::AX | Self::AL => 0u8,
+            Self::RCX | Self::ECX | Self::CX | Self::CL => 1u8,
+            Self::RDX | Self::EDX | Self::DX | Self::DL => 2u8,
+            Self::RBX | Self::EBX | Self::BX | Self::BL => 3u8,
+            Self::RSP | Self::ESP | Self::SP | Self::SPL | Self::AH => 4u8,
+            Self::RBP | Self::EBP | Self::BP | Self::BPL | Self::CH => 5u8,
+            Self::RSI | Self::ESI | Self::SI | Self::SIL | Self::DH => 6u8,
+            Self::RDI | Self::EDI | Self::DI | Self::DIL | Self::BH => 7u8,
+            Self::R8  | Self::R8D | Self::R8W | Self::R8B => 0u8,
+            Self::R9  | Self::R9D | Self::R9W | Self::R9B => 1u8,
+        }
+    }
+
+    pub fn convert(&self, size: u8) -> Self {
+        match self {
+            Self::RAX | Self::EAX | Self::AX | Self::AL => {
+                match size {
+                    1 => Self::AL,
+                    2 => Self::AX,
+                    4 => Self::EAX,
+                    8 => Self::RAX,
+                    _ => unreachable!(),
+                }
+            },
+            Self::RCX | Self::ECX | Self::CX | Self::CL => {
+                match size {
+                    1 => Self::CL,
+                    2 => Self::CX,
+                    4 => Self::ECX,
+                    8 => Self::RCX,
+                    _ => unreachable!(),
+                }
+            },
+            Self::RDX | Self::EDX | Self::DX | Self::DL => {
+                match size {
+                    1 => Self::DL,
+                    2 => Self::DX,
+                    4 => Self::EDX,
+                    8 => Self::RDX,
+                    _ => unreachable!(),
+                }
+            },
+            Self::RBX | Self::EBX | Self::BX | Self::BL => {
+                match size {
+                    1 => Self::BL,
+                    2 => Self::BX,
+                    4 => Self::EBX,
+                    8 => Self::RBX,
+                    _ => unreachable!(),
+                }
+            },
+            Self::RSP | Self::ESP | Self::SP | Self::SPL | Self::AH => {
+                match size {
+                    1 => Self::SPL,
+                    2 => Self::SP,
+                    4 => Self::ESP,
+                    8 => Self::RSP,
+                    _ => unreachable!(),
+                }
+            },
+            Self::RBP | Self::EBP | Self::BP | Self::BPL | Self::CH => {
+                match size {
+                    1 => Self::BPL,
+                    2 => Self::BP,
+                    4 => Self::EBP,
+                    8 => Self::RBP,
+                    _ => unreachable!(),
+                }
+            },
+            Self::RSI | Self::ESI | Self::SI | Self::SIL | Self::DH => {
+                match size {
+                    1 => Self::SIL,
+                    2 => Self::SI,
+                    4 => Self::ESI,
+                    8 => Self::RSI,
+                    _ => unreachable!(),
+                }
+            },
+            Self::RDI | Self::EDI | Self::DI | Self::DIL | Self::BH => {
+                match size {
+                    1 => Self::DIL,
+                    2 => Self::DI,
+                    4 => Self::EDI,
+                    8 => Self::RDI,
+                    _ => unreachable!(),
+                }
+            },
+            Self::R8  | Self::R8D | Self::R8W | Self::R8B => {
+                match size {
+                    1 => Self::R8B,
+                    2 => Self::R8W,
+                    4 => Self::R8D,
+                    8 => Self::R8,
+                    _ => unreachable!(),
+                }
+            },
+            Self::R9  | Self::R9D | Self::R9W | Self::R9B => {
+                match size {
+                    1 => Self::R9B,
+                    2 => Self::R9W,
+                    4 => Self::R9D,
+                    8 => Self::R9,
+                    _ => unreachable!(),
+                }
+            },
         }
     }
 
