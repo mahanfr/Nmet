@@ -14,13 +14,11 @@ pub fn parse_asm(source: String) -> Instr {
     let mut lexer = Lexer::new(format!("asm:{source}"), source);
     let mnmemonic = parse_mnemonic(&mut lexer);
     let mut ops = Vec::<Opr>::new();
-    let mut airty = 0;
     loop {
         if lexer.get_token().is_empty() {
             break;
         }
         ops.push(parse_op(&mut lexer));
-        airty += 1;
         if lexer.get_token_type() == TokenType::Comma {
             lexer.match_token(TokenType::Comma);
             continue;
@@ -30,8 +28,8 @@ pub fn parse_asm(source: String) -> Instr {
     }
     let oprs = match ops.len() {
         0 => Oprs::None,
-        1 => Oprs::One(ops[0]),
-        2 => Oprs::Two(ops[0], ops[1]),
+        1 => Oprs::One(ops[0].clone()),
+        2 => Oprs::Two(ops[0].clone(), ops[1].clone()),
         _ => unreachable!(),
     };
     Instr::new(mnmemonic, oprs)

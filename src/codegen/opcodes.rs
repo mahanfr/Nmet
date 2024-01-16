@@ -32,7 +32,7 @@ macro_rules! imm {
 }
 
 pub fn opcode(instr: &Instr) -> (u16, ModrmType) {
-    match (instr.mnem, instr.oprs) {
+    match (&instr.mnem, &instr.oprs) {
         (Mnemonic::Add, Two(rm_16_64!(), r_16_64!())) => (0x01, Modrm),
         (Mnemonic::Add, Two(rm_16_64!(), imm!())) => (0x81, Ext(0)),
         (Mov, Two(rm_8!(), R8(_))) => (0x88, Modrm),

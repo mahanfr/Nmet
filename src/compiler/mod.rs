@@ -4,6 +4,7 @@ mod function;
 mod stmts;
 mod variables;
 
+use crate::codegen::instructions::Opr;
 use crate::codegen::{register::Reg, Codegen};
 use crate::compiler::{bif::Bif, function::compile_function};
 use crate::elf::generate_elf;
@@ -205,9 +206,10 @@ fn compile_block(cc: &mut CompilerContext, block: &Block, block_type: BlockType)
                 let mut did_break: bool = false;
                 for s_block in cc.scoped_blocks.iter().rev() {
                     if let BlockType::Loop(loc) = s_block.block_type {
-                        // assert!(false, "Not Implemented yet!");
-                        cc.codegen.jmp(format!(".LE{}", loc.1));
-                        //cc.codegen.push_instr(Instr::jmp(0));
+                        cc.codegen.instr1(
+                            crate::codegen::mnemonic::Mnemonic::Jmp,
+                            Opr::Rel(format!(".LE{}", loc.1)),
+                        );
                         did_break = true;
                         break;
                     }
@@ -221,7 +223,10 @@ fn compile_block(cc: &mut CompilerContext, block: &Block, block_type: BlockType)
                 for s_block in cc.scoped_blocks.iter().rev() {
                     if let BlockType::Loop(loc) = s_block.block_type {
                         // assert!(false, "Not Implemented yet!");
-                        cc.codegen.jmp(format!(".L{}", loc.0));
+                        cc.codegen.instr1(
+                            crate::codegen::mnemonic::Mnemonic::Jmp,
+                            Opr::Rel(format!(".L{}", loc.1)),
+                        );
                         //cc.codegen.push_instr(Instr::jmp(0));
                         did_cont = true;
                         break;

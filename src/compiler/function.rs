@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    codegen::{instructions::Instr, memory::MemAddr, mnemonic::Mnemonic::*, register::Reg::*},
+    codegen::{memory::MemAddr, mnemonic::Mnemonic::*, register::Reg::*},
     compiler::{ScopeBlock, VariableMap},
     parser::{
         block::BlockType,
@@ -30,7 +30,7 @@ pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
             // );
             let mem_acss = MemAddr::new_disp_s(map.vtype.item_size(), RBP, map.stack_offset());
             let reg = function_args_register_sized(args_count, &map.vtype);
-            cc.codegen.push_instr(Instr::new2(Mov, mem_acss, reg));
+            cc.codegen.instr2(Mov, mem_acss, reg);
         } else {
             todo!();
             // let mem_overload = format!("{} [rbp+{}]", mem_word(8), 16 + (args_count - 6) * 8);
@@ -40,7 +40,7 @@ pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
         }
         cc.variables_map.insert(ident, map);
         cc.mem_offset += 8;
-        cc.codegen.push_instr(Instr::new2(Sub, RSP, 8));
+        cc.codegen.instr2(Sub, RSP, 8);
     }
 }
 
@@ -62,8 +62,8 @@ pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
     // let index_2 = cc.codegen.place_holder();
     // let index_3 = cc.codegen.place_holder();
 
-    cc.codegen.push_instr(Instr::new1(Push, RBP));
-    cc.codegen.push_instr(Instr::new2(Mov, RBP, RSP));
+    cc.codegen.instr1(Push, RBP);
+    cc.codegen.instr2(Mov, RBP, RSP);
     //cc.codegen.push_instr(Instr::sub(RSP, frame_size(cc.mem_offset)));
     function_args(cc, &f.args);
     compile_block(cc, &f.block, BlockType::Function);
@@ -72,13 +72,13 @@ pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
     // if !cc.variables_map.is_empty() {
     // }
     if f.ident == "main" {
-        cc.codegen.push_instr(Instr::new2(Mov, RAX, 60));
-        cc.codegen.push_instr(Instr::new2(Mov, RDI, 0));
-        cc.codegen.push_instr(Instr::new0(Syscall));
+        cc.codegen.instr2(Mov, RAX, 60);
+        cc.codegen.instr2(Mov, RDI, 0);
+        cc.codegen.instr0(Syscall);
     } else {
         // revert rbp
-        cc.codegen.push_instr(Instr::new0(Leave));
-        cc.codegen.push_instr(Instr::new0(Ret));
+        cc.codegen.instr0(Leave);
+        cc.codegen.instr0(Ret);
         // if !cc.variables_map.is_empty() {
         //     //cc.instruct_buf.push(asm!("pop rbp"));
         //     cc.codegen.push_instr(Instr::Leave);

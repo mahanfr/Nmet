@@ -16,7 +16,7 @@ pub enum ModrmType {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Opr {
     R64(Reg),
     R32(Reg),
@@ -26,6 +26,14 @@ pub enum Opr {
     Imm8(i64),
     Imm32(i64),
     Imm64(i64),
+    Rel(String),
+    Fs(String),
+}
+
+impl Opr {
+    pub fn rel(rel: impl ToString) -> Self {
+        Self::Rel(rel.to_string())
+    }
 }
 
 impl From<MemAddr> for Opr {
@@ -78,11 +86,13 @@ impl Display for Opr {
             Self::R64(r) | Self::R32(r) | Self::R16(r) | Self::R8(r) => r.fmt(f),
             Self::Mem(m) => m.fmt(f),
             Self::Imm8(val) | Self::Imm32(val) | Self::Imm64(val) => val.fmt(f),
+            Self::Rel(refer) => refer.fmt(f),
+            Self::Fs(refer) => refer.fmt(f),
         }
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Oprs {
     None,
     One(Opr),
@@ -99,7 +109,7 @@ impl Display for Oprs {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Instr {
     pub mnem: Mnemonic,
     pub oprs: Oprs,
@@ -116,8 +126,15 @@ impl Display for Instr {
 }
 
 impl Instr {
+    pub fn replace_oprs(&mut self,oprs: Oprs) {
+        self.oprs = oprs;
+    }
+
     pub fn new(mnem: Mnemonic, oprs: Oprs) -> Self {
-        Self { mnem, oprs }
+        Self {
+            mnem,
+            oprs,
+        }
     }
 
     pub fn new0(mnem: Mnemonic) -> Self {
@@ -128,18 +145,22 @@ impl Instr {
     }
 
     pub fn new1(mnem: Mnemonic, opr: impl Into<Opr>) -> Self {
+        let opr = opr.into();
         Self {
             mnem,
-            oprs: Oprs::One(opr.into()),
+            oprs: Oprs::One(opr),
         }
     }
 
     pub fn new2(mnem: Mnemonic, opr1: impl Into<Opr>, opr2: impl Into<Opr>) -> Self {
+        let opr1 = opr1.into();
+        let opr2 = opr2.into();
         Self {
             mnem,
-            oprs: Oprs::Two(opr1.into(), opr2.into()),
+            oprs: Oprs::Two(opr1, opr2),
         }
     }
+
 }
 // #[import_instructions("./x86/instrs.txt")]
 // pub enum Instr {}

@@ -1,6 +1,6 @@
 use crate::{
     codegen::{
-        instructions::Instr,
+        instructions::Opr,
         memory::MemAddr,
         mnemonic::Mnemonic::*,
         register::Reg::{self, *},
@@ -47,7 +47,8 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
             // );
             let mem_acss = memq!(RBP, -(cc.mem_offset as i32 + 8));
             // assert!(false, "Not Implemented yet!");
-            cc.codegen.asm_mov(mem_acss, struct_tag);
+            cc.codegen
+                .instr2(Mov, mem_acss, Opr::Fs(struct_tag));
         }
         VariableType::String => {}
         _ => (),
@@ -62,9 +63,9 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
             Ok(vt) => {
                 // let mem_acss = format!("{} [rbp-{}]", mem_word(&vt), cc.mem_offset + vt.size());
                 let mem_acss = mem!(RBP, -((cc.mem_offset + vt.size()) as i32));
-                cc.codegen.push_instr(Instr::new1(Pop, RAX));
+                cc.codegen.instr1(Pop, RAX);
                 cc.codegen
-                    .push_instr(Instr::new2(Mov, mem_acss, Reg::AX_sized(&vt)));
+                    .instr2(Mov, mem_acss, Reg::AX_sized(&vt));
                 vtype = vt;
             }
             Err(msg) => {
@@ -86,7 +87,7 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
         is_mut: var.mutable,
         offset_inner: 0,
     };
-    cc.codegen.push_instr(Instr::new2(Sub, RSP, vtype.size()));
+    cc.codegen.instr2(Sub, RSP, vtype.size());
     cc.mem_offset += vtype.size();
     cc.variables_map.insert(ident, var_map);
     Ok(())

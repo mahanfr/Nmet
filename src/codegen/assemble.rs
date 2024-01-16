@@ -166,7 +166,7 @@ fn rex(instr: &Instr) -> Vec<u8> {
 }
 
 fn validate_opr_sizes(instr: &Instr) -> usize {
-    if let Oprs::Two(op1, op2) = instr.oprs {
+    if let Oprs::Two(op1, op2) = &instr.oprs {
         let mut lhs_size;
         let rhs_size;
         match op1 {
@@ -179,6 +179,7 @@ fn validate_opr_sizes(instr: &Instr) -> usize {
             Opr::Imm8(_) | Opr::Imm32(_) | Opr::Imm64(_) => {
                 panic!("Error: First opr for instr ({instr}) can not be an Immidiate value!");
             }
+            Opr::Rel(_) | Opr::Fs(_) => unreachable!(),
         }
         match op2 {
             Opr::R64(r) | Opr::R32(r) | Opr::R16(r) | Opr::R8(r) => {
@@ -201,6 +202,7 @@ fn validate_opr_sizes(instr: &Instr) -> usize {
                     panic!("Error: oprand size is unknown for instr ({instr})!");
                 }
             }
+            Opr::Rel(_) | Opr::Fs(_) => unreachable!(),
         }
         if rhs_size == 0 || lhs_size == 0 {
             panic!("Error: oprand size is unknown for instr ({instr})!");
@@ -212,13 +214,13 @@ fn validate_opr_sizes(instr: &Instr) -> usize {
 }
 
 fn align_imm_oprs_to_reg(instr: &Instr) -> Instr {
-    match (instr.mnem, instr.oprs) {
+    match (&instr.mnem, &instr.oprs) {
         (Mnemonic::Mov, Oprs::Two(Opr::R64(r), Opr::Imm32(val) | Opr::Imm8(val))) => {
-            Instr::new2(Mnemonic::Mov, Opr::R32(r.convert(8)), Opr::Imm32(val));
+            Instr::new2(Mnemonic::Mov, Opr::R32(r.convert(8)), Opr::Imm32(*val));
         }
         _ => (),
     }
-    *instr
+    instr.clone()
 }
 
 fn modrm(oprs: &Oprs) -> Vec<u8> {
@@ -226,7 +228,7 @@ fn modrm(oprs: &Oprs) -> Vec<u8> {
         Oprs::Two(Register!(r1), Register!(r2)) => {
             vec![_modrm(0b11, r1.opcode(), r2.opcode())]
         }
-        Oprs::Two(Register!(r), Opr::Mem(mem)) | Oprs::Two(Register!(r), Opr::Mem(mem)) => {
+        Oprs::Two(Register!(r), Opr::Mem(mem)) | Oprs::Two(Opr::Mem(mem), Register!(r)) => {
             _mem_modrm(r.opcode(), mem)
         }
         Oprs::Two(Opr::Mem(mem), _) | Oprs::One(Opr::Mem(mem)) => _mem_modrm(0, mem),
