@@ -81,7 +81,7 @@ pub fn compile_to_elf(path: String) {
 
     compile(&mut compiler_context, path.clone());
     impl_bifs(&mut compiler_context);
-    generate_elf(path, &compiler_context);
+    generate_elf(path, &mut compiler_context);
 }
 
 pub fn compile_to_asm(path: String) {

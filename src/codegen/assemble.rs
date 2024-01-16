@@ -11,18 +11,12 @@ macro_rules! Register {
     };
 }
 
-macro_rules! Imm {
-    ($a:ident) => {
-        Opr::Imm64($a) | Opr::Imm32($a) | Opr::Imm8($a)
-    };
-}
-
 pub fn assemble_instr(instr: &Instr) -> Vec<u8> {
     let mut bytes = vec![];
-    let size = validate_opr_sizes(&instr);
-    let ninstr = align_imm_oprs_to_reg(&instr);
-    bytes.extend(rex(&ninstr));
-    let (mut opcode, modrmtype) = opcode(&ninstr);
+    validate_opr_sizes(&instr);
+    let instr = align_imm_oprs_to_reg(&instr);
+    bytes.extend(rex(&instr));
+    let (mut opcode, modrmtype) = opcode(&instr);
     let mut modrm_val = Vec::<u8>::new();
     match modrmtype {
         ModrmType::Add => match instr.oprs {
@@ -44,23 +38,30 @@ pub fn assemble_instr(instr: &Instr) -> Vec<u8> {
     } else {
         bytes.extend(opcode.to_be_bytes());
     }
+    bytes.extend(modrm_val);
+    // if size == 0 {
+    //     if val >= i8::MIN as i64 && val <= i8::MAX as i64 {
+    //         bytes.extend(val.to_le_bytes().iter().take(1));
+    //     } else if val >= i32::MIN as i64 && val <= i32::MAX as i64 {
+    //         bytes.extend(val.to_le_bytes().iter().take(4));
+    //     } else {
+    //         bytes.extend(val.to_le_bytes());
+    //     }
+    // } else {
+    //     bytes.extend(val.to_le_bytes().iter().take(size / 8));
+    // }
     match instr.oprs {
-        Oprs::Two(_, Imm!(val)) | Oprs::One(Imm!(val)) => {
-            if size == 0 {
-                if val as u64 <= u8::MAX as u64 {
-                    bytes.extend(val.to_le_bytes().iter().take(1));
-                } else if val as u64 <= u32::MAX as u64 {
-                    bytes.extend(val.to_le_bytes().iter().take(4));
-                } else {
-                    bytes.extend(val.to_le_bytes());
-                }
-            } else {
-                bytes.extend(val.to_le_bytes().iter().take(size / 8));
-            }
+        Oprs::Two(_, Opr::Imm8(val)) | Oprs::One(Opr::Imm8(val)) => {
+             bytes.extend(val.to_le_bytes().iter().take(1));
+        }
+        Oprs::Two(_, Opr::Imm32(val)) | Oprs::One(Opr::Imm32(val)) => {
+             bytes.extend(val.to_le_bytes().iter().take(4));
+        }
+        Oprs::Two(_, Opr::Imm64(val)) | Oprs::One(Opr::Imm64(val)) => {
+             bytes.extend(val.to_le_bytes().iter().take(8));
         }
         _ => (),
     }
-    bytes.extend(modrm_val);
     bytes
 }
 
@@ -216,11 +217,10 @@ fn validate_opr_sizes(instr: &Instr) -> usize {
 fn align_imm_oprs_to_reg(instr: &Instr) -> Instr {
     match (&instr.mnem, &instr.oprs) {
         (Mnemonic::Mov, Oprs::Two(Opr::R64(r), Opr::Imm32(val) | Opr::Imm8(val))) => {
-            Instr::new2(Mnemonic::Mov, Opr::R32(r.convert(8)), Opr::Imm32(*val));
+            Instr::new2(Mnemonic::Mov, Opr::R32(r.convert(4)), Opr::Imm32(*val))
         }
-        _ => (),
+        _ => instr.clone(),
     }
-    instr.clone()
 }
 
 fn modrm(oprs: &Oprs) -> Vec<u8> {

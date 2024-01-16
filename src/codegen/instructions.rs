@@ -126,10 +126,6 @@ impl Display for Instr {
 }
 
 impl Instr {
-    pub fn replace_oprs(&mut self,oprs: Oprs) {
-        self.oprs = oprs;
-    }
-
     pub fn new(mnem: Mnemonic, oprs: Oprs) -> Self {
         Self {
             mnem,

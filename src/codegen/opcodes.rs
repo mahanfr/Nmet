@@ -75,7 +75,7 @@ pub fn opcode(instr: &Instr) -> (u16, ModrmType) {
         (Cmovge, Two(r_16_64!(), rm_16_64!())) => (0x0f4d, Modrm),
         (Cmovl, Two(r_16_64!(), rm_16_64!())) => (0x0f4c, Modrm),
         (Cmovle, Two(r_16_64!(), rm_16_64!())) => (0x0f4e, Modrm),
-        (Call, One(Imm32(_))) => (0xe8, ModrmType::None),
+        (Call, One(imm!())) => (0xe8, ModrmType::None),
         (Jmp, One(Imm8(_))) => (0xeb, ModrmType::None),
         (Jmp, One(Imm32(_))) => (0xe9, ModrmType::None),
         (Jz, One(Imm32(_))) => (0x0f84, ModrmType::None),

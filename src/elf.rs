@@ -1,11 +1,9 @@
 use std::{
-    collections::HashMap,
     fs::{self, File},
     io::{BufWriter, Write},
 };
 
 use crate::{
-    codegen::instructions::{Instr, Opr},
     compiler::CompilerContext,
     utils::get_program_name,
 };
@@ -37,20 +35,6 @@ pub fn generate_header() -> Vec<u8> {
     bytes.extend(5u16.to_le_bytes());
     // DYNAMIC: section header string table index
     bytes.extend(2u16.to_le_bytes());
-    bytes
-}
-
-struct ReFillableBytes {
-    index: usize,
-    size: u8,
-}
-
-fn generate_text_section(cc: &CompilerContext) -> Vec<u8> {
-    todo!();
-    let mut bytes = Vec::new();
-    let mut investigation_list = Vec::<(String, ReFillableBytes)>::new();
-    let mut lables_map = HashMap::<String, usize>::new();
-    let mut last_main_lable = String::new();
     bytes
 }
 
@@ -204,8 +188,8 @@ fn generate_shsrttab() -> (Vec<u8>, Vec<u32>) {
     (data, tab)
 }
 
-pub fn generate_elf(path: String, cc: &CompilerContext) {
-    let text_sec = generate_text_section(cc);
+pub fn generate_elf(path: String, cc: &mut CompilerContext) {
+    let text_sec = cc.codegen.text_section_bytes();
     let (shstr_data, shstr_rows) = generate_shsrttab();
     let (strtab_data, str_rows) = generate_strtab();
     let symtab = generate_symtab(str_rows);
