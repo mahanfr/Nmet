@@ -39,17 +39,6 @@ pub fn assemble_instr(instr: &Instr) -> Vec<u8> {
         bytes.extend(opcode.to_be_bytes());
     }
     bytes.extend(modrm_val);
-    // if size == 0 {
-    //     if val >= i8::MIN as i64 && val <= i8::MAX as i64 {
-    //         bytes.extend(val.to_le_bytes().iter().take(1));
-    //     } else if val >= i32::MIN as i64 && val <= i32::MAX as i64 {
-    //         bytes.extend(val.to_le_bytes().iter().take(4));
-    //     } else {
-    //         bytes.extend(val.to_le_bytes());
-    //     }
-    // } else {
-    //     bytes.extend(val.to_le_bytes().iter().take(size / 8));
-    // }
     match instr.oprs {
         Oprs::Two(_, Opr::Imm8(val)) | Oprs::One(Opr::Imm8(val)) => {
              bytes.extend(val.to_le_bytes().iter().take(1));
@@ -156,10 +145,16 @@ fn rex(instr: &Instr) -> Vec<u8> {
             if r.is_extended() {
                 rex |= 0b0100;
             }
-            if rex != 0x40 {
-                vec![rex];
+            if instr.mnem != Mnemonic::Push && instr.mnem != Mnemonic::Pop {
+                if r.size() == 64 {
+                    rex |= 0b1000;
+                }
             }
-            vec![]
+            if rex != 0x40 {
+                vec![rex]
+            } else {
+                vec![]
+            }
         }
         Oprs::None => vec![],
         _ => vec![],
