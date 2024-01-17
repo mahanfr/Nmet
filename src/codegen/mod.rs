@@ -74,7 +74,8 @@ impl Codegen {
 
     pub fn relocate(&mut self) {
         let mut bytes_sum = 0;
-        for item in self.instructs.iter_mut() {
+        let mut set = Vec::<(String, usize, usize, Instr)>::new();
+        for (index, item) in self.instructs.iter_mut().enumerate() {
             if item.instr.mnem == Mnemonic::Lable {
                 let Oprs::One(Opr::Rel(key)) = item.instr.oprs.clone() else {
                     unreachable!();
@@ -89,13 +90,28 @@ impl Codegen {
                 let Some(Some(target)) = self.rel_map.get(&key) else {
                     panic!("Unknown Target!");
                 };
-                let loc: i32 = *target as i32 - bytes_sum as i32;
-                let new_bytes = assemble_instr(&Instr::new1(item.instr.mnem, loc));
+                let loc: i32 = *target as i32 - bytes_sum as i32 ;
+                let new_bytes = match item.instr.mnem {
+                    Mnemonic::Call => assemble_instr(&Instr::new1(item.instr.mnem, Opr::Imm32(loc as i64))),
+                    _ => assemble_instr(&Instr::new1(item.instr.mnem, loc)),
+                };
                 bytes_sum += new_bytes.len();
-                item.bytes = new_bytes;
+                set.push((key, index, bytes_sum, item.instr.clone()));
+                // item.bytes = new_bytes;
             } else {
                 bytes_sum += item.bytes.len();
             }
+        }
+        for item in set.iter() {
+            let Some(Some(target)) = self.rel_map.get(&item.0) else {
+                panic!("Unknown Target!");
+            };
+            let loc: i32 = *target as i32 - item.2 as i32 ;
+            let new_bytes = match item.3.mnem {
+                Mnemonic::Call => assemble_instr(&Instr::new1(item.3.mnem, Opr::Imm32(loc as i64))),
+                _ => assemble_instr(&Instr::new1(item.3.mnem, loc)),
+            };
+            self.instructs[item.1].bytes = new_bytes;
         }
     }
 
