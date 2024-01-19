@@ -47,8 +47,7 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
             // );
             let mem_acss = memq!(RBP, -(cc.mem_offset as i32 + 8));
             // assert!(false, "Not Implemented yet!");
-            cc.codegen
-                .instr2(Mov, mem_acss, Opr::Fs(struct_tag));
+            cc.codegen.instr2(Mov, mem_acss, Opr::Fs(struct_tag));
         }
         VariableType::String => {}
         _ => (),
@@ -64,8 +63,7 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
                 // let mem_acss = format!("{} [rbp-{}]", mem_word(&vt), cc.mem_offset + vt.size());
                 let mem_acss = mem!(RBP, -((cc.mem_offset + vt.size()) as i32));
                 cc.codegen.instr1(Pop, RAX);
-                cc.codegen
-                    .instr2(Mov, mem_acss, Reg::AX_sized(&vt));
+                cc.codegen.instr2(Mov, mem_acss, Reg::AX_sized(&vt));
                 vtype = vt;
             }
             Err(msg) => {

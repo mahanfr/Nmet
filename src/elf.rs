@@ -3,10 +3,7 @@ use std::{
     io::{BufWriter, Write},
 };
 
-use crate::{
-    compiler::CompilerContext,
-    utils::get_program_name,
-};
+use crate::{compiler::CompilerContext, utils::get_program_name};
 
 pub fn generate_header() -> Vec<u8> {
     let mut bytes = Vec::new();

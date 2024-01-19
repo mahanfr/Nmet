@@ -127,10 +127,7 @@ impl Display for Instr {
 
 impl Instr {
     pub fn new(mnem: Mnemonic, oprs: Oprs) -> Self {
-        Self {
-            mnem,
-            oprs,
-        }
+        Self { mnem, oprs }
     }
 
     pub fn new0(mnem: Mnemonic) -> Self {
@@ -156,7 +153,6 @@ impl Instr {
             oprs: Oprs::Two(opr1, opr2),
         }
     }
-
 }
 // #[import_instructions("./x86/instrs.txt")]
 // pub enum Instr {}

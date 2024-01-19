@@ -39,7 +39,13 @@ pub fn opcode(instr: &Instr) -> (u16, ModrmType) {
         (Mov, Two(rm_16_64!(), r_16_64!())) => (0x89, Modrm),
         (Mov, Two(r_16_64!(), Mem(_))) => (0x8B, Modrm),
         (Mov, Two(r_16_64!(), imm!())) => (0xB8, ModrmType::Add),
-        (Mov, Two(Mem(_), imm!())) => (0xC7, Ext(0)),
+        (Mov, Two(Mem(m), imm!())) => {
+            if m.size == 1 {
+                (0xC6, Ext(0))
+            } else {
+                (0xC7, Ext(0))
+            }
+        }
         (Push, One(Imm8(_))) => (0x6A, ModrmType::None),
         (Push, One(Imm32(_) | Imm64(_))) => (0x68, ModrmType::None),
         (Push, One(R64(_))) => (0x50, ModrmType::Add),
@@ -47,7 +53,8 @@ pub fn opcode(instr: &Instr) -> (u16, ModrmType) {
         (Sub, Two(rm_16_64!(), r_16_64!())) => (0x29, Modrm),
         (Sub, Two(r_16_64!(), Mem(_))) => (0x2B, Modrm),
         (Sub, Two(R64(Reg::RAX), Imm32(_))) => (0x2D, ModrmType::None),
-        (Sub, Two(rm_16_64!(), imm!())) => (0x81, Ext(5)),
+        (Sub, Two(rm_16_64!(), Imm32(_))) => (0x81, Ext(5)),
+        (Sub, Two(rm_16_64!(), Imm8(_))) => (0x83, Ext(5)),
         (Idiv, One(R64(_))) => (0xf7, Ext(7)),
         (Syscall, Oprs::None) => (0x0f05, ModrmType::None),
         (Leave, Oprs::None) => (0xc9, ModrmType::None),
@@ -60,7 +67,7 @@ pub fn opcode(instr: &Instr) -> (u16, ModrmType) {
         (Shr, Two(rm_16_64!(), R8(Reg::CL))) => (0xd3, Ext(5)),
         (Shr, Two(rm_16_64!(), Imm8(_))) => (0xc1, Ext(5)),
         (Sal, Two(rm_16_64!(), R8(Reg::CL))) => (0xd3, Ext(4)),
-        (Sal, Two(rm_16_64!(), Imm8(_))) => (0xc1, Ext(6)),
+        (Sal, Two(rm_16_64!(), Imm8(_))) => (0xc1, Ext(4)),
         (Lea, Two(r_16_64!(), Mem(_))) => (0x8d, Modrm),
         (Cmp, Two(rm_8!(), R8(_))) => (0x38, Modrm),
         (Cmp, Two(rm_16_64!(), r_16_64!())) => (0x39, Modrm),

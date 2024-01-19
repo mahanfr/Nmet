@@ -1,10 +1,6 @@
 use crate::{
     codegen::{
-        instructions::Opr,
-        memory::MemAddr,
-        mnemonic::Mnemonic::*,
-        register::Reg::*,
-        Codegen,
+        instructions::Opr, memory::MemAddr, mnemonic::Mnemonic::*, register::Reg::*, Codegen,
     },
     mem, memb, memq,
 };

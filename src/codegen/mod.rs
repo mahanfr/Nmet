@@ -35,7 +35,11 @@ impl InstrData {
             Relocatable::Ref => Vec::new(),
             Relocatable::None => assemble_instr(&instr),
         };
-        Self { instr, bytes, relocatable: rel}
+        Self {
+            instr,
+            bytes,
+            relocatable: rel,
+        }
     }
 
     pub fn new_lable(display: String) -> Self {
@@ -80,7 +84,7 @@ impl Codegen {
                 let Oprs::One(Opr::Rel(key)) = item.instr.oprs.clone() else {
                     unreachable!();
                 };
-                self.rel_map.entry(key).and_modify(|x| {*x = Some(bytes_sum)});
+                self.rel_map.entry(key).and_modify(|x| *x = Some(bytes_sum));
                 continue;
             }
             if item.relocatable == Relocatable::Loc {
@@ -90,9 +94,11 @@ impl Codegen {
                 let Some(Some(target)) = self.rel_map.get(&key) else {
                     panic!("Unknown Target!");
                 };
-                let loc: i32 = *target as i32 - bytes_sum as i32 ;
+                let loc: i32 = *target as i32 - bytes_sum as i32;
                 let new_bytes = match item.instr.mnem {
-                    Mnemonic::Call => assemble_instr(&Instr::new1(item.instr.mnem, Opr::Imm32(loc as i64))),
+                    Mnemonic::Call => {
+                        assemble_instr(&Instr::new1(item.instr.mnem, Opr::Imm32(loc as i64)))
+                    }
                     _ => assemble_instr(&Instr::new1(item.instr.mnem, loc)),
                 };
                 bytes_sum += new_bytes.len();
@@ -106,7 +112,7 @@ impl Codegen {
             let Some(Some(target)) = self.rel_map.get(&item.0) else {
                 panic!("Unknown Target!");
             };
-            let loc: i32 = *target as i32 - item.2 as i32 ;
+            let loc: i32 = *target as i32 - item.2 as i32;
             let new_bytes = match item.3.mnem {
                 Mnemonic::Call => assemble_instr(&Instr::new1(item.3.mnem, Opr::Imm32(loc as i64))),
                 _ => assemble_instr(&Instr::new1(item.3.mnem, loc)),
@@ -120,7 +126,10 @@ impl Codegen {
         let mut bytes = Vec::new();
         let mut bc = 0;
         for item in self.instructs.iter() {
-            print!("\x1b[92m{bc:3X}\x1b[0m: {:02X?} \x1b[93m{}\x1b[0m\n",item.bytes, item.instr);
+            println!(
+                "\x1b[92m{bc:3X}\x1b[0m: {:02X?} \x1b[93m{}\x1b[0m",
+                item.bytes, item.instr
+            );
             bc += item.bytes.len();
             bytes.extend(item.bytes.clone());
         }
@@ -158,7 +167,7 @@ impl Codegen {
         bss_tag
     }
 
-    pub fn instr2(&mut self, mnemonic: Mnemonic, opr1: impl Into<Opr> , opr2: impl Into<Opr>) {
+    pub fn instr2(&mut self, mnemonic: Mnemonic, opr1: impl Into<Opr>, opr2: impl Into<Opr>) {
         let (opr1, rel1) = self.relocate_lable(opr1);
         let (opr2, rel2) = self.relocate_lable(opr2);
         let rel = match (rel1, rel2) {
@@ -166,33 +175,37 @@ impl Codegen {
             (Relocatable::Loc, _) | (_, Relocatable::Loc) => Relocatable::Loc,
             _ => Relocatable::None,
         };
-        self.instructs.push(InstrData::new(Instr::new2(mnemonic, opr1, opr2),rel));
+        self.instructs
+            .push(InstrData::new(Instr::new2(mnemonic, opr1, opr2), rel));
     }
 
     pub fn instr1(&mut self, mnemonic: Mnemonic, opr1: impl Into<Opr>) {
         let (opr1, rel1) = self.relocate_lable(opr1);
-        self.instructs.push(InstrData::new(Instr::new1(mnemonic, opr1), rel1));
+        self.instructs
+            .push(InstrData::new(Instr::new1(mnemonic, opr1), rel1));
     }
 
     pub fn instr0(&mut self, mnemonic: Mnemonic) {
-        self.instructs.push(InstrData::new(Instr::new0(mnemonic), Relocatable::None));
+        self.instructs
+            .push(InstrData::new(Instr::new0(mnemonic), Relocatable::None));
     }
 
     pub fn new_instr(&mut self, instr: Instr) {
-        self.instructs.push(InstrData::new(instr,Relocatable::None));
+        self.instructs
+            .push(InstrData::new(instr, Relocatable::None));
     }
 
     pub fn set_lable(&mut self, lable: impl Display) {
         let lable = lable.to_string();
-        self.instructs
-            .push(InstrData::new_lable(format!("{lable}")));
+        self.instructs.push(InstrData::new_lable(lable.clone()));
         let key = match lable.starts_with('.') {
             true => format!("{}{lable}", self.last_lable),
             false => lable,
         };
-        let real_loc : usize = self.instructs.iter().map(|x| x.bytes.len()).sum();
-        self.rel_map.entry(key)
-            .and_modify(|x| {*x = Some(self.instructs.len() - 1)} )
+        let real_loc: usize = self.instructs.iter().map(|x| x.bytes.len()).sum();
+        self.rel_map
+            .entry(key)
+            .and_modify(|x| *x = Some(self.instructs.len() - 1))
             .or_insert(Some(real_loc));
     }
 
@@ -210,8 +223,7 @@ impl Codegen {
                 }
             }
             Opr::Fs(_) => (opr, Relocatable::Ref),
-            _ => (opr, Relocatable::None)
+            _ => (opr, Relocatable::None),
         }
     }
-
 }

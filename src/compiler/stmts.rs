@@ -39,8 +39,7 @@ fn compile_if_stmt(cc: &mut CompilerContext, ifs: &IFStmt, exit_tag: usize) {
     };
     cc.codegen.instr1(Pop, RAX);
     cc.codegen.instr2(Test, RAX, RAX);
-    cc.codegen
-        .instr1(Jz, Opr::Rel(format!(".L{next_tag}")));
+    cc.codegen.instr1(Jz, Opr::Rel(format!(".L{next_tag}")));
 
     compile_block(cc, &ifs.then_block, BlockType::Condition);
     match ifs.else_block.as_ref() {
@@ -48,15 +47,13 @@ fn compile_if_stmt(cc: &mut CompilerContext, ifs: &IFStmt, exit_tag: usize) {
             cc.codegen.set_lable(format!(".L{next_tag}"));
         }
         ElseBlock::Else(b) => {
-            cc.codegen
-                .instr1(Jmp, Opr::Rel(format!(".L{exit_tag}")));
+            cc.codegen.instr1(Jmp, Opr::Rel(format!(".L{exit_tag}")));
             cc.codegen.set_lable(format!(".L{next_tag}"));
             compile_block(cc, b, BlockType::Condition);
             cc.codegen.set_lable(format!(".L{exit_tag}"));
         }
         ElseBlock::Elif(iff) => {
-            cc.codegen
-                .instr1(Jmp, Opr::Rel(format!(".L{exit_tag}")));
+            cc.codegen.instr1(Jmp, Opr::Rel(format!(".L{exit_tag}")));
             cc.codegen.set_lable(format!(".L{next_tag}"));
             compile_if_stmt(cc, iff, exit_tag);
         }
@@ -85,8 +82,7 @@ pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) {
                     cc.bif_set.insert(Bif::Print);
                     cc.codegen.instr1(Pop, RDI);
                     // assert!(false, "Not Implemented yet!");
-                    cc.codegen
-                        .instr1(Call, Opr::Rel("print".to_string()));
+                    cc.codegen.instr1(Call, Opr::Rel("print".to_string()));
                 }
             }
         }
@@ -181,8 +177,7 @@ fn compile_inline_asm(cc: &mut CompilerContext, instr: &String) -> Result<(), St
 
 fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) {
     let cond_tag = cc.codegen.get_id();
-    cc.codegen
-        .instr1(Jmp, Opr::Rel(format!(".L{cond_tag}")));
+    cc.codegen.instr1(Jmp, Opr::Rel(format!(".L{cond_tag}")));
     let block_tag = cond_tag + 1;
     cc.codegen.set_lable(format!(".L{block_tag}"));
     compile_block(cc, &w_stmt.block, BlockType::Loop((cond_tag, block_tag)));
@@ -197,8 +192,7 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) {
     cc.codegen.instr2(Test, RAX, RAX);
     // assert!(false, "Not implemented yet!");
     // TODO: MAKE Sure this works!
-    cc.codegen
-        .instr1(Jne, Opr::Rel(format!(".L{block_tag}")));
+    cc.codegen.instr1(Jne, Opr::Rel(format!(".L{block_tag}")));
     cc.codegen.set_lable(format!(".LE{block_tag}"));
 }
 
@@ -230,8 +224,7 @@ fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {
         VariableType::Custom(_) => {
             cc.codegen
                 .instr2(Mov, RDX, mem!(RBP, -(v_map.offset as i32 + 8)));
-            cc.codegen
-                .instr2(Add, RDX, v_map.offset_inner);
+            cc.codegen.instr2(Add, RDX, v_map.offset_inner);
             reg = Reg::AX_sized(&v_map.vtype_inner);
             // format!("{} [rdx]", mem_word(&v_map.vtype_inner))
             MemAddr::new_s(v_map.vtype_inner.item_size(), RDX)

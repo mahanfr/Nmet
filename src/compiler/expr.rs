@@ -71,8 +71,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             }
             // cc.instruct_buf
             //     .push(asm!("mov rdx, [rbp-{}]", v_map.offset + v_map.vtype.size()));
-            cc.codegen
-                .instr2(Mov, RDX, mem!(RBP, v_map.stack_offset()));
+            cc.codegen.instr2(Mov, RDX, mem!(RBP, v_map.stack_offset()));
             cc.codegen.instr2(Add, RDX, offset);
             cc.codegen.instr2(
                 Mov,
@@ -131,11 +130,8 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             // Make sure rbx is first so the order is correct
             cc.codegen.instr1(Pop, RBX);
             cc.codegen.instr1(Pop, RAX);
-            cc.codegen.instr2(
-                Cmp,
-                Reg::AX_sized(&reg_type),
-                Reg::BX_sized(&reg_type),
-            );
+            cc.codegen
+                .instr2(Cmp, Reg::AX_sized(&reg_type), Reg::BX_sized(&reg_type));
             match c.op {
                 CompareOp::Eq => {
                     cc.codegen.instr2(Cmove, RCX, RDX);
@@ -350,8 +346,7 @@ fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) {
                     //cc.codegen.push(RAX);
 
                     //cc.codegen.mov(RAX, RBP);
-                    cc.codegen
-                        .instr2(Lea, RAX, mem!(RBP, v_map.stack_offset()));
+                    cc.codegen.instr2(Lea, RAX, mem!(RBP, v_map.stack_offset()));
                     cc.codegen.instr1(Push, RAX);
                 }
                 _ => {
@@ -378,12 +373,10 @@ fn compile_function_call(
         match arg.etype {
             ExprType::String(_) => {
                 cc.codegen.instr1(Pop, RAX);
-                cc.codegen
-                    .instr1(Pop, function_args_register(index));
+                cc.codegen.instr1(Pop, function_args_register(index));
             }
             _ => {
-                cc.codegen
-                    .instr1(Pop, function_args_register(index));
+                cc.codegen.instr1(Pop, function_args_register(index));
             }
         }
     }
@@ -395,8 +388,7 @@ fn compile_function_call(
         ));
     };
     cc.codegen.instr2(Mov, RAX, 0);
-    cc.codegen
-        .instr1(Call, Opr::Rel(fc.ident.clone()));
+    cc.codegen.instr1(Call, Opr::Rel(fc.ident.clone()));
     if fun.ret_type != VariableType::Void {
         cc.codegen.instr1(Push, RAX);
     }

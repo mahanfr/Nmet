@@ -13,8 +13,8 @@ macro_rules! Register {
 
 pub fn assemble_instr(instr: &Instr) -> Vec<u8> {
     let mut bytes = vec![];
-    validate_opr_sizes(&instr);
-    let instr = align_imm_oprs_to_reg(&instr);
+    validate_opr_sizes(instr);
+    let instr = align_imm_oprs_to_reg(instr);
     bytes.extend(rex(&instr));
     let (mut opcode, modrmtype) = opcode(&instr);
     let mut modrm_val = Vec::<u8>::new();
@@ -39,19 +39,44 @@ pub fn assemble_instr(instr: &Instr) -> Vec<u8> {
         bytes.extend(opcode.to_be_bytes());
     }
     bytes.extend(modrm_val);
-    match instr.oprs {
-        Oprs::Two(_, Opr::Imm8(val)) | Oprs::One(Opr::Imm8(val)) => {
-             bytes.extend(val.to_le_bytes().iter().take(1));
-        }
-        Oprs::Two(_, Opr::Imm32(val)) | Oprs::One(Opr::Imm32(val)) => {
-             bytes.extend(val.to_le_bytes().iter().take(4));
-        }
-        Oprs::Two(_, Opr::Imm64(val)) | Oprs::One(Opr::Imm64(val)) => {
-             bytes.extend(val.to_le_bytes().iter().take(8));
-        }
-        _ => (),
-    }
+    include_imm_values(&mut bytes, &instr);
     bytes
+}
+
+fn include_imm_values(bytes: &mut Vec<u8>, instr: &Instr) {
+    if instr.mnem.needs_precision_imm() {
+        match instr.oprs {
+            Oprs::Two(Opr::Mem(m), Opr::Imm8(val) | Opr::Imm32(val)) => match m.size {
+                1 => {
+                    bytes.push(val.to_le_bytes()[0]);
+                }
+                2 | 4 | 8 => {
+                    bytes.extend(val.to_le_bytes().iter().take(4));
+                }
+                _ => unreachable!(),
+            },
+            Oprs::Two(
+                Opr::R64(r) | Opr::R32(r) | Opr::R16(r) | Opr::R8(r),
+                Opr::Imm8(val) | Opr::Imm32(val) | Opr::Imm64(val),
+            ) => {
+                bytes.extend(val.to_le_bytes().iter().take((r.size() / 8) as usize));
+            }
+            _ => (),
+        }
+    } else {
+        match instr.oprs {
+            Oprs::Two(_, Opr::Imm8(val)) | Oprs::One(Opr::Imm8(val)) => {
+                bytes.extend(val.to_le_bytes().iter().take(1));
+            }
+            Oprs::Two(_, Opr::Imm32(val)) | Oprs::One(Opr::Imm32(val)) => {
+                bytes.extend(val.to_le_bytes().iter().take(4));
+            }
+            Oprs::Two(_, Opr::Imm64(val)) | Oprs::One(Opr::Imm64(val)) => {
+                bytes.extend(val.to_le_bytes().iter().take(8));
+            }
+            _ => (),
+        }
+    }
 }
 
 fn rex(instr: &Instr) -> Vec<u8> {
@@ -145,10 +170,8 @@ fn rex(instr: &Instr) -> Vec<u8> {
             if r.is_extended() {
                 rex |= 0b0100;
             }
-            if instr.mnem != Mnemonic::Push && instr.mnem != Mnemonic::Pop {
-                if r.size() == 64 {
-                    rex |= 0b1000;
-                }
+            if instr.mnem != Mnemonic::Push && instr.mnem != Mnemonic::Pop && r.size() == 64 {
+                rex |= 0b1000;
             }
             if rex != 0x40 {
                 vec![rex]
@@ -234,7 +257,7 @@ fn modrm(oprs: &Oprs) -> Vec<u8> {
 fn modrm_ex(ex: u8, oprs: &Oprs) -> Vec<u8> {
     match oprs {
         Oprs::Two(Register!(r1), _) | Oprs::One(Register!(r1)) => {
-            vec![_modrm(0b11, ex, r1.opcode())]
+            vec![_modrm(0b11, r1.opcode(), ex)]
         }
         Oprs::Two(Opr::Mem(mem), _) | Oprs::One(Opr::Mem(mem)) => _mem_modrm(ex, mem),
         _ => unreachable!(),
@@ -258,14 +281,12 @@ fn _mem_modrm(r: u8, mem: &MemAddr) -> Vec<u8> {
                 } else {
                     unreachable!();
                 }
+            } else if mem.register.opcode() != 0x4 {
+                let mut bytes = vec![_modrm(0b10, mem.register.opcode(), r)];
+                bytes.extend(mem.disp.to_le_bytes());
+                bytes
             } else {
-                if mem.register.opcode() != 0x4 {
-                    let mut bytes = vec![_modrm(0b10, mem.register.opcode(), r)];
-                    bytes.extend(mem.disp.to_le_bytes());
-                    bytes
-                } else {
-                    unreachable!();
-                }
+                unreachable!();
             }
         }
         MemAddrType::Sib => {
@@ -299,7 +320,7 @@ fn _modrm(modr: u8, r1: u8, r2: u8) -> u8 {
 }
 
 fn sib(mem: &MemAddr) -> u8 {
-    let mut res = mem.scale & 0b11;
+    let mut res = (mem.scale.trailing_zeros() & 0b11) as u8;
     res <<= 3;
     let Some(s_reg) = mem.s_register else {
         unreachable!("expected reg in sib founnd none!");

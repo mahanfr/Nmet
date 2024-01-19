@@ -40,6 +40,12 @@ pub enum Mnemonic {
     Lable,
 }
 
+impl Mnemonic {
+    pub fn needs_precision_imm(&self) -> bool {
+        matches!(self, Self::Mov)
+    }
+}
+
 impl Display for Mnemonic {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
