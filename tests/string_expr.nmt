@@ -1,6 +1,6 @@
 
 func main() {
     print "Hello\n";
-    print "World\t";
+    print "World";
     print "\n";
 }

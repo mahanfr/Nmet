@@ -124,13 +124,13 @@ impl Codegen {
     pub fn text_section_bytes(&mut self) -> Vec<u8> {
         self.relocate();
         let mut bytes = Vec::new();
-        let mut bc = 0;
+        let mut _bc = 0;
         for item in self.instructs.iter() {
-            println!(
-                "\x1b[92m{bc:3X}\x1b[0m: {:02X?} \x1b[93m{}\x1b[0m",
-                item.bytes, item.instr
-            );
-            bc += item.bytes.len();
+            // println!(
+            //     "\x1b[92m{_bc:3X}\x1b[0m: {:02X?} \x1b[93m{}\x1b[0m",
+            //     item.bytes, item.instr
+            // );
+            _bc += item.bytes.len();
             bytes.extend(item.bytes.clone());
         }
         bytes

@@ -1,5 +1,5 @@
-use crate::utils::get_program_name;
 use std::error::Error;
+use std::path::PathBuf;
 use std::process::Command;
 use std::{env::args, process::exit};
 
@@ -16,7 +16,8 @@ mod parser;
 mod tests;
 mod utils;
 use command_line::{help_command, CliArgs};
-use compiler::{compile_to_asm, compile_to_elf};
+use compiler::compile;
+use utils::get_output_path_from_input;
 
 // --- Static Compiler Defenition
 pub static VERSION: &str = "v0.0.1-Beta";
@@ -35,14 +36,11 @@ fn assembler_target() -> &'static str {
 fn compile_command(arg: &mut CliArgs) {
     if arg.get().starts_with('-') {
         match arg.get().as_str() {
-            // "--llvm" => {
-            //     arg.next();
-            //     compile_to_llvm(arg.get());
-            //     return;
-            // }
             "-elf" => {
                 arg.next();
-                compile_to_elf(arg.get());
+                let out_path = get_output_path_from_input(arg.get());
+                compile(arg.get(), out_path.with_extension("o"), compiler::OutputType::Elf);
+                link_to_exc(out_path.with_extension(""));
                 exit(0);
             }
             _ => {
@@ -51,13 +49,14 @@ fn compile_command(arg: &mut CliArgs) {
             }
         }
     }
-    compile_to_asm(arg.get());
-    compile_to_exc(arg.get());
+    let out_path = get_output_path_from_input(arg.get());
+    compile(arg.get(),out_path.with_extension("asm"), compiler::OutputType::Asm);
+    assemble_with_nasm(out_path.with_extension("o"));
+    link_to_exc(out_path.with_extension(""));
 }
 
-/// Runs External commands for generating the executable
-pub fn compile_to_exc(path: String) {
-    let program_name = get_program_name(path);
+/// Runs External commands for generating the object files
+pub fn assemble_with_nasm(path: PathBuf) {
     println!(
         "[info] Assembling for {} - generaiting output.o",
         assembler_target()
@@ -65,19 +64,24 @@ pub fn compile_to_exc(path: String) {
     let nasm_output = Command::new("nasm")
         .arg(format!("-f{}", assembler_target()))
         .arg("-o")
-        .arg(format!("./build/{}.o", program_name))
-        .arg(format!("./build/{}.asm", program_name))
+        .arg(path.with_extension("o"))
+        .arg(path.with_extension("asm"))
         .output()
         .expect("Can not run nasm command! do you have nasm installed?");
     if !nasm_output.status.success() {
         println!("[error] Failed to Assemble: Status code non zero");
         println!("{}", String::from_utf8(nasm_output.stderr).unwrap());
     }
+}
+
+
+/// Runs External commands for generating the executable
+pub fn link_to_exc(path: PathBuf) {
     println!("[info] Linking object file...");
     let linker_output = Command::new("ld")
         .arg("-o")
-        .arg(format!("./build/{}", program_name))
-        .arg(format!("./build/{}.o", program_name))
+        .arg(path.with_extension(""))
+        .arg(path.with_extension("o"))
         .output()
         .expect("Can not link using ld command!");
     if !linker_output.status.success() {

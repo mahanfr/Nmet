@@ -1,16 +1,13 @@
 use std::error::Error;
-use std::fs::{self, File};
+use std::fs::File;
 use std::io::{BufWriter, Write};
+use std::path::Path;
 
 use crate::codegen::Codegen;
-use crate::utils::get_program_name;
 
-pub fn x86_64_nasm_generator(path: String, codegen: Codegen) -> Result<(), Box<dyn Error>> {
-    fs::create_dir_all("./build").unwrap();
-    let out_name = get_program_name(path);
-    let stream = File::create(format!("./build/{}.asm", out_name)).unwrap();
+pub fn x86_64_nasm_generator(output: &Path, codegen: Codegen) -> Result<(), Box<dyn Error>> {
+    let stream = File::create(output.with_extension("asm")).unwrap();
     let mut file = BufWriter::new(stream);
-    println!("[info] Generating asm files...");
     file.write_all(b";; This File is Automatically Created Using The Nmet Compiler\n")?;
     file.write_all(b";; Under MIT License Copyright Mahan Farzaneh 2023-2024\n\n")?;
 

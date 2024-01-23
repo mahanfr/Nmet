@@ -36,6 +36,7 @@ pub fn opcode(instr: &Instr) -> (u16, ModrmType) {
         (Mnemonic::Add, Two(rm_16_64!(), r_16_64!())) => (0x01, Modrm),
         (Mnemonic::Add, Two(rm_16_64!(), imm!())) => (0x81, Ext(0)),
         (Mov, Two(rm_8!(), R8(_))) => (0x88, Modrm),
+        (Mov, Two(R8(_), Mem(_))) => (0x8A, Modrm),
         (Mov, Two(rm_16_64!(), r_16_64!())) => (0x89, Modrm),
         (Mov, Two(r_16_64!(), Mem(_))) => (0x8B, Modrm),
         (Mov, Two(r_16_64!(), imm!())) => (0xB8, ModrmType::Add),

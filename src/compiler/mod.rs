@@ -20,6 +20,8 @@ use crate::parser::{
     types::VariableType,
 };
 use std::collections::{HashMap, HashSet};
+use std::fmt::Display;
+use std::path::PathBuf;
 
 use self::stmts::compile_stmt;
 
@@ -76,20 +78,37 @@ impl CompilerContext {
     }
 }
 
-pub fn compile_to_elf(path: String) {
-    let mut compiler_context = CompilerContext::new();
-
-    compile(&mut compiler_context, path.clone());
-    impl_bifs(&mut compiler_context);
-    generate_elf(path, &mut compiler_context);
+pub enum OutputType {
+    Elf,
+    Asm,
+}
+impl Display for OutputType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Elf => write!(f, "elf"),
+            Self::Asm => write!(f, "asm"),
+        }
+    }
 }
 
-pub fn compile_to_asm(path: String) {
+
+pub fn compile(input: String, output: PathBuf, output_type: OutputType) {
     let mut compiler_context = CompilerContext::new();
 
-    compile(&mut compiler_context, path.clone());
+    _compile(&mut compiler_context, input.clone());
     impl_bifs(&mut compiler_context);
-    x86_64_nasm_generator(path, compiler_context.codegen).unwrap();
+    let prefix = output.parent().unwrap();
+    std::fs::create_dir_all(prefix).unwrap();
+    match output_type {
+        OutputType::Elf => {
+            println!("[info] Generating elf object file...");
+            generate_elf(output.as_path(), &mut compiler_context);
+        },
+        OutputType::Asm => {
+            println!("[info] Generating asm text file...");
+            x86_64_nasm_generator(output.as_path(), compiler_context.codegen).unwrap();
+        },
+    }
 }
 
 pub fn impl_bifs(cc: &mut CompilerContext) {
@@ -160,7 +179,7 @@ pub fn compile_lib(cc: &mut CompilerContext, path: String, exports: Vec<String>)
 }
 
 // TODO: Handle Compilation Error
-pub fn compile(cc: &mut CompilerContext, path: String) {
+pub fn _compile(cc: &mut CompilerContext, path: String) {
     let program = parse_file(path);
     for item in program.items {
         match item {

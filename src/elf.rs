@@ -1,9 +1,9 @@
 use std::{
-    fs::{self, File},
-    io::{BufWriter, Write},
+    fs::File,
+    io::{BufWriter, Write}, path::Path,
 };
 
-use crate::{compiler::CompilerContext, utils::get_program_name};
+use crate::compiler::CompilerContext;
 
 pub fn generate_header() -> Vec<u8> {
     let mut bytes = Vec::new();
@@ -185,7 +185,7 @@ fn generate_shsrttab() -> (Vec<u8>, Vec<u32>) {
     (data, tab)
 }
 
-pub fn generate_elf(path: String, cc: &mut CompilerContext) {
+pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
     let text_sec = cc.codegen.text_section_bytes();
     let (shstr_data, shstr_rows) = generate_shsrttab();
     let (strtab_data, str_rows) = generate_strtab();
@@ -204,11 +204,8 @@ pub fn generate_elf(path: String, cc: &mut CompilerContext) {
         }
     }
 
-    fs::create_dir_all("./build").unwrap();
-    let program_name = format!("test_{}", get_program_name(path));
-    let stream = File::create(format!("./build/{program_name}.o")).unwrap();
+    let stream = File::create(out_path.with_extension("o")).unwrap();
     let mut file = BufWriter::new(stream);
     file.write_all(&bytes).unwrap();
     file.flush().unwrap();
-    println!("[info] Elf Object file Generated!");
 }
