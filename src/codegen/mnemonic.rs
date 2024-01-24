@@ -44,6 +44,11 @@ impl Mnemonic {
     pub fn needs_precision_imm(&self) -> bool {
         matches!(self, Self::Mov)
     }
+
+    pub fn reverse_modrm(&self) -> bool {
+        matches!(self, Self::Cmove | Self::Cmovne | Self::Cmovg |
+                 Self::Cmovge | Self::Cmovl | Self::Cmovle | Self::Imul)
+    }
 }
 
 impl Display for Mnemonic {

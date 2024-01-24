@@ -27,7 +27,7 @@ impl Bif {
         codegen.instr2(Mov, RAX, 32);
         codegen.instr2(Sub, RAX, memq!(RBP, -8));
         codegen.instr2(Mov, memb!(RBP, -48, RAX), 10);
-        codegen.set_lable(".L3");
+        codegen.set_lable("print.L3");
         codegen.instr2(Mov, RCX, memq!(RBP, -56));
         codegen.instr2(Mov, RDX, -3689348814741910323i64);
         codegen.instr2(Mov, RAX, RCX);
@@ -52,7 +52,7 @@ impl Bif {
         codegen.instr2(Shr, RAX, 3);
         codegen.instr2(Mov, memq!(RBP, -56), RAX);
         codegen.instr2(Cmp, memq!(RBP, -56), 0);
-        codegen.instr1(Jne, Opr::rel(".L3"));
+        codegen.instr1(Jne, Opr::rel("print.L3"));
         codegen.instr2(Mov, EAX, 32);
         codegen.instr2(Sub, RAX, memq!(RBP, -8));
         codegen.instr2(Lea, RDX, mem!(RBP, -48));

@@ -26,7 +26,7 @@ pub fn assemble_instr(instr: &Instr) -> Vec<u8> {
             _ => unreachable!("{instr}: Unecxpected behavior!"),
         },
         ModrmType::Modrm => {
-            modrm_val = modrm(&instr.oprs);
+            modrm_val = modrm(&instr);
         }
         ModrmType::Ext(ex) => {
             modrm_val = modrm_ex(ex, &instr.oprs);
@@ -241,10 +241,14 @@ fn align_imm_oprs_to_reg(instr: &Instr) -> Instr {
     }
 }
 
-fn modrm(oprs: &Oprs) -> Vec<u8> {
-    match oprs {
+fn modrm(instr: &Instr) -> Vec<u8> {
+    match &instr.oprs {
         Oprs::Two(Register!(r1), Register!(r2)) => {
-            vec![_modrm(0b11, r1.opcode(), r2.opcode())]
+            if !instr.mnem.reverse_modrm() {
+                vec![_modrm(0b11, r1.opcode(), r2.opcode())]
+            } else {
+                vec![_modrm(0b11, r2.opcode(), r1.opcode())]
+            }
         }
         Oprs::Two(Register!(r), Opr::Mem(mem)) | Oprs::Two(Opr::Mem(mem), Register!(r)) => {
             _mem_modrm(r.opcode(), mem)

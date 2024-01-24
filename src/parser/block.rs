@@ -15,7 +15,7 @@ use super::{
 pub enum BlockType {
     Condition,
     Loop(BLocation),
-    Function,
+    Function(String),
 }
 
 /// Block Stmt

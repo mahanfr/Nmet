@@ -48,7 +48,7 @@ pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
     cc.scoped_blocks = Vec::new();
     cc.block_id = 0;
     cc.scoped_blocks
-        .push(ScopeBlock::new(0, BlockType::Function));
+        .push(ScopeBlock::new(0, BlockType::Function(f.ident.clone())));
     cc.mem_offset = 0;
     cc.variables_map = HashMap::new();
     if f.ident == "main" {
@@ -66,7 +66,7 @@ pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
     cc.codegen.instr2(Mov, RBP, RSP);
     //cc.codegen.push_instr(Instr::sub(RSP, frame_size(cc.mem_offset)));
     function_args(cc, &f.args);
-    compile_block(cc, &f.block, BlockType::Function);
+    compile_block(cc, &f.block, BlockType::Function(f.ident.clone()));
     cc.scoped_blocks.pop();
     // Call Exit Syscall
     // if !cc.variables_map.is_empty() {

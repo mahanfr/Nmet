@@ -53,7 +53,7 @@ fn section_offset(data_lists: &Vec<Vec<u8>>, index: usize) -> usize {
 // SHF_WRITE: 1
 // SHF_ALLOC: 2
 // SHF_EXECINSTR: 4
-fn generate_section_headers(data_lists: &Vec<Vec<u8>>, shstrtab: &[u32]) -> Vec<u8> {
+fn generate_section_headers(data_lists: &Vec<Vec<u8>>, shstrtab: &[u32], symtab_num: usize) -> Vec<u8> {
     let mut bytes = vec![0; 64];
 
     // .text
@@ -88,7 +88,8 @@ fn generate_section_headers(data_lists: &Vec<Vec<u8>>, shstrtab: &[u32]) -> Vec<
     bytes.extend(section_offset(data_lists, 2).to_le_bytes());
     bytes.extend((data_lists[2].len() as u64).to_le_bytes());
     bytes.extend(4u32.to_le_bytes());
-    bytes.extend(3u32.to_le_bytes());
+    // TODO: Make this dynamic
+    bytes.extend((symtab_num as u32).to_le_bytes());
     bytes.extend(8u64.to_le_bytes());
     bytes.extend(24u64.to_le_bytes());
 
@@ -106,54 +107,75 @@ fn generate_section_headers(data_lists: &Vec<Vec<u8>>, shstrtab: &[u32]) -> Vec<
     bytes
 }
 
-fn generate_symtab(strtab: Vec<u32>) -> Vec<u8> {
+fn generate_symtab(cc: &mut CompilerContext, strtab: Vec<u32>) -> (Vec<u8>, usize) {
     let mut bytes = vec![0; 24];
 
-    bytes.extend(strtab[0].to_le_bytes());
+    let mut indx = 0;
+    bytes.extend(strtab[indx].to_le_bytes());
     bytes.push(4u8);
     bytes.push(0);
     bytes.extend(0xfff1u16.to_le_bytes());
     bytes.extend(0u64.to_le_bytes());
     bytes.extend(0u64.to_le_bytes());
+    indx += 1;
 
+    // Sections
     bytes.extend(0u32.to_le_bytes());
     bytes.push(3u8);
     bytes.push(0);
     bytes.extend(1u16.to_le_bytes());
     bytes.extend(0u64.to_le_bytes());
     bytes.extend(0u64.to_le_bytes());
+    // Sections
 
-    bytes.extend(strtab[1].to_le_bytes());
+    // Lables
+    for item in cc.codegen.rel_map.iter() {
+        if item.0 == "_start" {
+            continue;
+        }
+        bytes.extend(strtab[indx].to_le_bytes());
+        bytes.push(0u8);
+        bytes.push(0);
+        bytes.extend(1u16.to_le_bytes());
+        let Some(val) = item.1 else {
+            panic!("symbol ({}) not found",item.0);
+        };
+        bytes.extend((*val as u64).to_le_bytes());
+        bytes.extend(0u64.to_le_bytes());
+        indx += 1;
+    }
+    // Labels
+
+    // Global
+    bytes.extend(strtab[indx].to_le_bytes());
     bytes.push(0x10);
     bytes.push(0);
     bytes.extend(1u16.to_le_bytes());
     bytes.extend(0u64.to_le_bytes());
     bytes.extend(0u64.to_le_bytes());
-
-    // if bytes.len() % 16 != 0 {
-    //     let padding_size = 16 - (bytes.len() % 16);
-    //     bytes.extend(repeat(0).take(padding_size));
-    // }
-    bytes
+    // Gloval
+    (bytes, indx + 2)
 }
 
-fn generate_strtab() -> (Vec<u8>, Vec<u32>) {
+fn generate_strtab(cc: &CompilerContext) -> (Vec<u8>, Vec<u32>) {
     let mut table = Vec::<u32>::new();
-    let mut data = [0].to_vec();
+    let mut data = vec![0];
 
     table.push(data.len() as u32);
-    data.extend(b"./tests/elf.nmt");
-    data.push(0);
+    data.extend(b"./tests/elf.nmt\0");
+
+    for label in cc.codegen.rel_map.iter() {
+        if label.0 == "_start" {
+            continue;
+        }
+        table.push(data.len() as u32);
+        data.extend(label.0.bytes());
+        data.push(0);
+    }
 
     table.push(data.len() as u32);
-    data.extend(b"_start");
-    data.push(0);
-
-    // if data.len() % 16 != 0 {
-    //     let padding_size = 16 - (data.len() % 16);
-    //     data.extend(repeat(0).take(padding_size));
-    // }
-
+    data.extend(b"_start\0");
+    
     (data, table)
 }
 
@@ -162,25 +184,16 @@ fn generate_shsrttab() -> (Vec<u8>, Vec<u32>) {
     let mut data = [0].to_vec();
 
     tab.push(data.len() as u32);
-    data.extend(b".text");
-    data.push(0);
+    data.extend(b".text\0");
 
     tab.push(data.len() as u32);
-    data.extend(b".shstrtab");
-    data.push(0);
+    data.extend(b".shstrtab\0");
 
     tab.push(data.len() as u32);
-    data.extend(b".symtab");
-    data.push(0);
+    data.extend(b".symtab\0");
 
     tab.push(data.len() as u32);
-    data.extend(b".strtab");
-    data.push(0);
-
-    // if data.len() % 16 != 0 {
-    //     let padding_size = 16 - (data.len() % 16);
-    //     data.extend(repeat(0).take(padding_size));
-    // }
+    data.extend(b".strtab\0");
 
     (data, tab)
 }
@@ -188,10 +201,10 @@ fn generate_shsrttab() -> (Vec<u8>, Vec<u32>) {
 pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
     let text_sec = cc.codegen.text_section_bytes();
     let (shstr_data, shstr_rows) = generate_shsrttab();
-    let (strtab_data, str_rows) = generate_strtab();
-    let symtab = generate_symtab(str_rows);
+    let (strtab_data, str_rows) = generate_strtab(&cc);
+    let (symtab, symtab_num) = generate_symtab(cc, str_rows);
     let final_data = vec![text_sec, shstr_data, symtab, strtab_data];
-    let section_headers = generate_section_headers(&final_data, &shstr_rows);
+    let section_headers = generate_section_headers(&final_data, &shstr_rows, symtab_num);
     let elf_header = generate_header();
 
     let mut bytes = Vec::new();

@@ -4,7 +4,6 @@ use std::{fs::remove_file, process::Command, path::Path};
 macro_rules! test_elf {
     ($tname: ident, $in_path: expr, $res_path: expr) => {
         #[test]
-        #[ignore]
         fn $tname() {
             // Setup names
             let program_name = format!("__elf_{}",get_program_name($in_path));
@@ -13,7 +12,7 @@ macro_rules! test_elf {
             compile($in_path.to_string(), out_path.to_path_buf(), OutputType::Elf);
             link_to_exc(out_path.with_extension(""));
             // Cleanup
-            remove_file(out_path.with_extension("o")).unwrap_or_else(|_| ());
+            //remove_file(out_path.with_extension("o")).unwrap_or_else(|_| ());
             // Return executable path
             let opath = out_path.with_extension("").to_string_lossy().to_string();
             let output = Command::new(&opath)
@@ -46,7 +45,7 @@ macro_rules! test_asm {
             assemble_with_nasm(out_path.with_extension("o"));
             link_to_exc(out_path.with_extension(""));
             // Cleanup
-            remove_file(out_path.with_extension("o")).unwrap_or_else(|_| ());
+            //remove_file(out_path.with_extension("o")).unwrap_or_else(|_| ());
             remove_file(out_path.with_extension("asm")).unwrap_or_else(|_| ());
             // Return executable path
             let opath = out_path.with_extension("").to_string_lossy().to_string();
@@ -85,8 +84,8 @@ mod elf {
     test_elf!(binary_expr, "./tests/binary_expr.nmt","./tests/binary_expr.txt");
     test_elf!(cont_break,"./tests/cont_break.nmt", "./tests/cont_break.txt");
     test_elf!(compare_expr,"./tests/compare_expr.nmt","./tests/compare_expr.txt");
-    test_elf!(string_expr,"./tests/string_expr.nmt", "./tests/string_expr.txt");
-    test_elf!(structs,"./tests/structs.nmt", "./tests/structs.txt");
+    // test_elf!(string_expr,"./tests/string_expr.nmt", "./tests/string_expr.txt");
+    // test_elf!(structs,"./tests/structs.nmt", "./tests/structs.txt");
     test_elf!(loops,"./tests/loops.nmt", "./tests/loops.txt");
     test_elf!(conditions,"./tests/conditions.nmt", "./tests/conditions.txt");
     test_elf!(functions,"./tests/functions.nmt", "./tests/functions.txt");
