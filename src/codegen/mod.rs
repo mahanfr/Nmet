@@ -5,6 +5,7 @@ pub mod memory;
 pub mod mnemonic;
 pub mod opcodes;
 pub mod register;
+pub mod elf;
 use std::{collections::HashMap, fmt::Display};
 
 use self::{
