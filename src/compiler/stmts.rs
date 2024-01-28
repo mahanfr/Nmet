@@ -40,7 +40,8 @@ fn compile_if_stmt(cc: &mut CompilerContext, ifs: &IFStmt, exit_tag: usize) {
     };
     cc.codegen.instr1(Pop, RAX);
     cc.codegen.instr2(Test, RAX, RAX);
-    cc.codegen.instr1(Jz, Opr::Rel(format!("{last_label}.L{next_tag}")));
+    cc.codegen
+        .instr1(Jz, Opr::Rel(format!("{last_label}.L{next_tag}")));
 
     compile_block(cc, &ifs.then_block, BlockType::Condition);
     match ifs.else_block.as_ref() {
@@ -48,13 +49,15 @@ fn compile_if_stmt(cc: &mut CompilerContext, ifs: &IFStmt, exit_tag: usize) {
             cc.codegen.set_lable(format!("{last_label}.L{next_tag}"));
         }
         ElseBlock::Else(b) => {
-            cc.codegen.instr1(Jmp, Opr::Rel(format!("{last_label}.L{exit_tag}")));
+            cc.codegen
+                .instr1(Jmp, Opr::Rel(format!("{last_label}.L{exit_tag}")));
             cc.codegen.set_lable(format!("{last_label}.L{next_tag}"));
             compile_block(cc, b, BlockType::Condition);
             cc.codegen.set_lable(format!("{last_label}.L{exit_tag}"));
         }
         ElseBlock::Elif(iff) => {
-            cc.codegen.instr1(Jmp, Opr::Rel(format!("{last_label}.L{exit_tag}")));
+            cc.codegen
+                .instr1(Jmp, Opr::Rel(format!("{last_label}.L{exit_tag}")));
             cc.codegen.set_lable(format!("{last_label}.L{next_tag}"));
             compile_if_stmt(cc, iff, exit_tag);
         }
@@ -178,11 +181,16 @@ fn compile_inline_asm(cc: &mut CompilerContext, instr: &String) -> Result<(), St
 
 fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) {
     let cond_tag = cc.codegen.get_id();
-    cc.codegen.instr1(Jmp, Opr::Rel(format!("{}.L{cond_tag}",cc.last_main_label())));
+    cc.codegen.instr1(
+        Jmp,
+        Opr::Rel(format!("{}.L{cond_tag}", cc.last_main_label())),
+    );
     let block_tag = cond_tag + 1;
-    cc.codegen.set_lable(format!("{}.L{block_tag}",cc.last_main_label()));
+    cc.codegen
+        .set_lable(format!("{}.L{block_tag}", cc.last_main_label()));
     compile_block(cc, &w_stmt.block, BlockType::Loop((cond_tag, block_tag)));
-    cc.codegen.set_lable(format!("{}.L{cond_tag}",cc.last_main_label()));
+    cc.codegen
+        .set_lable(format!("{}.L{cond_tag}", cc.last_main_label()));
     // Jump after a compare
     let condition_type = compile_expr(cc, &w_stmt.condition);
     match VariableType::Bool.cast(&condition_type) {
@@ -193,8 +201,12 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) {
     cc.codegen.instr2(Test, RAX, RAX);
     // assert!(false, "Not implemented yet!");
     // TODO: MAKE Sure this works!
-    cc.codegen.instr1(Jne, Opr::Rel(format!("{}.L{block_tag}",cc.last_main_label())));
-    cc.codegen.set_lable(format!("{}.LE{block_tag}",cc.last_main_label()));
+    cc.codegen.instr1(
+        Jne,
+        Opr::Rel(format!("{}.L{block_tag}", cc.last_main_label())),
+    );
+    cc.codegen
+        .set_lable(format!("{}.LE{block_tag}", cc.last_main_label()));
 }
 
 fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) {

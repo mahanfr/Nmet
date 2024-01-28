@@ -46,8 +46,16 @@ impl Mnemonic {
     }
 
     pub fn reverse_modrm(&self) -> bool {
-        matches!(self, Self::Cmove | Self::Cmovne | Self::Cmovg |
-                 Self::Cmovge | Self::Cmovl | Self::Cmovle | Self::Imul)
+        matches!(
+            self,
+            Self::Cmove
+                | Self::Cmovne
+                | Self::Cmovg
+                | Self::Cmovge
+                | Self::Cmovl
+                | Self::Cmovle
+                | Self::Imul
+        )
     }
 }
 

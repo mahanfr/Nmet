@@ -5,7 +5,7 @@ enum EType {
     Rel = 1,
     Exec = 2,
     Dyn = 3,
-    Core = 4
+    Core = 4,
 }
 
 #[allow(unused)]
@@ -72,4 +72,3 @@ impl ElfHeader {
         bytes
     }
 }
-

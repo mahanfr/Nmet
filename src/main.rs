@@ -39,7 +39,11 @@ fn compile_command(arg: &mut CliArgs) {
             "-elf" => {
                 arg.next();
                 let out_path = get_output_path_from_input(arg.get());
-                compile(arg.get(), out_path.with_extension("o"), compiler::OutputType::Elf);
+                compile(
+                    arg.get(),
+                    out_path.with_extension("o"),
+                    compiler::OutputType::Elf,
+                );
                 link_to_exc(out_path.with_extension(""));
                 exit(0);
             }
@@ -50,7 +54,11 @@ fn compile_command(arg: &mut CliArgs) {
         }
     }
     let out_path = get_output_path_from_input(arg.get());
-    compile(arg.get(),out_path.with_extension("asm"), compiler::OutputType::Asm);
+    compile(
+        arg.get(),
+        out_path.with_extension("asm"),
+        compiler::OutputType::Asm,
+    );
     assemble_with_nasm(out_path.with_extension("o"));
     link_to_exc(out_path.with_extension(""));
 }
@@ -73,7 +81,6 @@ pub fn assemble_with_nasm(path: PathBuf) {
         println!("{}", String::from_utf8(nasm_output.stderr).unwrap());
     }
 }
-
 
 /// Runs External commands for generating the executable
 pub fn link_to_exc(path: PathBuf) {

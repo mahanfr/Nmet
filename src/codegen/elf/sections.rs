@@ -6,6 +6,7 @@ use crate::utils::IBytes;
 /// different code sections including .text, .data, or .bss
 /// and internal sections like symtab or strtab
 pub trait Section {
+    fn to_bytes(&self) -> IBytes;
     fn header(&self, sh_name: u32, sh_offset: u64) -> SectionHeader;
     fn name(&self) -> &'static str;
     fn size(&self) -> usize;
@@ -27,16 +28,16 @@ pub trait Section {
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
 pub struct SectionHeader {
-     sh_name: u32,
-     sh_type: u32,
-     sh_flags: u64,
-     sh_addr: u64,
-     sh_offset: u64,
-     sh_size: u64,
-     sh_link: u32,
-     sh_info: u32,
-     sh_addralign: u64,
-     sh_entsize: u64,
+    sh_name: u32,
+    sh_type: u32,
+    sh_flags: u64,
+    sh_addr: u64,
+    sh_offset: u64,
+    sh_size: u64,
+    sh_link: u32,
+    sh_info: u32,
+    sh_addralign: u64,
+    sh_entsize: u64,
 }
 
 impl Default for SectionHeader {
@@ -75,7 +76,7 @@ impl SectionHeader {
 // section .text
 //   This section holds the "text", or executable instructions,
 //   of a program.  This section is of type SHT_PROGBITS.  The
-//   attributes used are SHF_ALLOC and SHF_EXECINSTR. 
+//   attributes used are SHF_ALLOC and SHF_EXECINSTR.
 //   [Nr] Name              Type             Address           Offset
 //        Size              EntSize          Flags  Link  Info  Align
 //   [ 1] .text             PROGBITS         0000000000000000  00000180
@@ -86,12 +87,19 @@ pub struct TextSec {
 }
 impl TextSec {
     pub fn new(data: IBytes) -> Self {
-        Self {
-            data,
-        }
+        Self { data }
     }
 }
 impl Section for TextSec {
+
+    fn to_bytes(&self) -> IBytes {
+        let mut bytes = vec![];
+        bytes.extend(self.data.clone());
+        while bytes.len() % 16 != 0 {
+           bytes.push(0);
+        }
+        bytes
+    }
 
     fn size(&self) -> usize {
         self.data.len()
@@ -141,8 +149,20 @@ impl ShstrtabSec {
         self.data.extend(name.bytes());
         self.data.push(0);
     }
+
+    pub fn index(&self, name: &str) -> u32 {
+        *self.map.get(name).unwrap() as u32
+    }
 }
-impl Section for ShstrtabSec{
+impl Section for ShstrtabSec {
+    fn to_bytes(&self) -> IBytes {
+        let mut bytes = vec![];
+        bytes.extend(self.data.clone());
+        while bytes.len() % 16 != 0 {
+           bytes.push(0);
+        }
+        bytes
+    }
 
     fn size(&self) -> usize {
         self.data.len()
@@ -194,7 +214,17 @@ impl SymtabSec {
         self.data.push(item);
     }
 }
-impl Section for SymtabSec{
+impl Section for SymtabSec {
+    fn to_bytes(&self) -> IBytes {
+        let mut bytes = vec![];
+        for item in self.data.iter() {
+            bytes.extend(item.to_bytes());
+        }
+        while bytes.len() % 16 != 0 {
+           bytes.push(0);
+        }
+        bytes
+    }
     fn size(&self) -> usize {
         self.data.len() * 24
     }
@@ -227,22 +257,34 @@ impl Section for SymtabSec{
 #[allow(unused)]
 #[derive(Debug, Clone)]
 pub struct SymItem {
-    pub st_name:  u32,
-    pub st_info:  u8,
+    pub st_name: u32,
+    pub st_info: u8,
     pub st_other: u8,
     pub st_shndx: u16,
     pub st_value: u64,
-    pub st_size:  u64,
+    pub st_size: u64,
+}
+impl SymItem {
+    pub fn to_bytes(&self) -> IBytes {
+        let mut bytes = vec![];
+        bytes.extend(self.st_name.to_le_bytes());
+        bytes.extend(self.st_other.to_le_bytes());
+        bytes.extend(self.st_info.to_le_bytes());
+        bytes.extend(self.st_shndx.to_le_bytes());
+        bytes.extend(self.st_value.to_le_bytes());
+        bytes.extend(self.st_size.to_le_bytes());
+        bytes
+    }
 }
 impl Default for SymItem {
     fn default() -> Self {
         Self {
-            st_name:  0,
-            st_info:  0,
+            st_name: 0,
+            st_info: 0,
             st_other: 0,
             st_shndx: 0,
             st_value: 0,
-            st_size:  0,
+            st_size: 0,
         }
     }
 }
@@ -282,6 +324,14 @@ impl StrtabSec {
     }
 }
 impl Section for StrtabSec {
+    fn to_bytes(&self) -> IBytes {
+        let mut bytes = vec![];
+        bytes.extend(self.data.clone());
+        while bytes.len() % 16 != 0 {
+           bytes.push(0);
+        }
+        bytes
+    }
 
     fn size(&self) -> usize {
         self.data.len()

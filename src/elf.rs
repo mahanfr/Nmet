@@ -1,6 +1,7 @@
 use std::{
     fs::File,
-    io::{BufWriter, Write}, path::Path,
+    io::{BufWriter, Write},
+    path::Path,
 };
 
 use crate::compiler::CompilerContext;
@@ -53,7 +54,11 @@ fn section_offset(data_lists: &Vec<Vec<u8>>, index: usize) -> usize {
 // SHF_WRITE: 1
 // SHF_ALLOC: 2
 // SHF_EXECINSTR: 4
-fn generate_section_headers(data_lists: &Vec<Vec<u8>>, shstrtab: &[u32], symtab_num: usize) -> Vec<u8> {
+fn generate_section_headers(
+    data_lists: &Vec<Vec<u8>>,
+    shstrtab: &[u32],
+    symtab_num: usize,
+) -> Vec<u8> {
     let mut bytes = vec![0; 64];
 
     // .text
@@ -138,7 +143,7 @@ fn generate_symtab(cc: &mut CompilerContext, strtab: Vec<u32>) -> (Vec<u8>, usiz
         bytes.push(0);
         bytes.extend(1u16.to_le_bytes());
         let Some(val) = item.1 else {
-            panic!("symbol ({}) not found",item.0);
+            panic!("symbol ({}) not found", item.0);
         };
         bytes.extend((*val as u64).to_le_bytes());
         bytes.extend(0u64.to_le_bytes());
@@ -175,7 +180,7 @@ fn generate_strtab(cc: &CompilerContext) -> (Vec<u8>, Vec<u32>) {
 
     table.push(data.len() as u32);
     data.extend(b"_start\0");
-    
+
     (data, table)
 }
 

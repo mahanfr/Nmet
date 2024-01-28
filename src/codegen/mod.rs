@@ -1,11 +1,11 @@
 pub mod asm_parser;
 pub mod assemble;
+pub mod elf;
 pub mod instructions;
 pub mod memory;
 pub mod mnemonic;
 pub mod opcodes;
 pub mod register;
-pub mod elf;
 use std::{collections::HashMap, fmt::Display};
 
 use crate::utils::IBytes;
@@ -96,8 +96,8 @@ impl Codegen {
                     panic!("Unknown Target!");
                 };
                 let loc: i32 = *target as i32 - bytes_sum as i32;
-                let new_bytes = 
-                        assemble_instr(&Instr::new1(item.instr.mnem, Opr::Imm32(loc as i64)));
+                let new_bytes =
+                    assemble_instr(&Instr::new1(item.instr.mnem, Opr::Imm32(loc as i64)));
                 bytes_sum += new_bytes.len();
                 set.push((key, index, bytes_sum, item.instr.clone()));
                 // item.bytes = new_bytes;
@@ -202,9 +202,7 @@ impl Codegen {
     fn relocate_lable(&mut self, opr1: impl Into<Opr>) -> (Opr, Relocatable) {
         let opr = opr1.into();
         match opr.to_owned() {
-            Opr::Rel(_) => {
-                (opr, Relocatable::Loc)
-            }
+            Opr::Rel(_) => (opr, Relocatable::Loc),
             Opr::Fs(_) => (opr, Relocatable::Ref),
             _ => (opr, Relocatable::None),
         }

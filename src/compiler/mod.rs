@@ -102,7 +102,6 @@ impl Display for OutputType {
     }
 }
 
-
 pub fn compile(input: String, output: PathBuf, output_type: OutputType) {
     let mut compiler_context = CompilerContext::new(input.clone());
 
@@ -114,11 +113,11 @@ pub fn compile(input: String, output: PathBuf, output_type: OutputType) {
         OutputType::Elf => {
             println!("[info] Generating elf object file...");
             generate_elf(output.as_path(), &mut compiler_context);
-        },
+        }
         OutputType::Asm => {
             println!("[info] Generating asm text file...");
             x86_64_nasm_generator(output.as_path(), compiler_context.codegen).unwrap();
-        },
+        }
     }
 }
 
@@ -222,7 +221,6 @@ pub fn _compile(cc: &mut CompilerContext, path: String) {
     );
 }
 
-
 /*
  *  keep in mind there could be a problem when a variable wants to access
  *  somthing that added after in code but it could be a feature too :)
@@ -239,7 +237,7 @@ fn compile_block(cc: &mut CompilerContext, block: &Block, block_type: BlockType)
                     if let BlockType::Loop(loc) = s_block.block_type {
                         cc.codegen.instr1(
                             crate::codegen::mnemonic::Mnemonic::Jmp,
-                            Opr::Rel(format!("{}.LE{}",cc.last_main_label(), loc.1)),
+                            Opr::Rel(format!("{}.LE{}", cc.last_main_label(), loc.1)),
                         );
                         did_break = true;
                         break;
@@ -256,7 +254,7 @@ fn compile_block(cc: &mut CompilerContext, block: &Block, block_type: BlockType)
                         // assert!(false, "Not Implemented yet!");
                         cc.codegen.instr1(
                             crate::codegen::mnemonic::Mnemonic::Jmp,
-                            Opr::Rel(format!("{}.L{}",cc.last_main_label(), loc.1)),
+                            Opr::Rel(format!("{}.L{}", cc.last_main_label(), loc.1)),
                         );
                         //cc.codegen.push_instr(Instr::jmp(0));
                         did_cont = true;

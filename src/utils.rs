@@ -14,7 +14,6 @@ pub fn get_program_name(path: impl ToString) -> String {
         .to_string();
 }
 
-
 pub fn get_output_path_from_input(input: String) -> PathBuf {
     let p_name = get_program_name(input);
     std::path::Path::new(&format!("./build/{p_name}")).to_owned()
