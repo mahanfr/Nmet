@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+pub type IBytes = Vec<u8>;
+
 pub fn get_program_name(path: impl ToString) -> String {
     let path = path.to_string();
     return path

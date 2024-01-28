@@ -1,3 +1,5 @@
+use crate::utils::IBytes;
+
 use super::{
     instructions::{Instr, ModrmType, Opr, Oprs},
     memory::{MemAddr, MemAddrType},
@@ -11,7 +13,7 @@ macro_rules! Register {
     };
 }
 
-pub fn assemble_instr(instr: &Instr) -> Vec<u8> {
+pub fn assemble_instr(instr: &Instr) -> IBytes {
     let mut bytes = vec![];
     validate_opr_sizes(instr);
     let instr = align_imm_oprs_to_reg(instr);
@@ -43,7 +45,7 @@ pub fn assemble_instr(instr: &Instr) -> Vec<u8> {
     bytes
 }
 
-fn include_imm_values(bytes: &mut Vec<u8>, instr: &Instr) {
+fn include_imm_values(bytes: &mut IBytes, instr: &Instr) {
     if instr.mnem.needs_precision_imm() {
         match instr.oprs {
             Oprs::Two(Opr::Mem(m), Opr::Imm8(val) | Opr::Imm32(val)) => match m.size {
@@ -79,7 +81,7 @@ fn include_imm_values(bytes: &mut Vec<u8>, instr: &Instr) {
     }
 }
 
-fn rex(instr: &Instr) -> Vec<u8> {
+fn rex(instr: &Instr) -> IBytes {
     match instr.oprs {
         Oprs::Two(Register!(r1), Register!(r2)) => {
             let mut bytes = vec![];
@@ -241,7 +243,7 @@ fn align_imm_oprs_to_reg(instr: &Instr) -> Instr {
     }
 }
 
-fn modrm(instr: &Instr) -> Vec<u8> {
+fn modrm(instr: &Instr) -> IBytes {
     match &instr.oprs {
         Oprs::Two(Register!(r1), Register!(r2)) => {
             if !instr.mnem.reverse_modrm() {
@@ -258,7 +260,7 @@ fn modrm(instr: &Instr) -> Vec<u8> {
     }
 }
 
-fn modrm_ex(ex: u8, oprs: &Oprs) -> Vec<u8> {
+fn modrm_ex(ex: u8, oprs: &Oprs) -> IBytes {
     match oprs {
         Oprs::Two(Register!(r1), _) | Oprs::One(Register!(r1)) => {
             vec![_modrm(0b11, r1.opcode(), ex)]
@@ -268,7 +270,7 @@ fn modrm_ex(ex: u8, oprs: &Oprs) -> Vec<u8> {
     }
 }
 
-fn _mem_modrm(r: u8, mem: &MemAddr) -> Vec<u8> {
+fn _mem_modrm(r: u8, mem: &MemAddr) -> IBytes {
     match mem.addr_type {
         MemAddrType::Address => {
             if mem.register.opcode() != 0x04 && mem.register.opcode() != 0x05 {

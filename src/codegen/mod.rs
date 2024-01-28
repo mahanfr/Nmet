@@ -8,6 +8,8 @@ pub mod register;
 pub mod elf;
 use std::{collections::HashMap, fmt::Display};
 
+use crate::utils::IBytes;
+
 use self::{
     assemble::assemble_instr,
     instructions::{Instr, Opr, Oprs},
@@ -26,7 +28,7 @@ struct InstrData {
     instr: Instr,
     // span
     relocatable: Relocatable,
-    bytes: Vec<u8>,
+    bytes: IBytes,
 }
 
 impl InstrData {
@@ -113,7 +115,7 @@ impl Codegen {
         }
     }
 
-    pub fn text_section_bytes(&mut self) -> Vec<u8> {
+    pub fn text_section_bytes(&mut self) -> IBytes {
         self.relocate();
         let mut bytes = Vec::new();
         let mut _bc = 0;

@@ -61,11 +61,13 @@ pub struct CompilerContext {
     pub structs_map: HashMap<String, StructDef>,
     pub bif_set: HashSet<Bif>,
     pub mem_offset: usize,
+    pub program_file: String,
 }
 
 impl CompilerContext {
-    pub fn new() -> Self {
+    pub fn new(program_file: String) -> Self {
         Self {
+            program_file,
             codegen: Codegen::new(),
             scoped_blocks: Vec::new(),
             block_id: 0,
@@ -102,7 +104,7 @@ impl Display for OutputType {
 
 
 pub fn compile(input: String, output: PathBuf, output_type: OutputType) {
-    let mut compiler_context = CompilerContext::new();
+    let mut compiler_context = CompilerContext::new(input.clone());
 
     _compile(&mut compiler_context, input.clone());
     impl_bifs(&mut compiler_context);
