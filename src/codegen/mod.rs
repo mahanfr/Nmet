@@ -6,6 +6,7 @@ pub mod memory;
 pub mod mnemonic;
 pub mod opcodes;
 pub mod register;
+pub mod text;
 use std::{collections::HashMap, fmt::Display};
 
 use crate::utils::IBytes;

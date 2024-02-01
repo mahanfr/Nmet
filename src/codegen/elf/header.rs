@@ -14,7 +14,7 @@ enum EType {
 #[derive(Debug, Clone, Copy)]
 enum EMachine {
     X86_64 = 62,
-    ARM = 40,
+    Arm = 40,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -53,7 +53,7 @@ impl ElfHeader {
         }
     }
 
-    pub fn to_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(self) -> Vec<u8> {
         let mut bytes = Vec::new();
         bytes.extend(b"\x7fELF\x02\x01\x01");
         bytes.resize(16, 0);

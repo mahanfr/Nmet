@@ -26,7 +26,7 @@ pub trait Section {
 //   e_shstrndx; in other cases, each field in the initial entry is
 //   set to zero.
 #[allow(dead_code)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct SectionHeader {
     sh_name: u32,
     sh_type: u32,
@@ -40,25 +40,8 @@ pub struct SectionHeader {
     sh_entsize: u64,
 }
 
-impl Default for SectionHeader {
-    fn default() -> Self {
-        Self {
-            sh_name: 0,
-            sh_type: 0,
-            sh_flags: 0,
-            sh_addr: 0,
-            sh_offset: 0,
-            sh_size: 0,
-            sh_link: 0,
-            sh_info: 0,
-            sh_addralign: 0,
-            sh_entsize: 0,
-        }
-    }
-}
-
 impl SectionHeader {
-    pub fn to_bytes(&self) -> IBytes {
+    pub fn to_bytes(self) -> IBytes {
         let mut bytes = Vec::new();
         bytes.extend(self.sh_name.to_le_bytes());
         bytes.extend(self.sh_type.to_le_bytes());
@@ -91,7 +74,6 @@ impl TextSec {
     }
 }
 impl Section for TextSec {
-
     fn to_bytes(&self) -> IBytes {
         let mut bytes = vec![];
         bytes.extend(self.data.clone());
@@ -150,7 +132,10 @@ impl ShstrtabSec {
     }
 
     pub fn index(&self, name: &str) -> u32 {
-        *self.map.get(name).expect(&format!("not found {name}")) as u32
+        *self
+            .map
+            .get(name)
+            .unwrap_or_else(|| panic!("not found {name}")) as u32
     }
 }
 impl Section for ShstrtabSec {
@@ -253,7 +238,7 @@ impl Section for SymtabSec {
 //   [Nr] Name              Type             Address           Offset
 //        Size              EntSize          Flags  Link  Info  Align
 #[allow(unused)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct SymItem {
     pub st_name: u32,
     pub st_info: u8,
@@ -263,7 +248,7 @@ pub struct SymItem {
     pub st_size: u64,
 }
 impl SymItem {
-    pub fn to_bytes(&self) -> IBytes {
+    pub fn to_bytes(self) -> IBytes {
         let mut bytes = vec![];
         bytes.extend(self.st_name.to_le_bytes());
         bytes.extend(self.st_other.to_le_bytes());
@@ -272,18 +257,6 @@ impl SymItem {
         bytes.extend(self.st_value.to_le_bytes());
         bytes.extend(self.st_size.to_le_bytes());
         bytes
-    }
-}
-impl Default for SymItem {
-    fn default() -> Self {
-        Self {
-            st_name: 0,
-            st_info: 0,
-            st_other: 0,
-            st_shndx: 0,
-            st_value: 0,
-            st_size: 0,
-        }
     }
 }
 // section .strtab
@@ -311,8 +284,8 @@ impl StrtabSec {
         }
     }
 
-    pub fn insert(&mut self, name: &String) {
-        self.map.insert(name.clone(), self.data.len());
+    pub fn insert(&mut self, name: &str) {
+        self.map.insert(name.to_owned(), self.data.len());
         self.data.extend(name.bytes());
         self.data.push(0);
     }

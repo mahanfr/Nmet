@@ -7,9 +7,9 @@ mod variables;
 use crate::codegen::instructions::Opr;
 use crate::codegen::{register::Reg, Codegen};
 use crate::compiler::{bif::Bif, function::compile_function};
-use crate::elf::generate_elf;
+
+use crate::codegen::text::x86_64_nasm_generator;
 use crate::error_handeling::error;
-use crate::output_generator::x86_64_nasm_generator;
 use crate::parser::{
     block::{Block, BlockType},
     function::Function,
@@ -19,7 +19,7 @@ use crate::parser::{
     structs::StructDef,
     types::VariableType,
 };
-use std::collections::{HashMap, HashSet, BTreeMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Display;
 use std::path::PathBuf;
 
@@ -217,7 +217,7 @@ pub fn _compile(cc: &mut CompilerContext, path: String) {
     }
     let functions = cc.functions_map.clone();
     compile_function(cc, functions.get("main").unwrap());
-    for (k,f) in functions.iter() {
+    for (k, f) in functions.iter() {
         if k != "main" {
             compile_function(cc, f);
         }

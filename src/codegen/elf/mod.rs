@@ -1,6 +1,10 @@
 #![allow(dead_code)]
 
-use std::{fs::File, io::{BufWriter, Write}, path::Path};
+use std::{
+    fs::File,
+    io::{BufWriter, Write},
+    path::Path,
+};
 
 use crate::{
     codegen::elf::sections::SectionHeader, compiler::CompilerContext, st_info, st_visibility,
@@ -44,20 +48,21 @@ impl Elf {
         }
     }
 
-    pub fn add_section<T>(&mut self, section: &T) where T: Section + Clone + 'static{
+    pub fn add_section<T>(&mut self, section: &T)
+    where
+        T: Section + Clone + 'static,
+    {
         self.shstrtab.insert(section.name().to_string());
         self.sections.push(Box::new((*section).clone()));
     }
 
     pub fn bytes(&mut self, cc: &mut CompilerContext) -> IBytes {
         let mut bytes = Vec::new();
-        let header: ElfHeader;
-
         self.set_symbols(cc);
         self.shstrtab.insert(".shstrtab".to_string());
         self.shstrtab.insert(".symtab".to_string());
         self.shstrtab.insert(".strtab".to_string());
-        header = ElfHeader::new(
+        let header = ElfHeader::new(
             (self.sections.len() + 4) as u16,
             (self.sections.len() + 1) as u16,
         );
@@ -88,24 +93,23 @@ impl Elf {
                     .to_bytes(),
             );
             loc += section.size();
-            println!("{:X?}", section.size());
         }
         bytes.extend(
             self.shstrtab
-            .header(self.shstrtab.index(".shstrtab"), loc as u64)
-            .to_bytes(),
+                .header(self.shstrtab.index(".shstrtab"), loc as u64)
+                .to_bytes(),
         );
         loc += self.shstrtab.size();
         bytes.extend(
             self.symtab
-            .header(self.shstrtab.index(".symtab"), loc as u64)
-            .to_bytes(),
+                .header(self.shstrtab.index(".symtab"), loc as u64)
+                .to_bytes(),
         );
         loc += self.symtab.size();
         bytes.extend(
             self.strtab
-            .header(self.shstrtab.index(".strtab"), loc as u64)
-            .to_bytes(),
+                .header(self.shstrtab.index(".strtab"), loc as u64)
+                .to_bytes(),
         );
     }
 
@@ -132,14 +136,14 @@ impl Elf {
 
         for (label, loc) in cc.codegen.rel_map.iter() {
             // push symbol name to list
-            self.strtab.insert(&label);
+            self.strtab.insert(label);
             // push symbol info to sym_list
             let info = match label == "__start" {
                 true => st_info!(STB_GLOBAL, STT_NOTYPE),
                 false => st_info!(STB_LOCAL, STT_NOTYPE),
             };
             self.symtab.insert(SymItem {
-                st_name: self.strtab.index(&label),
+                st_name: self.strtab.index(label),
                 st_info: info,
                 st_other: st_visibility!(STV_DEFAULT),
                 st_shndx: 1,
