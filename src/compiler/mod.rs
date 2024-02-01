@@ -19,7 +19,7 @@ use crate::parser::{
     structs::StructDef,
     types::VariableType,
 };
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, BTreeMap};
 use std::fmt::Display;
 use std::path::PathBuf;
 
@@ -77,7 +77,7 @@ pub struct CompilerContext {
     pub scoped_blocks: Vec<ScopeBlock>,
     pub block_id: usize,
     pub variables_map: HashMap<String, VariableMap>,
-    pub functions_map: HashMap<String, Function>,
+    pub functions_map: BTreeMap<String, Function>,
     pub structs_map: HashMap<String, StructDef>,
     pub bif_set: HashSet<Bif>,
     pub mem_offset: usize,
@@ -93,7 +93,7 @@ impl CompilerContext {
             block_id: 0,
             bif_set: HashSet::new(),
             variables_map: HashMap::new(),
-            functions_map: HashMap::new(),
+            functions_map: BTreeMap::new(),
             structs_map: HashMap::new(),
             mem_offset: 0,
         }
@@ -103,6 +103,9 @@ impl CompilerContext {
             let BlockType::Function(lab) = block.block_type.clone() else {
                 continue;
             };
+            if lab == "main" {
+                return "_start".to_string();
+            }
             return lab;
         }
         String::new()
@@ -213,8 +216,11 @@ pub fn _compile(cc: &mut CompilerContext, path: String) {
         }
     }
     let functions = cc.functions_map.clone();
-    for f in functions.values() {
-        compile_function(cc, f);
+    compile_function(cc, functions.get("main").unwrap());
+    for (k,f) in functions.iter() {
+        if k != "main" {
+            compile_function(cc, f);
+        }
     }
     assert!(
         cc.scoped_blocks.is_empty(),
