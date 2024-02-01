@@ -95,14 +95,13 @@ impl Section for TextSec {
     fn to_bytes(&self) -> IBytes {
         let mut bytes = vec![];
         bytes.extend(self.data.clone());
-        while bytes.len() % 16 != 0 {
-           bytes.push(0);
-        }
+        bytes.resize(self.size(), 0);
         bytes
     }
 
     fn size(&self) -> usize {
-        self.data.len()
+        let data_len = self.data.len();
+        data_len + (16 - (data_len % 16))
     }
 
     fn name(&self) -> &'static str {
@@ -151,21 +150,20 @@ impl ShstrtabSec {
     }
 
     pub fn index(&self, name: &str) -> u32 {
-        *self.map.get(name).unwrap() as u32
+        *self.map.get(name).expect(&format!("not found {name}")) as u32
     }
 }
 impl Section for ShstrtabSec {
     fn to_bytes(&self) -> IBytes {
         let mut bytes = vec![];
         bytes.extend(self.data.clone());
-        while bytes.len() % 16 != 0 {
-           bytes.push(0);
-        }
+        bytes.resize(self.size(), 0);
         bytes
     }
 
     fn size(&self) -> usize {
-        self.data.len()
+        let data_len = self.data.len();
+        data_len + (16 - (data_len % 16))
     }
 
     fn name(&self) -> &'static str {
@@ -220,13 +218,13 @@ impl Section for SymtabSec {
         for item in self.data.iter() {
             bytes.extend(item.to_bytes());
         }
-        while bytes.len() % 16 != 0 {
-           bytes.push(0);
-        }
+        bytes.resize(self.size(), 0);
         bytes
     }
+
     fn size(&self) -> usize {
-        self.data.len() * 24
+        let data_len = (self.data.len() + 1) * 24;
+        data_len + (16 - (data_len % 16))
     }
 
     fn name(&self) -> &'static str {
@@ -327,14 +325,13 @@ impl Section for StrtabSec {
     fn to_bytes(&self) -> IBytes {
         let mut bytes = vec![];
         bytes.extend(self.data.clone());
-        while bytes.len() % 16 != 0 {
-           bytes.push(0);
-        }
+        bytes.resize(self.size(), 0);
         bytes
     }
 
     fn size(&self) -> usize {
-        self.data.len()
+        let data_len = self.data.len();
+        data_len + (16 - (data_len % 16))
     }
 
     fn name(&self) -> &'static str {

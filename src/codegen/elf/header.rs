@@ -1,5 +1,6 @@
 #[allow(unused)]
 #[derive(Debug, Clone, Copy)]
+#[repr(u16)]
 enum EType {
     None = 0,
     Rel = 1,
@@ -25,7 +26,7 @@ pub struct ElfHeader {
     e_phoff: u64,
     e_shoff: u64,
     e_flags: u32,
-    e_ehsize: u64,
+    e_ehsize: u16,
     e_phensize: u16,
     e_phnum: u16,
     e_shentsize: u16,

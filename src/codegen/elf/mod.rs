@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use std::{fs::File, io::{BufWriter, Write}, path::Path};
+
 use crate::{
     codegen::elf::sections::SectionHeader, compiler::CompilerContext, st_info, st_visibility,
     utils::IBytes,
@@ -12,8 +14,18 @@ mod sections;
 use self::{
     flags::{STB_GLOBAL, STB_LOCAL, STT_FILE, STT_NOTYPE, STT_SECTION, STV_DEFAULT},
     header::ElfHeader,
-    sections::{Section, ShstrtabSec, StrtabSec, SymItem, SymtabSec},
+    sections::{Section, ShstrtabSec, StrtabSec, SymItem, SymtabSec, TextSec},
 };
+
+pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
+    let mut elf_object = Elf::new();
+    elf_object.add_section(&TextSec::new(cc.codegen.text_section_bytes()));
+    let file_content = elf_object.bytes(cc);
+    let stream = File::create(out_path.with_extension("o")).unwrap();
+    let mut file = BufWriter::new(stream);
+    file.write_all(&file_content).unwrap();
+    file.flush().unwrap();
+}
 
 struct Elf {
     sections: Vec<Box<dyn Section>>,
@@ -32,9 +44,9 @@ impl Elf {
         }
     }
 
-    pub fn add_section(&mut self, section: Box<dyn Section>) {
+    pub fn add_section<T>(&mut self, section: &T) where T: Section + Clone + 'static{
         self.shstrtab.insert(section.name().to_string());
-        self.sections.push(section);
+        self.sections.push(Box::new((*section).clone()));
     }
 
     pub fn bytes(&mut self, cc: &mut CompilerContext) -> IBytes {
@@ -42,12 +54,15 @@ impl Elf {
         let header: ElfHeader;
 
         self.set_symbols(cc);
+        self.shstrtab.insert(".shstrtab".to_string());
+        self.shstrtab.insert(".symtab".to_string());
+        self.shstrtab.insert(".strtab".to_string());
         header = ElfHeader::new(
             (self.sections.len() + 4) as u16,
             (self.sections.len() + 1) as u16,
         );
         bytes.extend(header.to_bytes());
-        bytes.extend(self.section_header_bytes());
+        self.section_header_bytes(&mut bytes);
         bytes.extend(self.sections_bytes());
         bytes
     }
@@ -63,32 +78,35 @@ impl Elf {
         bytes
     }
 
-    fn section_header_bytes(&self) -> IBytes {
-        let mut bytes = Vec::new();
+    fn section_header_bytes(&self, bytes: &mut IBytes) {
         bytes.extend(SectionHeader::default().to_bytes());
+        let mut loc = 64 + ((self.sections.len() + 4) * 64);
         for section in self.sections.iter() {
             bytes.extend(
                 section
-                    .header(self.shstrtab.index(section.name()), bytes.len() as u64)
+                    .header(self.shstrtab.index(section.name()), loc as u64)
                     .to_bytes(),
             );
+            loc += section.size();
+            println!("{:X?}", section.size());
         }
         bytes.extend(
             self.shstrtab
-            .header(self.shstrtab.index(".shstrtab"), bytes.len() as u64)
+            .header(self.shstrtab.index(".shstrtab"), loc as u64)
             .to_bytes(),
         );
+        loc += self.shstrtab.size();
         bytes.extend(
             self.symtab
-            .header(self.shstrtab.index(".symtab"), bytes.len() as u64)
+            .header(self.shstrtab.index(".symtab"), loc as u64)
             .to_bytes(),
         );
+        loc += self.symtab.size();
         bytes.extend(
             self.strtab
-            .header(self.shstrtab.index(".strtab"), bytes.len() as u64)
+            .header(self.shstrtab.index(".strtab"), loc as u64)
             .to_bytes(),
         );
-        bytes
     }
 
     fn set_symbols(&mut self, cc: &mut CompilerContext) {

@@ -25,6 +25,26 @@ use std::path::PathBuf;
 
 use self::stmts::compile_stmt;
 
+pub fn compile(input: String, output: PathBuf, output_type: OutputType) {
+    let mut compiler_context = CompilerContext::new(input.clone());
+
+    _compile(&mut compiler_context, input.clone());
+    impl_bifs(&mut compiler_context);
+    let prefix = output.parent().unwrap();
+    std::fs::create_dir_all(prefix).unwrap();
+    match output_type {
+        OutputType::Elf => {
+            println!("[info] Generating elf object file...");
+            // generate_elf(output.as_path(), &mut compiler_context);
+            crate::codegen::elf::generate_elf(output.as_path(), &mut compiler_context);
+        }
+        OutputType::Asm => {
+            println!("[info] Generating asm text file...");
+            x86_64_nasm_generator(output.as_path(), compiler_context.codegen).unwrap();
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct VariableMap {
     pub offset_inner: usize,
@@ -98,25 +118,6 @@ impl Display for OutputType {
         match self {
             Self::Elf => write!(f, "elf"),
             Self::Asm => write!(f, "asm"),
-        }
-    }
-}
-
-pub fn compile(input: String, output: PathBuf, output_type: OutputType) {
-    let mut compiler_context = CompilerContext::new(input.clone());
-
-    _compile(&mut compiler_context, input.clone());
-    impl_bifs(&mut compiler_context);
-    let prefix = output.parent().unwrap();
-    std::fs::create_dir_all(prefix).unwrap();
-    match output_type {
-        OutputType::Elf => {
-            println!("[info] Generating elf object file...");
-            generate_elf(output.as_path(), &mut compiler_context);
-        }
-        OutputType::Asm => {
-            println!("[info] Generating asm text file...");
-            x86_64_nasm_generator(output.as_path(), compiler_context.codegen).unwrap();
         }
     }
 }
