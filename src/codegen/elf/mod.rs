@@ -89,32 +89,31 @@ impl Elf {
         for section in self.sections.iter() {
             bytes.extend(
                 section
-                    .header(self.shstrtab.index(section.name()), loc as u64)
+                    .header(self.shstrtab.index(section.name()), loc as u64, None, None)
                     .to_bytes(),
             );
             loc += section.size();
         }
         bytes.extend(
             self.shstrtab
-                .header(self.shstrtab.index(".shstrtab"), loc as u64)
+                .header(self.shstrtab.index(".shstrtab"), loc as u64, None, None)
                 .to_bytes(),
         );
         loc += self.shstrtab.size();
         bytes.extend(
             self.symtab
-                .header(self.shstrtab.index(".symtab"), loc as u64)
+                .header(self.shstrtab.index(".symtab"), loc as u64, Some((self.sections.len() + 3) as u32), None)
                 .to_bytes(),
         );
         loc += self.symtab.size();
         bytes.extend(
             self.strtab
-                .header(self.shstrtab.index(".strtab"), loc as u64)
+                .header(self.shstrtab.index(".strtab"), loc as u64, None, None)
                 .to_bytes(),
         );
     }
 
     fn set_symbols(&mut self, cc: &mut CompilerContext) {
-        self.symtab.strtab_index = (self.sections.len() + 3) as u32;
         self.strtab.insert(&cc.program_file);
         self.symtab.insert(SymItem {
             st_name: self.strtab.index(&cc.program_file),

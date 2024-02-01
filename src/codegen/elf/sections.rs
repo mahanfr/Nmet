@@ -7,7 +7,7 @@ use crate::utils::IBytes;
 /// and internal sections like symtab or strtab
 pub trait Section {
     fn to_bytes(&self) -> IBytes;
-    fn header(&self, sh_name: u32, sh_offset: u64) -> SectionHeader;
+    fn header(&self, sh_name: u32, sh_offset: u64, sh_link: Option<u32>, sh_info: Option<u32>) -> SectionHeader;
     fn name(&self) -> &'static str;
     fn size(&self) -> usize;
 }
@@ -56,6 +56,107 @@ impl SectionHeader {
         bytes
     }
 }
+// section .bss
+//   This section holds uninitialized data that contributes to
+//   the program's memory image.  By definition, the system
+//   initializes the data with zeros when the program begins to
+//   run.  This section is of type SHT_NOBITS.  The attribute
+//   types are SHF_ALLOC and SHF_WRITE.
+//   [Nr] Name              Type             Address           Offset
+//        Size              EntSize          Flags  Link  Info  Align
+//   [ 2] .bss              NOBITS           0000000000000000  00000300
+//        0000000000000008  0000000000000000  WA       0     0     4
+#[derive(Debug, Clone)]
+pub struct BssSec {
+    data: IBytes,
+}
+impl BssSec {
+    pub fn new(data: IBytes) -> Self {
+        Self { data }
+    }
+}
+impl Section for BssSec {
+    fn to_bytes(&self) -> IBytes {
+        let mut bytes = vec![];
+        bytes.extend(self.data.clone());
+        bytes.resize(self.size(), 0);
+        bytes
+    }
+
+    fn size(&self) -> usize {
+        let data_len = self.data.len();
+        data_len + (16 - (data_len % 16))
+    }
+
+    fn name(&self) -> &'static str {
+        ".data"
+    }
+
+    fn header(&self, sh_name: u32, sh_offset: u64, _:Option<u32>, _: Option<u32>) -> SectionHeader {
+        SectionHeader {
+            sh_name,
+            sh_type: 1,
+            sh_flags: 2,
+            sh_addr: 0,
+            sh_offset,
+            sh_size: self.data.len() as u64,
+            sh_link: 0,
+            sh_info: 0,
+            sh_addralign: 4,
+            sh_entsize: 0,
+        }
+    }
+}
+// section .data
+//   This section holds initialized data that contribute to the
+//   program's memory image.  This section is of type
+//   SHT_PROGBITS.  The attribute types are SHF_ALLOC and
+//   SHF_WRITE
+//   [Nr] Name              Type             Address           Offset
+//        Size              EntSize          Flags  Link  Info  Align
+//   [ 1] .data             PROGBITS         0000000000000000  00000200
+//        000000000000000c  0000000000000000  WA       0     0     4
+#[derive(Debug, Clone)]
+pub struct DataSec {
+    data: IBytes,
+}
+impl DataSec {
+    pub fn new(data: IBytes) -> Self {
+        Self { data }
+    }
+}
+impl Section for DataSec {
+    fn to_bytes(&self) -> IBytes {
+        let mut bytes = vec![];
+        bytes.extend(self.data.clone());
+        bytes.resize(self.size(), 0);
+        bytes
+    }
+
+    fn size(&self) -> usize {
+        let data_len = self.data.len();
+        data_len + (16 - (data_len % 16))
+    }
+
+    fn name(&self) -> &'static str {
+        ".data"
+    }
+
+    fn header(&self, sh_name: u32, sh_offset: u64, _:Option<u32>, _: Option<u32>) -> SectionHeader {
+        SectionHeader {
+            sh_name,
+            sh_type: 1,
+            sh_flags: 2,
+            sh_addr: 0,
+            sh_offset,
+            sh_size: self.data.len() as u64,
+            sh_link: 0,
+            sh_info: 0,
+            sh_addralign: 4,
+            sh_entsize: 0,
+        }
+    }
+}
 // section .text
 //   This section holds the "text", or executable instructions,
 //   of a program.  This section is of type SHT_PROGBITS.  The
@@ -90,7 +191,7 @@ impl Section for TextSec {
         ".text"
     }
 
-    fn header(&self, sh_name: u32, sh_offset: u64) -> SectionHeader {
+    fn header(&self, sh_name: u32, sh_offset: u64, _:Option<u32>, _: Option<u32>) -> SectionHeader {
         SectionHeader {
             sh_name,
             sh_type: 1,
@@ -155,7 +256,7 @@ impl Section for ShstrtabSec {
         ".shstrtab"
     }
 
-    fn header(&self, sh_name: u32, sh_offset: u64) -> SectionHeader {
+    fn header(&self, sh_name: u32, sh_offset: u64, _:Option<u32>, _: Option<u32>) -> SectionHeader {
         SectionHeader {
             sh_name,
             sh_type: 3,
@@ -183,13 +284,11 @@ impl Section for ShstrtabSec {
 #[derive(Debug, Clone)]
 pub struct SymtabSec {
     data: Vec<SymItem>,
-    pub strtab_index: u32,
 }
 impl SymtabSec {
     pub fn new() -> Self {
         Self {
             data: vec![SymItem::default()],
-            strtab_index: 0,
         }
     }
 
@@ -216,7 +315,7 @@ impl Section for SymtabSec {
         ".symtab"
     }
 
-    fn header(&self, sh_name: u32, sh_offset: u64) -> SectionHeader {
+    fn header(&self, sh_name: u32, sh_offset: u64, sh_link :Option<u32>, _: Option<u32>) -> SectionHeader {
         SectionHeader {
             sh_name,
             sh_type: 2,
@@ -224,7 +323,7 @@ impl Section for SymtabSec {
             sh_addr: 0,
             sh_offset,
             sh_size: (self.data.len() * 24) as u64,
-            sh_link: self.strtab_index,
+            sh_link: sh_link.unwrap(),
             sh_info: self.data.len() as u32,
             sh_addralign: 8,
             sh_entsize: 24,
@@ -256,6 +355,74 @@ impl SymItem {
         bytes.extend(self.st_shndx.to_le_bytes());
         bytes.extend(self.st_value.to_le_bytes());
         bytes.extend(self.st_size.to_le_bytes());
+        bytes
+    }
+}
+// section .rela.text
+//   This section holds relocation information as described
+//   below.  If the file has a loadable segment that includes
+//   relocation, the section's attributes will include the
+//   SHF_ALLOC bit.  Otherwise, the bit will be off.  By
+//   convention, "NAME" is supplied by the section to which the
+//   relocations apply.  Thus a relocation section for .text
+//   normally would have the name .rela.text.  This section is
+//   of type SHT_RELA.
+//   [Nr] Name              Type             Address           Offset
+//        Size              EntSize          Flags  Link  Info  Align
+//   [ 6] .rela.text        RELA             0000000000000000  00000440
+//        0000000000000018  0000000000000018           4     1     8
+#[allow(unused)]
+#[derive(Debug, Clone)]
+pub struct RelaSec {
+    data: Vec<RelaItem>,
+}
+impl Section for RelaSec {
+    fn to_bytes(&self) -> IBytes {
+        let mut bytes = vec![];
+        for item in self.data.iter() {
+            bytes.extend(item.to_bytes());
+        }
+        bytes.resize(self.size(), 0);
+        bytes
+    }
+
+    fn size(&self) -> usize {
+        let data_len = (self.data.len() + 1) * 24;
+        data_len + (16 - (data_len % 16))
+    }
+
+    fn name(&self) -> &'static str {
+        ".rela.text"
+    }
+
+    fn header(&self, sh_name: u32, sh_offset: u64, sh_link: Option<u32>, sh_info: Option<u32>) -> SectionHeader {
+        SectionHeader {
+            sh_name,
+            // SHT_RELA 4
+            sh_type: 4,
+            sh_flags: 0,
+            sh_addr: 0,
+            sh_offset,
+            sh_size: (self.data.len() * 24) as u64,
+            sh_link: sh_link.unwrap(),
+            sh_info: sh_info.unwrap(),
+            sh_addralign: 8,
+            sh_entsize: 24,
+        }
+    }
+}
+#[derive(Debug, Clone, Copy)]
+pub struct RelaItem {
+    r_offset: u64,
+    r_info: u64,
+    r_addend: i64,
+}
+impl RelaItem {
+    pub fn to_bytes(self) -> IBytes {
+        let mut bytes = vec![];
+        bytes.extend(self.r_offset.to_le_bytes());
+        bytes.extend(self.r_info.to_le_bytes());
+        bytes.extend(self.r_addend.to_le_bytes());
         bytes
     }
 }
@@ -311,7 +478,7 @@ impl Section for StrtabSec {
         ".strtab"
     }
 
-    fn header(&self, sh_name: u32, sh_offset: u64) -> SectionHeader {
+    fn header(&self, sh_name: u32, sh_offset: u64, _:Option<u32>, _: Option<u32>) -> SectionHeader {
         SectionHeader {
             sh_name,
             sh_type: 3,
