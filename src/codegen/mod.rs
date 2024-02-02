@@ -10,12 +10,12 @@ pub mod text;
 pub mod data_bss;
 use std::{collections::HashMap, fmt::Display};
 
-use crate::utils::IBytes;
+use crate::{utils::IBytes, parser::types::VariableType};
 
 use self::{
     assemble::assemble_instr,
     instructions::{Instr, Opr, Oprs},
-    mnemonic::Mnemonic,
+    mnemonic::Mnemonic, data_bss::DataItem,
 };
 
 #[derive(Clone, PartialEq)]
@@ -60,7 +60,7 @@ impl InstrData {
 #[derive(Clone)]
 pub struct Codegen {
     instructs: Vec<InstrData>,
-    pub data_buf: Vec<String>,
+    pub data_buf: Vec<DataItem>,
     pub bss_buf: Vec<String>,
     pub rel_map: HashMap<String, usize>,
 }
@@ -132,12 +132,10 @@ impl Codegen {
         asm
     }
 
-    pub fn add_data_seg(&mut self, data: impl ToString, _size: usize) -> u64 {
-        let id = self.data_buf.len();
-        self.data_buf
-            .push(format!("data{id} db {}", data.to_string()));
-        self.data_buf.push(format!("len{id} equ $ - data{id}"));
-        id as u64
+    pub fn add_data(&mut self, data: Vec<u8>, dtype: VariableType) -> String {
+        let name = format!("data{}", self.data_buf.len());
+        self.data_buf.push(DataItem::new(name.clone(), data, dtype));
+        name
     }
 
     pub fn add_bss_seg(&mut self, size: usize) -> String {

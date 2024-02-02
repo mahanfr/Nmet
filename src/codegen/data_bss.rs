@@ -19,6 +19,15 @@ pub struct DataItem {
     dtype: VariableType,
 }
 impl DataItem {
+
+    pub fn new(name: String, data: Vec<u8>, dtype: VariableType) -> Self {
+        Self {
+            name,
+            data,
+            dtype,
+        }
+    }
+
     pub fn asmblized_data(&self) -> String {
         let mut asm_str = String::new();
         let mut ascii_stack = Vec::<u8>::new();
@@ -40,6 +49,14 @@ impl DataItem {
                 asm_str.extend(ch.to_string().chars());
             }
         }
+        if !ascii_stack.is_empty() {
+            let str = String::from_utf8(ascii_stack.clone()).unwrap();
+            if !asm_str.is_empty() {
+                asm_str.push(',');
+            }
+            asm_str.extend(format!("\"{str}\"").chars());
+        }
+        println!("({asm_str})");
         asm_str
     }
 }

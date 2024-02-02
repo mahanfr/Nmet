@@ -231,13 +231,9 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             }
         }
         ExprType::String(str) => {
-            let data_array = asmfy_string(str);
-            let id = cc.codegen.add_data_seg(data_array, 8);
-            // assert!(false, "Not Implemented yet!");
-            let data = format!("data{id}");
-            let len = format!("len{id}");
-            cc.codegen.instr1(Push, Opr::Fs(data));
-            cc.codegen.instr1(Push, Opr::Fs(len));
+            let id = cc.codegen.add_data(str.as_bytes().to_vec(), VariableType::String);
+            cc.codegen.instr1(Push, Opr::Fs(id));
+            cc.codegen.instr1(Push, str.len());
             VariableType::String
         }
         ExprType::Unary(u) => {
