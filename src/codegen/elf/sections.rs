@@ -84,8 +84,7 @@ impl Section for BssSec {
     }
 
     fn size(&self) -> usize {
-        let data_len = self.data.len();
-        data_len + (16 - (data_len % 16))
+        0
     }
 
     fn name(&self) -> &'static str {
@@ -96,7 +95,7 @@ impl Section for BssSec {
         SectionHeader {
             sh_name,
             sh_type: 1,
-            sh_flags: 2,
+            sh_flags: 3,
             sh_addr: 0,
             sh_offset,
             sh_size: self.data.len() as u64,
@@ -146,7 +145,7 @@ impl Section for DataSec {
         SectionHeader {
             sh_name,
             sh_type: 1,
-            sh_flags: 2,
+            sh_flags: 3,
             sh_addr: 0,
             sh_offset,
             sh_size: self.data.len() as u64,

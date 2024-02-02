@@ -147,7 +147,7 @@ impl Elf {
                 st_other: st_visibility!(STV_DEFAULT),
                 st_shndx: 1,
                 st_size: 0,
-                st_value: loc.unwrap() as u64,
+                st_value: *loc as u64,
             });
         }
     }

@@ -7,6 +7,7 @@ pub mod mnemonic;
 pub mod opcodes;
 pub mod register;
 pub mod text;
+pub mod data_bss;
 use std::{collections::HashMap, fmt::Display};
 
 use crate::utils::IBytes;
@@ -61,7 +62,7 @@ pub struct Codegen {
     instructs: Vec<InstrData>,
     pub data_buf: Vec<String>,
     pub bss_buf: Vec<String>,
-    pub rel_map: HashMap<String, Option<usize>>,
+    pub rel_map: HashMap<String, usize>,
 }
 
 impl Codegen {
@@ -80,39 +81,22 @@ impl Codegen {
 
     pub fn relocate(&mut self) {
         let mut bytes_sum = 0;
-        let mut set = Vec::<(String, usize, usize, Instr)>::new();
-        for (index, item) in self.instructs.iter_mut().enumerate() {
-            if item.instr.mnem == Mnemonic::Lable {
-                let Oprs::One(Opr::Rel(key)) = item.instr.oprs.clone() else {
-                    unreachable!();
-                };
-                self.rel_map.entry(key).and_modify(|x| *x = Some(bytes_sum));
-                continue;
-            }
+        for item in self.instructs.iter_mut() {
             if item.relocatable == Relocatable::Loc {
                 let Oprs::One(Opr::Rel(key)) = item.instr.oprs.clone() else {
                     unreachable!();
                 };
-                let Some(Some(target)) = self.rel_map.get(&key) else {
+                let Some(target) = self.rel_map.get(&key) else {
                     panic!("Unknown Target!");
                 };
-                let loc: i32 = *target as i32 - bytes_sum as i32;
+                let loc: i32 = *target as i32 - bytes_sum as i32 - item.bytes.len() as i32;
                 let new_bytes =
                     assemble_instr(&Instr::new1(item.instr.mnem, Opr::Imm32(loc as i64)));
                 bytes_sum += new_bytes.len();
-                set.push((key, index, bytes_sum, item.instr.clone()));
-                // item.bytes = new_bytes;
+                item.bytes = new_bytes;
             } else {
                 bytes_sum += item.bytes.len();
             }
-        }
-        for item in set.iter() {
-            let Some(Some(target)) = self.rel_map.get(&item.0) else {
-                panic!("Unknown Target!");
-            };
-            let loc: i32 = *target as i32 - item.2 as i32;
-            let new_bytes = assemble_instr(&Instr::new1(item.3.mnem, Opr::Imm32(loc as i64)));
-            self.instructs[item.1].bytes = new_bytes;
         }
     }
 
@@ -194,10 +178,7 @@ impl Codegen {
         let lable = lable.to_string();
         self.instructs.push(InstrData::new_lable(lable.clone()));
         let real_loc: usize = self.instructs.iter().map(|x| x.bytes.len()).sum();
-        self.rel_map
-            .entry(lable)
-            .and_modify(|x| *x = Some(self.instructs.len() - 1))
-            .or_insert(Some(real_loc));
+        self.rel_map.insert(lable, real_loc);
     }
 
     fn relocate_lable(&mut self, opr1: impl Into<Opr>) -> (Opr, Relocatable) {

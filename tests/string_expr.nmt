@@ -3,4 +3,5 @@ func main() {
     print "Hello\n";
     print "World";
     print "\n";
+    print "From\nNmet\n";
 }
