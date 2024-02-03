@@ -133,7 +133,7 @@ impl Elf {
             st_value: 0,
         });
 
-        for (label, loc) in cc.codegen.rel_map.iter() {
+        for (label, sym) in cc.codegen.rel_map.iter() {
             // push symbol name to list
             self.strtab.insert(label);
             // push symbol info to sym_list
@@ -141,13 +141,23 @@ impl Elf {
                 true => st_info!(STB_GLOBAL, STT_NOTYPE),
                 false => st_info!(STB_LOCAL, STT_NOTYPE),
             };
+            let shndx = match sym.1 {
+                super::SymbolType::TextSec => {
+                    self.sections.iter().position(|x| x.name() == ".text").unwrap() + 1
+                },
+                super::SymbolType::DataSec => {
+                    self.sections.iter().position(|x| x.name() == ".data").unwrap() + 1
+                },
+                _ => 0
+            };
+            
             self.symtab.insert(SymItem {
                 st_name: self.strtab.index(label),
                 st_info: info,
                 st_other: st_visibility!(STV_DEFAULT),
-                st_shndx: 1,
+                st_shndx: shndx as u16,
                 st_size: 0,
-                st_value: *loc as u64,
+                st_value: sym.0 as u64,
             });
         }
     }

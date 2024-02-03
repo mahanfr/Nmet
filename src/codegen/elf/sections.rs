@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::utils::IBytes;
+use crate::{utils::IBytes, codegen::RelaItem};
 
 /// Generic Section for refrencing and storing
 /// different code sections including .text, .data, or .bss
@@ -408,21 +408,6 @@ impl Section for RelaSec {
             sh_addralign: 8,
             sh_entsize: 24,
         }
-    }
-}
-#[derive(Debug, Clone, Copy)]
-pub struct RelaItem {
-    r_offset: u64,
-    r_info: u64,
-    r_addend: i64,
-}
-impl RelaItem {
-    pub fn to_bytes(self) -> IBytes {
-        let mut bytes = vec![];
-        bytes.extend(self.r_offset.to_le_bytes());
-        bytes.extend(self.r_info.to_le_bytes());
-        bytes.extend(self.r_addend.to_le_bytes());
-        bytes
     }
 }
 // section .strtab

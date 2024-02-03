@@ -18,11 +18,36 @@ use self::{
     mnemonic::Mnemonic, data_bss::DataItem,
 };
 
+pub fn placeholder(instr: Instr) -> Instr {
+    match instr.oprs {
+        Oprs::One(Opr::Fs(_)) => Instr::new1(instr.mnem, Opr::Imm32(0)),
+        Oprs::Two(x, Opr::Fs(_)) => Instr::new2(instr.mnem, x, Opr::Imm32(0)),
+        Oprs::Two(Opr::Fs(_), x) => Instr::new2(instr.mnem, Opr::Imm32(0), x),
+        _ => unreachable!(),
+    }
+}
+
 #[derive(Clone, PartialEq)]
 enum Relocatable {
     None,
     Ref,
     Loc,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct RelaItem {
+    r_offset: u64,
+    r_info: u64,
+    r_addend: i64,
+}
+impl RelaItem {
+    pub fn to_bytes(self) -> IBytes {
+        let mut bytes = vec![];
+        bytes.extend(self.r_offset.to_le_bytes());
+        bytes.extend(self.r_info.to_le_bytes());
+        bytes.extend(self.r_addend.to_le_bytes());
+        bytes
+    }
 }
 
 #[derive(Clone)]
@@ -37,7 +62,7 @@ impl InstrData {
     pub fn new(instr: Instr, rel: Relocatable) -> Self {
         let bytes = match rel {
             Relocatable::Loc => assemble_instr(&Instr::new1(instr.mnem, Opr::Imm32(0))),
-            Relocatable::Ref => Vec::new(),
+            Relocatable::Ref => assemble_instr(&placeholder(instr.clone())),
             Relocatable::None => assemble_instr(&instr),
         };
         Self {
@@ -56,13 +81,22 @@ impl InstrData {
     }
 }
 
+#[allow(unused)]
+#[derive(Debug, Clone, Copy)]
+pub enum SymbolType {
+    Global,
+    DataSec,
+    TextSec,
+}
+
 #[allow(dead_code)]
 #[derive(Clone)]
 pub struct Codegen {
     instructs: Vec<InstrData>,
     pub data_buf: Vec<DataItem>,
     pub bss_buf: Vec<String>,
-    pub rel_map: HashMap<String, usize>,
+    pub rel_map: HashMap<String, (usize, SymbolType)>,
+    pub rela_map: HashMap<String, RelaItem>,
 }
 
 impl Codegen {
@@ -72,6 +106,7 @@ impl Codegen {
             bss_buf: Vec::new(),
             data_buf: Vec::new(),
             rel_map: HashMap::new(),
+            rela_map: HashMap::new(),
         }
     }
 
@@ -82,14 +117,18 @@ impl Codegen {
     pub fn relocate(&mut self) {
         let mut bytes_sum = 0;
         for item in self.instructs.iter_mut() {
-            if item.relocatable == Relocatable::Loc {
+            if item.relocatable == Relocatable::Ref {
+                bytes_sum += item.bytes.len();
+                let rela_index = item.bytes.windows(4).position(|x| x == [0,0,0,0]).unwrap();
+
+            } else if item.relocatable == Relocatable::Loc {
                 let Oprs::One(Opr::Rel(key)) = item.instr.oprs.clone() else {
                     unreachable!();
                 };
                 let Some(target) = self.rel_map.get(&key) else {
                     panic!("Unknown Target!");
                 };
-                let loc: i32 = *target as i32 - bytes_sum as i32 - item.bytes.len() as i32;
+                let loc: i32 = target.0 as i32 - bytes_sum as i32 - item.bytes.len() as i32;
                 let new_bytes =
                     assemble_instr(&Instr::new1(item.instr.mnem, Opr::Imm32(loc as i64)));
                 bytes_sum += new_bytes.len();
@@ -176,7 +215,7 @@ impl Codegen {
         let lable = lable.to_string();
         self.instructs.push(InstrData::new_lable(lable.clone()));
         let real_loc: usize = self.instructs.iter().map(|x| x.bytes.len()).sum();
-        self.rel_map.insert(lable, real_loc);
+        self.rel_map.insert(lable, (real_loc, SymbolType::TextSec));
     }
 
     fn relocate_lable(&mut self, opr1: impl Into<Opr>) -> (Opr, Relocatable) {
