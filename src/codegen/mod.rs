@@ -95,7 +95,7 @@ pub struct Codegen {
     instructs: Vec<InstrData>,
     pub data_buf: Vec<DataItem>,
     pub bss_buf: Vec<String>,
-    pub rel_map: HashMap<String, (usize, SymbolType)>,
+    pub symbols_map: HashMap<String, (usize, SymbolType)>,
     pub rela_map: HashMap<String, RelaItem>,
 }
 
@@ -105,7 +105,7 @@ impl Codegen {
             instructs: Vec::new(),
             bss_buf: Vec::new(),
             data_buf: Vec::new(),
-            rel_map: HashMap::new(),
+            symbols_map: HashMap::new(),
             rela_map: HashMap::new(),
         }
     }
@@ -125,7 +125,7 @@ impl Codegen {
                 let Oprs::One(Opr::Rel(key)) = item.instr.oprs.clone() else {
                     unreachable!();
                 };
-                let Some(target) = self.rel_map.get(&key) else {
+                let Some(target) = self.symbols_map.get(&key) else {
                     panic!("Unknown Target!");
                 };
                 let loc: i32 = target.0 as i32 - bytes_sum as i32 - item.bytes.len() as i32;
@@ -215,7 +215,7 @@ impl Codegen {
         let lable = lable.to_string();
         self.instructs.push(InstrData::new_lable(lable.clone()));
         let real_loc: usize = self.instructs.iter().map(|x| x.bytes.len()).sum();
-        self.rel_map.insert(lable, (real_loc, SymbolType::TextSec));
+        self.symbols_map.insert(lable, (real_loc, SymbolType::TextSec));
     }
 
     fn relocate_lable(&mut self, opr1: impl Into<Opr>) -> (Opr, Relocatable) {

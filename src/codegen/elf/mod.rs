@@ -133,7 +133,7 @@ impl Elf {
             st_value: 0,
         });
 
-        for (label, sym) in cc.codegen.rel_map.iter() {
+        for (label, sym) in cc.codegen.symbols_map.iter() {
             // push symbol name to list
             self.strtab.insert(label);
             // push symbol info to sym_list
