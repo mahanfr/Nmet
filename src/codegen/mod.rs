@@ -8,7 +8,7 @@ pub mod opcodes;
 pub mod register;
 pub mod text;
 pub mod data_bss;
-use std::{collections::HashMap, fmt::Display};
+use std::{collections::{HashMap, BTreeMap}, fmt::Display};
 
 use crate::{utils::IBytes, parser::types::VariableType};
 
@@ -34,18 +34,20 @@ enum Relocatable {
     Loc,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct RelaItem {
     r_offset: u64,
     r_info: u64,
     r_addend: i64,
+    sec_name: String,
 }
 impl RelaItem {
-    pub fn new(r_offset: u64, r_addend: i64) -> Self {
+    pub fn new(sec_name:impl ToString, r_offset: u64, r_addend: i64) -> Self {
         Self {
             r_offset,
             r_info: 0x020000000b,
             r_addend,
+            sec_name: sec_name.to_string(),
         }
     }
 
@@ -53,7 +55,7 @@ impl RelaItem {
         self.r_info = (r_type << 32) | (r_sym & u32::MAX as u64);
     }
 
-    pub fn to_bytes(self) -> IBytes {
+    pub fn to_bytes(&self) -> IBytes {
         let mut bytes = vec![];
         bytes.extend(self.r_offset.to_le_bytes());
         bytes.extend(self.r_info.to_le_bytes());
@@ -107,7 +109,7 @@ pub struct Codegen {
     instructs: Vec<InstrData>,
     pub data_buf: Vec<DataItem>,
     pub bss_buf: Vec<String>,
-    pub symbols_map: HashMap<String, (usize, SymbolType)>,
+    pub symbols_map: BTreeMap<String, (usize, SymbolType)>,
     pub rela_map: Vec<RelaItem>,
 }
 
@@ -117,7 +119,7 @@ impl Codegen {
             instructs: Vec::new(),
             bss_buf: Vec::new(),
             data_buf: Vec::new(),
-            symbols_map: HashMap::new(),
+            symbols_map: BTreeMap::new(),
             rela_map: Vec::new(),
         }
     }
@@ -136,8 +138,7 @@ impl Codegen {
                 let rela_offset = item.bytes.windows(4).position(|x| x == [0,0,0,0]).unwrap()
                     + bytes_sum;
                 let addend = self.data_buf.iter().find(|x| x.name == key).unwrap().index;
-                self.rela_map.push(RelaItem::new(rela_offset as u64, addend as i64));
-                self.symbols_map.insert(key, (rela_offset, SymbolType::DataSec));
+                self.rela_map.push(RelaItem::new(".data",rela_offset as u64, addend as i64));
                 bytes_sum += item.bytes.len();
             } else if item.relocatable == Relocatable::Loc {
                 let Oprs::One(Opr::Rel(key)) = item.instr.oprs.clone() else {
@@ -197,6 +198,8 @@ impl Codegen {
             }
             None => 0,
         };
+        self.symbols_map.insert(name.clone(), 
+                    (self.data_buf.iter().map(|x| x.data.len()).sum(), SymbolType::DataSec));
         self.data_buf.push(DataItem::new(name.clone(), index, data, dtype));
         name
     }

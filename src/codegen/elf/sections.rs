@@ -401,8 +401,14 @@ pub struct RelaSec {
     data: Vec<RelaItem>,
 }
 impl RelaSec {
-    pub fn new(data: Vec<RelaItem>) -> Self {
-        Self { data }
+    pub fn new() -> Self {
+        Self { data : Vec::new() }
+    }
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+    pub fn push(&mut self, item: RelaItem) {
+        self.data.push(item);
     }
 }
 impl Section for RelaSec {
