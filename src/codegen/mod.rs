@@ -41,6 +41,18 @@ pub struct RelaItem {
     r_addend: i64,
 }
 impl RelaItem {
+    pub fn new(r_offset: u64, r_addend: i64) -> Self {
+        Self {
+            r_offset,
+            r_info: 0x020000000b,
+            r_addend,
+        }
+    }
+
+    pub fn set_info(&mut self, r_type: u64, r_sym: u64) {
+        self.r_info = (r_type << 32) | (r_sym & u32::MAX as u64);
+    }
+
     pub fn to_bytes(self) -> IBytes {
         let mut bytes = vec![];
         bytes.extend(self.r_offset.to_le_bytes());
@@ -96,7 +108,7 @@ pub struct Codegen {
     pub data_buf: Vec<DataItem>,
     pub bss_buf: Vec<String>,
     pub symbols_map: HashMap<String, (usize, SymbolType)>,
-    pub rela_map: HashMap<String, RelaItem>,
+    pub rela_map: Vec<RelaItem>,
 }
 
 impl Codegen {
@@ -106,7 +118,7 @@ impl Codegen {
             bss_buf: Vec::new(),
             data_buf: Vec::new(),
             symbols_map: HashMap::new(),
-            rela_map: HashMap::new(),
+            rela_map: Vec::new(),
         }
     }
 
@@ -118,9 +130,15 @@ impl Codegen {
         let mut bytes_sum = 0;
         for item in self.instructs.iter_mut() {
             if item.relocatable == Relocatable::Ref {
+                let Oprs::One(Opr::Fs(key)) = item.instr.oprs.clone() else {
+                    unreachable!();
+                };
+                let rela_offset = item.bytes.windows(4).position(|x| x == [0,0,0,0]).unwrap()
+                    + bytes_sum;
+                let addend = self.data_buf.iter().find(|x| x.name == key).unwrap().index;
+                self.rela_map.push(RelaItem::new(rela_offset as u64, addend as i64));
+                self.symbols_map.insert(key, (rela_offset, SymbolType::DataSec));
                 bytes_sum += item.bytes.len();
-                let rela_index = item.bytes.windows(4).position(|x| x == [0,0,0,0]).unwrap();
-
             } else if item.relocatable == Relocatable::Loc {
                 let Oprs::One(Opr::Rel(key)) = item.instr.oprs.clone() else {
                     unreachable!();
@@ -173,7 +191,13 @@ impl Codegen {
 
     pub fn add_data(&mut self, data: Vec<u8>, dtype: VariableType) -> String {
         let name = format!("data{}", self.data_buf.len());
-        self.data_buf.push(DataItem::new(name.clone(), data, dtype));
+        let index = match self.data_buf.last() {
+            Some(dt) => {
+                dt.index + dt.data.len()
+            }
+            None => 0,
+        };
+        self.data_buf.push(DataItem::new(name.clone(), index, data, dtype));
         name
     }
 

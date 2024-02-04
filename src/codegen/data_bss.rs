@@ -14,14 +14,16 @@ fn data_type(dt: &VariableType) -> &'static str {
 
 #[derive(Debug, Clone)]
 pub struct DataItem {
-    name: String,
-    data: Vec<u8>,
-    dtype: VariableType,
+    pub index: usize,
+    pub name: String,
+    pub data: Vec<u8>,
+    pub dtype: VariableType,
 }
 impl DataItem {
 
-    pub fn new(name: String, data: Vec<u8>, dtype: VariableType) -> Self {
+    pub fn new(name: String,index: usize, data: Vec<u8>, dtype: VariableType) -> Self {
         Self {
+            index,
             name,
             data,
             dtype,

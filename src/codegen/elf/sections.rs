@@ -1,15 +1,16 @@
 use std::collections::HashMap;
 
-use crate::{utils::IBytes, codegen::RelaItem};
+use crate::{utils::IBytes, codegen::{RelaItem, data_bss::DataItem}};
 
 /// Generic Section for refrencing and storing
 /// different code sections including .text, .data, or .bss
 /// and internal sections like symtab or strtab
 pub trait Section {
     fn to_bytes(&self) -> IBytes;
-    fn header(&self, sh_name: u32, sh_offset: u64, sh_link: Option<u32>, sh_info: Option<u32>) -> SectionHeader;
+    fn header(&self, sh_name: u32, sh_offset: u64, sh_link: u32, sh_info: u32) -> SectionHeader;
     fn name(&self) -> &'static str;
     fn size(&self) -> usize;
+    fn link_and_info(&self) -> (Option<&'static str>, Option<&'static str>);
 }
 // Section header (Shdr)
 //   A file's section header table lets one locate all the file's
@@ -83,6 +84,10 @@ impl Section for BssSec {
         bytes
     }
 
+    fn link_and_info(&self) -> (Option<&'static str>, Option<&'static str>) {
+        (None, None)
+    }
+
     fn size(&self) -> usize {
         0
     }
@@ -91,7 +96,7 @@ impl Section for BssSec {
         ".data"
     }
 
-    fn header(&self, sh_name: u32, sh_offset: u64, _:Option<u32>, _: Option<u32>) -> SectionHeader {
+    fn header(&self, sh_name: u32, sh_offset: u64, _:u32, _:u32) -> SectionHeader {
         SectionHeader {
             sh_name,
             sh_type: 1,
@@ -120,7 +125,11 @@ pub struct DataSec {
     data: IBytes,
 }
 impl DataSec {
-    pub fn new(data: IBytes) -> Self {
+    pub fn new(items: &Vec<DataItem>) -> Self {
+        let mut data = Vec::new();
+        for item in items.iter() {
+            data.extend(item.data.clone());
+        }
         Self { data }
     }
 }
@@ -132,6 +141,10 @@ impl Section for DataSec {
         bytes
     }
 
+    fn link_and_info(&self) -> (Option<&'static str>, Option<&'static str>) {
+        (None, None)
+    }
+
     fn size(&self) -> usize {
         let data_len = self.data.len();
         data_len + (16 - (data_len % 16))
@@ -141,7 +154,7 @@ impl Section for DataSec {
         ".data"
     }
 
-    fn header(&self, sh_name: u32, sh_offset: u64, _:Option<u32>, _: Option<u32>) -> SectionHeader {
+    fn header(&self, sh_name: u32, sh_offset: u64, _:u32, _: u32) -> SectionHeader {
         SectionHeader {
             sh_name,
             sh_type: 1,
@@ -181,6 +194,10 @@ impl Section for TextSec {
         bytes
     }
 
+    fn link_and_info(&self) -> (Option<&'static str>, Option<&'static str>) {
+        (None, None)
+    }
+
     fn size(&self) -> usize {
         let data_len = self.data.len();
         data_len + (16 - (data_len % 16))
@@ -190,7 +207,7 @@ impl Section for TextSec {
         ".text"
     }
 
-    fn header(&self, sh_name: u32, sh_offset: u64, _:Option<u32>, _: Option<u32>) -> SectionHeader {
+    fn header(&self, sh_name: u32, sh_offset: u64, _:u32, _: u32) -> SectionHeader {
         SectionHeader {
             sh_name,
             sh_type: 1,
@@ -246,6 +263,10 @@ impl Section for ShstrtabSec {
         bytes
     }
 
+    fn link_and_info(&self) -> (Option<&'static str>, Option<&'static str>) {
+        (None, None)
+    }
+
     fn size(&self) -> usize {
         let data_len = self.data.len();
         data_len + (16 - (data_len % 16))
@@ -255,7 +276,7 @@ impl Section for ShstrtabSec {
         ".shstrtab"
     }
 
-    fn header(&self, sh_name: u32, sh_offset: u64, _:Option<u32>, _: Option<u32>) -> SectionHeader {
+    fn header(&self, sh_name: u32, sh_offset: u64, _:u32, _: u32) -> SectionHeader {
         SectionHeader {
             sh_name,
             sh_type: 3,
@@ -305,6 +326,10 @@ impl Section for SymtabSec {
         bytes
     }
 
+    fn link_and_info(&self) -> (Option<&'static str>, Option<&'static str>) {
+        (Some(".strtab"), None)
+    }
+
     fn size(&self) -> usize {
         let data_len = (self.data.len() + 1) * 24;
         data_len + (16 - (data_len % 16))
@@ -314,7 +339,7 @@ impl Section for SymtabSec {
         ".symtab"
     }
 
-    fn header(&self, sh_name: u32, sh_offset: u64, sh_link :Option<u32>, _: Option<u32>) -> SectionHeader {
+    fn header(&self, sh_name: u32, sh_offset: u64, sh_link :u32, _: u32) -> SectionHeader {
         SectionHeader {
             sh_name,
             sh_type: 2,
@@ -322,7 +347,7 @@ impl Section for SymtabSec {
             sh_addr: 0,
             sh_offset,
             sh_size: (self.data.len() * 24) as u64,
-            sh_link: sh_link.unwrap(),
+            sh_link,
             sh_info: self.data.len() as u32,
             sh_addralign: 8,
             sh_entsize: 24,
@@ -349,8 +374,8 @@ impl SymItem {
     pub fn to_bytes(self) -> IBytes {
         let mut bytes = vec![];
         bytes.extend(self.st_name.to_le_bytes());
-        bytes.extend(self.st_other.to_le_bytes());
         bytes.extend(self.st_info.to_le_bytes());
+        bytes.extend(self.st_other.to_le_bytes());
         bytes.extend(self.st_shndx.to_le_bytes());
         bytes.extend(self.st_value.to_le_bytes());
         bytes.extend(self.st_size.to_le_bytes());
@@ -375,6 +400,11 @@ impl SymItem {
 pub struct RelaSec {
     data: Vec<RelaItem>,
 }
+impl RelaSec {
+    pub fn new(data: Vec<RelaItem>) -> Self {
+        Self { data }
+    }
+}
 impl Section for RelaSec {
     fn to_bytes(&self) -> IBytes {
         let mut bytes = vec![];
@@ -383,6 +413,10 @@ impl Section for RelaSec {
         }
         bytes.resize(self.size(), 0);
         bytes
+    }
+
+    fn link_and_info(&self) -> (Option<&'static str>, Option<&'static str>) {
+        (Some(".symtab"), Some(".text"))
     }
 
     fn size(&self) -> usize {
@@ -394,7 +428,7 @@ impl Section for RelaSec {
         ".rela.text"
     }
 
-    fn header(&self, sh_name: u32, sh_offset: u64, sh_link: Option<u32>, sh_info: Option<u32>) -> SectionHeader {
+    fn header(&self, sh_name: u32, sh_offset: u64, sh_link: u32, sh_info: u32) -> SectionHeader {
         SectionHeader {
             sh_name,
             // SHT_RELA 4
@@ -403,8 +437,8 @@ impl Section for RelaSec {
             sh_addr: 0,
             sh_offset,
             sh_size: (self.data.len() * 24) as u64,
-            sh_link: sh_link.unwrap(),
-            sh_info: sh_info.unwrap(),
+            sh_link,
+            sh_info,
             sh_addralign: 8,
             sh_entsize: 24,
         }
@@ -453,6 +487,10 @@ impl Section for StrtabSec {
         bytes
     }
 
+    fn link_and_info(&self) -> (Option<&'static str>, Option<&'static str>) {
+        (None, None)
+    }
+
     fn size(&self) -> usize {
         let data_len = self.data.len();
         data_len + (16 - (data_len % 16))
@@ -462,7 +500,7 @@ impl Section for StrtabSec {
         ".strtab"
     }
 
-    fn header(&self, sh_name: u32, sh_offset: u64, _:Option<u32>, _: Option<u32>) -> SectionHeader {
+    fn header(&self, sh_name: u32, sh_offset: u64, _:u32, _: u32) -> SectionHeader {
         SectionHeader {
             sh_name,
             sh_type: 3,

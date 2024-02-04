@@ -10,7 +10,7 @@ macro_rules! st_visibility {
 #[macro_export]
 macro_rules! st_info {
     ($bind: expr, $type: expr) => {
-        $bind << 4 | $type & 0xf
+        ($bind << 4) | ($type & 0xf)
     };
 }
 // Legal values for ST_BIND subfield of st_info (symbol binding)
