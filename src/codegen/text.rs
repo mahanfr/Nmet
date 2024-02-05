@@ -31,7 +31,7 @@ pub fn x86_64_nasm_generator(output: &Path, codegen: Codegen) -> Result<(), Box<
     if !codegen.bss_buf.is_empty() {
         file.write_all(b"\nsection .bss\n")?;
         for bss in codegen.bss_buf {
-            file.write_all(bss.as_bytes())?;
+            file.write_all(bss.to_string().as_bytes())?;
             file.write_all(b"\n")?;
         }
     }

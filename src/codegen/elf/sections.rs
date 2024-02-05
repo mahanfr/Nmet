@@ -69,19 +69,16 @@ impl SectionHeader {
 //        0000000000000008  0000000000000000  WA       0     0     4
 #[derive(Debug, Clone)]
 pub struct BssSec {
-    data: IBytes,
+    pub size: usize,
 }
 impl BssSec {
-    pub fn new(data: IBytes) -> Self {
-        Self { data }
+    pub fn new(size: usize) -> Self {
+        Self {size}
     }
 }
 impl Section for BssSec {
     fn to_bytes(&self) -> IBytes {
-        let mut bytes = vec![];
-        bytes.extend(self.data.clone());
-        bytes.resize(self.size(), 0);
-        bytes
+        vec![]
     }
 
     fn link_and_info(&self) -> (Option<&'static str>, Option<&'static str>) {
@@ -93,17 +90,17 @@ impl Section for BssSec {
     }
 
     fn name(&self) -> &'static str {
-        ".data"
+        ".bss"
     }
 
     fn header(&self, sh_name: u32, sh_offset: u64, _:u32, _:u32) -> SectionHeader {
         SectionHeader {
             sh_name,
-            sh_type: 1,
+            sh_type: 8,
             sh_flags: 3,
             sh_addr: 0,
             sh_offset,
-            sh_size: self.data.len() as u64,
+            sh_size: self.size as u64,
             sh_link: 0,
             sh_info: 0,
             sh_addralign: 4,

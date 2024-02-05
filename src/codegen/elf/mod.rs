@@ -18,7 +18,7 @@ mod sections;
 use self::{
     flags::{STB_GLOBAL, STB_LOCAL, STT_FILE, STT_NOTYPE, STT_SECTION, STV_DEFAULT},
     header::ElfHeader,
-    sections::{Section, ShstrtabSec, StrtabSec, SymItem, SymtabSec, TextSec, DataSec, RelaSec},
+    sections::{Section, ShstrtabSec, StrtabSec, SymItem, SymtabSec, TextSec, DataSec, RelaSec, BssSec},
 };
 
 pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
@@ -26,6 +26,10 @@ pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
     elf_object.add_section(&TextSec::new(cc.codegen.text_section_bytes()));
     if !cc.codegen.data_buf.is_empty() {
         elf_object.add_section(&DataSec::new(&cc.codegen.data_buf));
+    }
+    if !cc.codegen.bss_buf.is_empty() {
+        println!("REACHED");
+        elf_object.add_section(&BssSec::new(cc.codegen.bss_buf.iter().map(|x| x.size).sum()));
     }
     let file_content = elf_object.bytes(cc);
     let stream = File::create(out_path.with_extension("o")).unwrap();
@@ -196,6 +200,9 @@ impl Elf {
                 },
                 super::SymbolType::DataSec => {
                     self.get_sec_index(".data")
+                },
+                super::SymbolType::BssSec => {
+                    self.get_sec_index(".bss")
                 },
                 _ => 0
             };

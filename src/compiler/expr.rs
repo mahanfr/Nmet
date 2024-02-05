@@ -69,8 +69,6 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                     expr.loc.clone(),
                 );
             }
-            // cc.instruct_buf
-            //     .push(asm!("mov rdx, [rbp-{}]", v_map.offset + v_map.vtype.size()));
             cc.codegen.instr2(Mov, RDX, mem!(RBP, v_map.stack_offset()));
             cc.codegen.instr2(Add, RDX, offset);
             cc.codegen.instr2(
@@ -78,11 +76,6 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                 Reg::AX_sized(&actype),
                 MemAddr::new_s(actype.item_size(), RDX),
             );
-            // cc.instruct_buf.push(asm!(
-            //     "mov {}, {} [rdx]",
-            //     rbs("a", &actype),
-            //     mem_word(&actype)
-            // ));
             cc.codegen.instr1(Push, RAX);
             actype
         }

@@ -13,6 +13,29 @@ fn data_type(dt: &VariableType) -> &'static str {
 }
 
 #[derive(Debug, Clone)]
+pub struct BssItem {
+    pub index: usize,
+    pub name: String,
+    pub size: usize,
+}
+
+impl BssItem {
+    pub fn new(name: String,index: usize, size: usize) -> Self {
+        Self {
+            index,
+            name,
+            size
+        }
+    }
+}
+
+impl Display for BssItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} resb {}", self.name, self.size)
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct DataItem {
     pub index: usize,
     pub name: String,

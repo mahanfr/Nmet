@@ -274,7 +274,7 @@ fn _mem_modrm(r: u8, mem: &MemAddr) -> IBytes {
     match mem.addr_type {
         MemAddrType::Address => {
             if mem.register.opcode() != 0x04 && mem.register.opcode() != 0x05 {
-                vec![_modrm(0b11, mem.register.opcode(), r)]
+                vec![_modrm(0b00, mem.register.opcode(), r)]
             } else {
                 unreachable!();
             }

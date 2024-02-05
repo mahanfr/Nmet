@@ -130,7 +130,7 @@ mod elf {
         "./tests/compare_expr.txt"
     );
     test_elf!(string_expr,"./tests/string_expr.nmt", "./tests/string_expr.txt");
-    // test_elf!(structs,"./tests/structs.nmt", "./tests/structs.txt");
+    test_elf!(structs,"./tests/structs.nmt", "./tests/structs.txt");
     test_elf!(loops, "./tests/loops.nmt", "./tests/loops.txt");
     test_elf!(
         conditions,

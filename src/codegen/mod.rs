@@ -8,14 +8,14 @@ pub mod opcodes;
 pub mod register;
 pub mod text;
 pub mod data_bss;
-use std::{collections::{HashMap, BTreeMap}, fmt::Display};
+use std::{collections::BTreeMap, fmt::Display};
 
 use crate::{utils::IBytes, parser::types::VariableType};
 
 use self::{
     assemble::assemble_instr,
     instructions::{Instr, Opr, Oprs},
-    mnemonic::Mnemonic, data_bss::DataItem,
+    mnemonic::Mnemonic, data_bss::{DataItem, BssItem},
 };
 
 pub fn placeholder(instr: Instr) -> Instr {
@@ -49,10 +49,6 @@ impl RelaItem {
             r_addend,
             sec_name: sec_name.to_string(),
         }
-    }
-
-    pub fn set_info(&mut self, r_type: u64, r_sym: u64) {
-        self.r_info = (r_type << 32) | (r_sym & u32::MAX as u64);
     }
 
     pub fn to_bytes(&self) -> IBytes {
@@ -100,6 +96,7 @@ impl InstrData {
 pub enum SymbolType {
     Global,
     DataSec,
+    BssSec,
     TextSec,
 }
 
@@ -108,7 +105,7 @@ pub enum SymbolType {
 pub struct Codegen {
     instructs: Vec<InstrData>,
     pub data_buf: Vec<DataItem>,
-    pub bss_buf: Vec<String>,
+    pub bss_buf: Vec<BssItem>,
     pub symbols_map: BTreeMap<String, (usize, SymbolType)>,
     pub rela_map: Vec<RelaItem>,
 }
@@ -132,13 +129,23 @@ impl Codegen {
         let mut bytes_sum = 0;
         for item in self.instructs.iter_mut() {
             if item.relocatable == Relocatable::Ref {
-                let Oprs::One(Opr::Fs(key)) = item.instr.oprs.clone() else {
-                    unreachable!();
+                let key = match item.instr.oprs.clone() {
+                    Oprs::One(Opr::Fs(k)) | Oprs::Two(_, Opr::Fs(k)) => k,
+                    _ => unreachable!(),
                 };
                 let rela_offset = item.bytes.windows(4).position(|x| x == [0,0,0,0]).unwrap()
                     + bytes_sum;
-                let addend = self.data_buf.iter().find(|x| x.name == key).unwrap().index;
-                self.rela_map.push(RelaItem::new(".data",rela_offset as u64, addend as i64));
+                match self.symbols_map.get(&key).unwrap() {
+                    (_, SymbolType::BssSec) => {
+                        let addend = self.bss_buf.iter().find(|x| x.name == key).unwrap().index;
+                        self.rela_map.push(RelaItem::new(".bss",rela_offset as u64, addend as i64));
+                    },
+                    (_, SymbolType::DataSec) => {
+                        let addend = self.data_buf.iter().find(|x| x.name == key).unwrap().index;
+                        self.rela_map.push(RelaItem::new(".data",rela_offset as u64, addend as i64));
+                    },
+                    _ => unreachable!(),
+                }
                 bytes_sum += item.bytes.len();
             } else if item.relocatable == Relocatable::Loc {
                 let Oprs::One(Opr::Rel(key)) = item.instr.oprs.clone() else {
@@ -206,7 +213,15 @@ impl Codegen {
 
     pub fn add_bss_seg(&mut self, size: usize) -> String {
         let bss_tag = format!("arr{}", self.bss_buf.len());
-        self.bss_buf.push(format!("{}: resb {}", bss_tag, size));
+        let index = match self.bss_buf.last() {
+            Some(dt) => {
+                dt.index + dt.size
+            }
+            None => 0,
+        };
+        self.symbols_map.insert(bss_tag.clone(), 
+                    (self.bss_buf.iter().map(|x| x.size).sum(), SymbolType::BssSec));
+        self.bss_buf.push(BssItem::new(bss_tag.clone(), index, size));
         bss_tag
     }
 
