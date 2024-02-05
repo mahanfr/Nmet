@@ -6,7 +6,7 @@ install: --build --bin
 	@echo "---successfully installed---"
 
 --build:
-	cargo build
+	cargo build --release
 	@echo "---successfully built---"
 
 --bin:

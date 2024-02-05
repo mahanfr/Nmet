@@ -7,7 +7,7 @@ fn data_type(dt: &VariableType) -> &'static str {
         VariableType::String | VariableType::Char => "db",
         VariableType::Int | VariableType::UInt => "dd",
         VariableType::Long | VariableType::ULong | VariableType::Pointer => "dq",
-        VariableType::Array(t,_) => data_type(t.as_ref()),
+        VariableType::Array(t, _) => data_type(t.as_ref()),
         _ => unreachable!(),
     }
 }
@@ -20,12 +20,8 @@ pub struct BssItem {
 }
 
 impl BssItem {
-    pub fn new(name: String,index: usize, size: usize) -> Self {
-        Self {
-            index,
-            name,
-            size
-        }
+    pub fn new(name: String, index: usize, size: usize) -> Self {
+        Self { index, name, size }
     }
 }
 
@@ -43,8 +39,7 @@ pub struct DataItem {
     pub dtype: VariableType,
 }
 impl DataItem {
-
-    pub fn new(name: String,index: usize, data: Vec<u8>, dtype: VariableType) -> Self {
+    pub fn new(name: String, index: usize, data: Vec<u8>, dtype: VariableType) -> Self {
         Self {
             index,
             name,
@@ -71,7 +66,7 @@ impl DataItem {
                 if !asm_str.is_empty() {
                     asm_str.push(',');
                 }
-                asm_str.extend(ch.to_string().chars());
+                asm_str.push_str(&ch.to_string());
             }
         }
         if !ascii_stack.is_empty() {
@@ -88,6 +83,12 @@ impl DataItem {
 
 impl Display for DataItem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {} {}", self.name, data_type(&self.dtype), self.asmblized_data())
+        write!(
+            f,
+            "{} {} {}",
+            self.name,
+            data_type(&self.dtype),
+            self.asmblized_data()
+        )
     }
 }

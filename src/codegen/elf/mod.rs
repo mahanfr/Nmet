@@ -18,7 +18,9 @@ mod sections;
 use self::{
     flags::{STB_GLOBAL, STB_LOCAL, STT_FILE, STT_NOTYPE, STT_SECTION, STV_DEFAULT},
     header::ElfHeader,
-    sections::{Section, ShstrtabSec, StrtabSec, SymItem, SymtabSec, TextSec, DataSec, RelaSec, BssSec},
+    sections::{
+        BssSec, DataSec, RelaSec, Section, ShstrtabSec, StrtabSec, SymItem, SymtabSec, TextSec,
+    },
 };
 
 pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
@@ -29,7 +31,9 @@ pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
     }
     if !cc.codegen.bss_buf.is_empty() {
         println!("REACHED");
-        elf_object.add_section(&BssSec::new(cc.codegen.bss_buf.iter().map(|x| x.size).sum()));
+        elf_object.add_section(&BssSec::new(
+            cc.codegen.bss_buf.iter().map(|x| x.size).sum(),
+        ));
     }
     let file_content = elf_object.bytes(cc);
     let stream = File::create(out_path.with_extension("o")).unwrap();
@@ -71,7 +75,7 @@ impl Elf {
         } else {
             self.sections.len() + 4 + 1
         }
-    }  
+    }
 
     pub fn bytes(&mut self, cc: &mut CompilerContext) -> IBytes {
         let mut bytes = Vec::new();
@@ -117,7 +121,7 @@ impl Elf {
             ".symtab" => (self.sections.len() + 2) as u32,
             ".strtab" => (self.sections.len() + 3) as u32,
             ".rela.text" => (self.sections.len() + 4) as u32,
-            _ => (self.sections.iter().position(|x| x.name() == tag).unwrap() + 1) as u32
+            _ => (self.sections.iter().position(|x| x.name() == tag).unwrap() + 1) as u32,
         }
     }
 
@@ -143,7 +147,12 @@ impl Elf {
         loc += self.shstrtab.size();
         bytes.extend(
             self.symtab
-                .header(self.shstrtab.index(".symtab"), loc as u64, self.get_sec_index(".strtab"), 0)
+                .header(
+                    self.shstrtab.index(".symtab"),
+                    loc as u64,
+                    self.get_sec_index(".strtab"),
+                    0,
+                )
                 .to_bytes(),
         );
         loc += self.symtab.size();
@@ -156,12 +165,14 @@ impl Elf {
         if !self.rela_text.is_empty() {
             bytes.extend(
                 self.rela_text
-                .header(self.shstrtab.index(".rela.text"), 
-                        loc as u64, 
+                    .header(
+                        self.shstrtab.index(".rela.text"),
+                        loc as u64,
                         self.get_sec_index(".symtab"),
-                        self.get_sec_index(".text"))
-                .to_bytes(),
-                );
+                        self.get_sec_index(".text"),
+                    )
+                    .to_bytes(),
+            );
         }
     }
 
@@ -195,18 +206,12 @@ impl Elf {
                 false => st_info!(STB_LOCAL, STT_NOTYPE),
             };
             let shndx = match sym.1 {
-                super::SymbolType::TextSec => {
-                    self.get_sec_index(".text")
-                },
-                super::SymbolType::DataSec => {
-                    self.get_sec_index(".data")
-                },
-                super::SymbolType::BssSec => {
-                    self.get_sec_index(".bss")
-                },
-                _ => 0
+                super::SymbolType::TextSec => self.get_sec_index(".text"),
+                super::SymbolType::DataSec => self.get_sec_index(".data"),
+                super::SymbolType::BssSec => self.get_sec_index(".bss"),
+                _ => 0,
             };
-            
+
             self.symtab.insert(SymItem {
                 st_name: self.strtab.index(label),
                 st_info: info,

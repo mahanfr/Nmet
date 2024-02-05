@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::{utils::IBytes, codegen::{RelaItem, data_bss::DataItem}};
+use crate::{
+    codegen::{data_bss::DataItem, RelaItem},
+    utils::IBytes,
+};
 
 /// Generic Section for refrencing and storing
 /// different code sections including .text, .data, or .bss
@@ -73,7 +76,7 @@ pub struct BssSec {
 }
 impl BssSec {
     pub fn new(size: usize) -> Self {
-        Self {size}
+        Self { size }
     }
 }
 impl Section for BssSec {
@@ -93,7 +96,7 @@ impl Section for BssSec {
         ".bss"
     }
 
-    fn header(&self, sh_name: u32, sh_offset: u64, _:u32, _:u32) -> SectionHeader {
+    fn header(&self, sh_name: u32, sh_offset: u64, _: u32, _: u32) -> SectionHeader {
         SectionHeader {
             sh_name,
             sh_type: 8,
@@ -122,7 +125,7 @@ pub struct DataSec {
     data: IBytes,
 }
 impl DataSec {
-    pub fn new(items: &Vec<DataItem>) -> Self {
+    pub fn new(items: &[DataItem]) -> Self {
         let mut data = Vec::new();
         for item in items.iter() {
             data.extend(item.data.clone());
@@ -151,7 +154,7 @@ impl Section for DataSec {
         ".data"
     }
 
-    fn header(&self, sh_name: u32, sh_offset: u64, _:u32, _: u32) -> SectionHeader {
+    fn header(&self, sh_name: u32, sh_offset: u64, _: u32, _: u32) -> SectionHeader {
         SectionHeader {
             sh_name,
             sh_type: 1,
@@ -204,7 +207,7 @@ impl Section for TextSec {
         ".text"
     }
 
-    fn header(&self, sh_name: u32, sh_offset: u64, _:u32, _: u32) -> SectionHeader {
+    fn header(&self, sh_name: u32, sh_offset: u64, _: u32, _: u32) -> SectionHeader {
         SectionHeader {
             sh_name,
             sh_type: 1,
@@ -273,7 +276,7 @@ impl Section for ShstrtabSec {
         ".shstrtab"
     }
 
-    fn header(&self, sh_name: u32, sh_offset: u64, _:u32, _: u32) -> SectionHeader {
+    fn header(&self, sh_name: u32, sh_offset: u64, _: u32, _: u32) -> SectionHeader {
         SectionHeader {
             sh_name,
             sh_type: 3,
@@ -336,7 +339,7 @@ impl Section for SymtabSec {
         ".symtab"
     }
 
-    fn header(&self, sh_name: u32, sh_offset: u64, sh_link :u32, _: u32) -> SectionHeader {
+    fn header(&self, sh_name: u32, sh_offset: u64, sh_link: u32, _: u32) -> SectionHeader {
         SectionHeader {
             sh_name,
             sh_type: 2,
@@ -399,7 +402,7 @@ pub struct RelaSec {
 }
 impl RelaSec {
     pub fn new() -> Self {
-        Self { data : Vec::new() }
+        Self { data: Vec::new() }
     }
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
@@ -503,7 +506,7 @@ impl Section for StrtabSec {
         ".strtab"
     }
 
-    fn header(&self, sh_name: u32, sh_offset: u64, _:u32, _: u32) -> SectionHeader {
+    fn header(&self, sh_name: u32, sh_offset: u64, _: u32, _: u32) -> SectionHeader {
         SectionHeader {
             sh_name,
             sh_type: 3,

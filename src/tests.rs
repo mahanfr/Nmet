@@ -21,7 +21,7 @@ macro_rules! test_elf {
             );
             link_to_exc(out_path.with_extension(""));
             // Cleanup
-            //remove_file(out_path.with_extension("o")).unwrap_or_else(|_| ());
+            remove_file(out_path.with_extension("o")).unwrap_or_else(|_| ());
             // Return executable path
             let opath = out_path.with_extension("").to_string_lossy().to_string();
             let output = Command::new(&opath)
@@ -58,7 +58,7 @@ macro_rules! test_asm {
             assemble_with_nasm(out_path.with_extension("o"));
             link_to_exc(out_path.with_extension(""));
             // Cleanup
-            //remove_file(out_path.with_extension("o")).unwrap_or_else(|_| ());
+            remove_file(out_path.with_extension("o")).unwrap_or_else(|_| ());
             remove_file(out_path.with_extension("asm")).unwrap_or_else(|_| ());
             // Return executable path
             let opath = out_path.with_extension("").to_string_lossy().to_string();
@@ -129,8 +129,12 @@ mod elf {
         "./tests/compare_expr.nmt",
         "./tests/compare_expr.txt"
     );
-    test_elf!(string_expr,"./tests/string_expr.nmt", "./tests/string_expr.txt");
-    test_elf!(structs,"./tests/structs.nmt", "./tests/structs.txt");
+    test_elf!(
+        string_expr,
+        "./tests/string_expr.nmt",
+        "./tests/string_expr.txt"
+    );
+    test_elf!(structs, "./tests/structs.nmt", "./tests/structs.txt");
     test_elf!(loops, "./tests/loops.nmt", "./tests/loops.txt");
     test_elf!(
         conditions,

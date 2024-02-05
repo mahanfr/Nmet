@@ -1,5 +1,6 @@
 pub mod asm_parser;
 pub mod assemble;
+pub mod data_bss;
 pub mod elf;
 pub mod instructions;
 pub mod memory;
@@ -7,15 +8,15 @@ pub mod mnemonic;
 pub mod opcodes;
 pub mod register;
 pub mod text;
-pub mod data_bss;
 use std::{collections::BTreeMap, fmt::Display};
 
-use crate::{utils::IBytes, parser::types::VariableType};
+use crate::{parser::types::VariableType, utils::IBytes};
 
 use self::{
     assemble::assemble_instr,
+    data_bss::{BssItem, DataItem},
     instructions::{Instr, Opr, Oprs},
-    mnemonic::Mnemonic, data_bss::{DataItem, BssItem},
+    mnemonic::Mnemonic,
 };
 
 pub fn placeholder(instr: Instr) -> Instr {
@@ -42,7 +43,7 @@ pub struct RelaItem {
     sec_name: String,
 }
 impl RelaItem {
-    pub fn new(sec_name:impl ToString, r_offset: u64, r_addend: i64) -> Self {
+    pub fn new(sec_name: impl ToString, r_offset: u64, r_addend: i64) -> Self {
         Self {
             r_offset,
             r_info: 0x020000000b,
@@ -133,17 +134,29 @@ impl Codegen {
                     Oprs::One(Opr::Fs(k)) | Oprs::Two(_, Opr::Fs(k)) => k,
                     _ => unreachable!(),
                 };
-                let rela_offset = item.bytes.windows(4).position(|x| x == [0,0,0,0]).unwrap()
+                let rela_offset = item
+                    .bytes
+                    .windows(4)
+                    .position(|x| x == [0, 0, 0, 0])
+                    .unwrap()
                     + bytes_sum;
                 match self.symbols_map.get(&key).unwrap() {
                     (_, SymbolType::BssSec) => {
                         let addend = self.bss_buf.iter().find(|x| x.name == key).unwrap().index;
-                        self.rela_map.push(RelaItem::new(".bss",rela_offset as u64, addend as i64));
-                    },
+                        self.rela_map.push(RelaItem::new(
+                            ".bss",
+                            rela_offset as u64,
+                            addend as i64,
+                        ));
+                    }
                     (_, SymbolType::DataSec) => {
                         let addend = self.data_buf.iter().find(|x| x.name == key).unwrap().index;
-                        self.rela_map.push(RelaItem::new(".data",rela_offset as u64, addend as i64));
-                    },
+                        self.rela_map.push(RelaItem::new(
+                            ".data",
+                            rela_offset as u64,
+                            addend as i64,
+                        ));
+                    }
                     _ => unreachable!(),
                 }
                 bytes_sum += item.bytes.len();
@@ -200,28 +213,36 @@ impl Codegen {
     pub fn add_data(&mut self, data: Vec<u8>, dtype: VariableType) -> String {
         let name = format!("data{}", self.data_buf.len());
         let index = match self.data_buf.last() {
-            Some(dt) => {
-                dt.index + dt.data.len()
-            }
+            Some(dt) => dt.index + dt.data.len(),
             None => 0,
         };
-        self.symbols_map.insert(name.clone(), 
-                    (self.data_buf.iter().map(|x| x.data.len()).sum(), SymbolType::DataSec));
-        self.data_buf.push(DataItem::new(name.clone(), index, data, dtype));
+        self.symbols_map.insert(
+            name.clone(),
+            (
+                self.data_buf.iter().map(|x| x.data.len()).sum(),
+                SymbolType::DataSec,
+            ),
+        );
+        self.data_buf
+            .push(DataItem::new(name.clone(), index, data, dtype));
         name
     }
 
     pub fn add_bss_seg(&mut self, size: usize) -> String {
         let bss_tag = format!("arr{}", self.bss_buf.len());
         let index = match self.bss_buf.last() {
-            Some(dt) => {
-                dt.index + dt.size
-            }
+            Some(dt) => dt.index + dt.size,
             None => 0,
         };
-        self.symbols_map.insert(bss_tag.clone(), 
-                    (self.bss_buf.iter().map(|x| x.size).sum(), SymbolType::BssSec));
-        self.bss_buf.push(BssItem::new(bss_tag.clone(), index, size));
+        self.symbols_map.insert(
+            bss_tag.clone(),
+            (
+                self.bss_buf.iter().map(|x| x.size).sum(),
+                SymbolType::BssSec,
+            ),
+        );
+        self.bss_buf
+            .push(BssItem::new(bss_tag.clone(), index, size));
         bss_tag
     }
 
@@ -257,7 +278,8 @@ impl Codegen {
         let lable = lable.to_string();
         self.instructs.push(InstrData::new_lable(lable.clone()));
         let real_loc: usize = self.instructs.iter().map(|x| x.bytes.len()).sum();
-        self.symbols_map.insert(lable, (real_loc, SymbolType::TextSec));
+        self.symbols_map
+            .insert(lable, (real_loc, SymbolType::TextSec));
     }
 
     fn relocate_lable(&mut self, opr1: impl Into<Opr>) -> (Opr, Relocatable) {

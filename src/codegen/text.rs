@@ -11,7 +11,6 @@ pub fn x86_64_nasm_generator(output: &Path, codegen: Codegen) -> Result<(), Box<
     file.write_all(b";; This File is Automatically Created Using The Nmet Compiler\n")?;
     file.write_all(b";; Under MIT License Copyright Mahan Farzaneh 2023-2024\n\n")?;
 
-
     file.write_all(b"section .text\n")?;
     file.write_all(b"global _start\n")?;
     file.write_all(codegen.text_section_asm().as_bytes())?;

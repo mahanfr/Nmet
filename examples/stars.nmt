@@ -10,5 +10,4 @@ func main() {
         syscall_write(1, "\n", 1);
         line[index] = '*';
     }
-    print line[4];
 }

@@ -1,7 +1,7 @@
-import "./std/syscalls" :: sys_write , sys_exit
+import "./std/syscalls/file" :: syscall_write
+import "./std/syscalls/proc" :: syscall_exit
 
 func main() {
-    sys_write(1,"Hello world!\n",13);
-    sys_exit(0);
-    ~~ print "hello from nemet!\n";
+    syscall_write(1,"Hello world!\n",13);
+    syscall_exit(0);
 }

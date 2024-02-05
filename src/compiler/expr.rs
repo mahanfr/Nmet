@@ -28,11 +28,6 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             let Some(v_map) = get_vriable_map(cc, v) else {
                 error("Trying to access an Undifined variable", expr.loc.clone());
             };
-            // let mem_acss = format!(
-            //     "{} [rbp-{}]",
-            //     mem_word(&v_map.vtype),
-            //     v_map.offset + v_map.vtype.size()
-            // );
             let mem_acss = MemAddr::new_disp_s(v_map.vtype.item_size(), RBP, v_map.stack_offset());
             cc.codegen
                 .instr2(Mov, Reg::AX_sized(&v_map.vtype), mem_acss);
@@ -224,7 +219,9 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             }
         }
         ExprType::String(str) => {
-            let id = cc.codegen.add_data(str.as_bytes().to_vec(), VariableType::String);
+            let id = cc
+                .codegen
+                .add_data(str.as_bytes().to_vec(), VariableType::String);
             cc.codegen.instr1(Push, Opr::Fs(id));
             cc.codegen.instr1(Push, str.len());
             VariableType::String
@@ -384,59 +381,3 @@ fn compile_function_call(
     Ok(fun.ret_type.clone())
 }
 
-fn asmfy_string(str: &str) -> String {
-    let mut res = String::new();
-    let source: Vec<char> = str.chars().collect();
-    let mut i = 0;
-    while i < source.len() {
-        match source[i] {
-            '\n' => {
-                if !res.is_empty() {
-                    res.push(',');
-                }
-                res.push_str(" 10");
-                i += 1;
-            }
-            '\t' => {
-                if !res.is_empty() {
-                    res.push(',');
-                }
-                res.push_str(" 9");
-                i += 1;
-            }
-            '\r' => {
-                if !res.is_empty() {
-                    res.push(',');
-                }
-                res.push_str(" 13");
-                i += 1;
-            }
-            '\"' => {
-                if !res.is_empty() {
-                    res.push(',');
-                }
-                res.push_str(" 34");
-                i += 1;
-            }
-            _ => {
-                if !res.is_empty() {
-                    res.push(',');
-                }
-                res.push('\"');
-                while i < source.len() {
-                    if source[i] == '\n'
-                        || source[i] == '\"'
-                        || source[i] == '\t'
-                        || source[i] == '\r'
-                    {
-                        break;
-                    }
-                    res.push(source[i]);
-                    i += 1;
-                }
-                res.push('\"');
-            }
-        }
-    }
-    res
-}
