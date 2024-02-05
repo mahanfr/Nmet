@@ -29,7 +29,7 @@
 A General Purpose Compiled Programming Language that compiles to x86-64 ELF object file or Nasm compatable asm text file.
 This compiler can directly generate x86-64 Elf file using it's internal assembler whitout any thirdparty tool or library!
 
-Language in the current state is not compelete and lacks any convenience tools for making real world applications but check out some of the [examples](./examples)
+Language is not compelete in the current state and lacks any convenient tools for making real world applications but feel free to check out the [examples](./examples)
 that shows Some of the Nmet programming language capabilities.
 
 Use the `docs/README.md` to get started.
