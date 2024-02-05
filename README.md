@@ -26,8 +26,11 @@
 
 ## About The Project
 
-A General Purpose Compiled Programming Language that generates x86-64 assembly as Intermediate representation (IR) which can be compiled to binary using nasm.
-We eventialy will move away from nasm and implement our own loader but the current goal is to become self hosted by writing the compiler in itself!
+A General Purpose Compiled Programming Language that compiles to x86-64 ELF object file or Nasm compatable asm text file.
+This compiler can directly generate x86-64 Elf file using it's internal assembler whitout any thirdparty tool or library!
+
+Language in the current state is not compelete and lacks any convenience tools for making real world applications but check out some of the [examples](./examples)
+that shows Some of the Nmet programming language capabilities.
 
 Use the `docs/README.md` to get started.
 
@@ -59,7 +62,8 @@ now you can run the following commands:
 
 ``` shell
 $ nmet ./hello.nmt
-$ ./build/output
+$ nemt -elf ./hello.nmt
+$ ./build/hello
 ```
 
 ## Syntax
