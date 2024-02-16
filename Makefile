@@ -6,7 +6,11 @@ install: --build --bin
 	@echo "---successfully installed---"
 
 --build:
+<<<<<<< HEAD
 	cargo build --release
+=======
+	cargo build
+>>>>>>> origin/feature/makefile
 	@echo "---successfully built---"
 
 --bin:
