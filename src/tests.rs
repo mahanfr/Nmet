@@ -112,6 +112,11 @@ mod asm {
         "./tests/binary_expr.nmt",
         "./tests/binary_expr.txt"
     );
+    // test_asm!(
+    //     ffi,
+    //     "./tests/ffi.nmt",
+    //     "./tests/ffi.txt"
+    // );
     test_asm!(
         cont_break,
         "./tests/cont_break.nmt",

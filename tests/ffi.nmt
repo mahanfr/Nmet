@@ -1,0 +1,6 @@
+
+ffi "add" func nmt_add(a @int, b @int) @int
+
+func main() {
+    print nmt_add(1,2);
+}

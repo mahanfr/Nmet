@@ -59,6 +59,8 @@ pub enum TokenType {
     Bigger,
     /// "<" Smaller Compare Operation
     Smaller,
+    /// Keyword ffi
+    Ffi,
     /// Keyword Struct
     Struct,
     /// Keyword func
@@ -184,6 +186,7 @@ impl Display for TokenType {
             TokenType::Bigger => write!(f, ">"),
             TokenType::Smaller => write!(f, "<"),
             TokenType::Func => write!(f, "func"),
+            TokenType::Ffi => write!(f, "ffi"),
             TokenType::Struct => write!(f, "struct"),
             TokenType::If => write!(f, "if"),
             TokenType::Var => write!(f, "var"),
@@ -604,6 +607,7 @@ impl Lexer {
             "asm" => Some(TokenType::Asm),
             "import" => Some(TokenType::Import),
             "macro" => Some(TokenType::Macro),
+            "ffi" => Some(TokenType::Ffi),
             _ => None,
         }
     }

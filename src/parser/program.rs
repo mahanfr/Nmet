@@ -57,6 +57,8 @@ pub enum ProgramItem {
     Func(Function),
     /// Static Variables
     StaticVar(VariableDeclare),
+    /// Foregin Function interface
+    FFI(String, Function),
     /// Import Functions
     /// filePath, Import names
     Import(String, Vec<String>),
@@ -76,8 +78,11 @@ pub fn program(lexer: &mut Lexer) -> ProgramFile {
             TokenType::Struct => {
                 items.push(ProgramItem::Struct(struct_def(lexer)));
             }
+            TokenType::Ffi => {
+                items.push(ffi_function(lexer));
+            }
             TokenType::Func => {
-                items.push(ProgramItem::Func(function_def(lexer)));
+                items.push(ProgramItem::Func(function_def(lexer, true)));
             }
             TokenType::Var => {
                 items.push(ProgramItem::StaticVar(variable_declare(lexer)));
@@ -97,6 +102,18 @@ pub fn program(lexer: &mut Lexer) -> ProgramFile {
         file_path: lexer.file_path.clone(),
         items,
     }
+}
+/// Include FFI
+/// Returns FFI Program Item
+///
+/// Syntax:
+/// ffi "fopen" func nmt_fopen(pathname @str, mode @str) @FILE
+pub fn ffi_function(lexer: &mut Lexer) -> ProgramItem {
+    lexer.match_token(TokenType::Ffi);
+    let module_name = lexer.get_token().literal;
+    lexer.match_token(TokenType::String);
+    let function = function_def(lexer, false);
+    ProgramItem::FFI(module_name, function)
 }
 
 /// import Program

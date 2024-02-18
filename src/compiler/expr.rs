@@ -398,7 +398,14 @@ fn compile_function_call(
         ));
     };
     cc.codegen.instr2(Mov, RAX, 0);
-    cc.codegen.instr1(Call, Opr::Rel(fc.ident.clone()));
+    match cc.ffi_map.get(&fc.ident) {
+        Some(ident) => {
+            cc.codegen.instr1(Call, Opr::Rel(ident.clone()));
+        }
+        None => {
+            cc.codegen.instr1(Call, Opr::Rel(fc.ident.clone()));
+        }
+    }
     if fun.ret_type != VariableType::Void {
         cc.codegen.instr1(Push, RAX);
     }
