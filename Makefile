@@ -1,18 +1,18 @@
-SHELL= bash
-.DEFAULT_GOAL := install
-.PHONY : install build bin 
+INSTALL_PATH ?= /usr/bin 
+BIN_FILE ?= target/release/nmet
+DEV_FILE ?= target/debug/nmet
 
-install: --build --bin
-	@echo "---successfully installed---"
+.DEFAULT_GOAL: build
+.PHONY: install build test
 
---build:
-<<<<<<< HEAD
+# copies compiled program to system binary path 
+# make install
+# or
+# make install INSTALL_PATH="/usr/local/bin"
+install: build $(BIN_FILE) 
+	@sudo cp $(BIN_FILE) $(INSTALL_PATH)
+	@echo "Executable installed at" $(INSTALL_PATH)
+
+# build the compiler to an executable
+build:
 	cargo build --release
-=======
-	cargo build
->>>>>>> origin/feature/makefile
-	@echo "---successfully built---"
-
---bin:
-	@sudo cp target/debug/nemet /usr/bin/
-	@echo "---added to /user/bin/---"
