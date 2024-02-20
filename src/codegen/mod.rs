@@ -21,9 +21,9 @@ use self::{
 
 pub fn placeholder(instr: Instr) -> Instr {
     match instr.oprs {
-        Oprs::One(Opr::Fs(_)) => Instr::new1(instr.mnem, Opr::Imm32(0)),
-        Oprs::Two(x, Opr::Fs(_)) => Instr::new2(instr.mnem, x, Opr::Imm32(0)),
-        Oprs::Two(Opr::Fs(_), x) => Instr::new2(instr.mnem, Opr::Imm32(0), x),
+        Oprs::One(Opr::Rela(_) | Opr::Loc(_)) => Instr::new1(instr.mnem, Opr::Imm32(0)),
+        Oprs::Two(x, Opr::Rela(_) | Opr::Loc(_)) => Instr::new2(instr.mnem, x, Opr::Imm32(0)),
+        Oprs::Two(Opr::Rela(_) | Opr::Loc(_), x) => Instr::new2(instr.mnem, Opr::Imm32(0), x),
         _ => unreachable!(),
     }
 }
@@ -72,8 +72,7 @@ struct InstrData {
 impl InstrData {
     pub fn new(instr: Instr, rel: Relocatable) -> Self {
         let bytes = match rel {
-            Relocatable::Loc => assemble_instr(&Instr::new1(instr.mnem, Opr::Imm32(0))),
-            Relocatable::Ref => assemble_instr(&placeholder(instr.clone())),
+            Relocatable::Ref | Relocatable::Loc => assemble_instr(&placeholder(instr.clone())),
             Relocatable::None => assemble_instr(&instr),
         };
         Self {
@@ -85,7 +84,7 @@ impl InstrData {
 
     pub fn new_lable(display: String) -> Self {
         Self {
-            instr: Instr::new1(Mnemonic::Lable, Opr::Rel(display)),
+            instr: Instr::new1(Mnemonic::Lable, Opr::Loc(display)),
             relocatable: Relocatable::None,
             bytes: Vec::new(),
         }
@@ -133,7 +132,7 @@ impl Codegen {
         for item in self.instructs.iter_mut() {
             if item.relocatable == Relocatable::Ref {
                 let key = match item.instr.oprs.clone() {
-                    Oprs::One(Opr::Fs(k)) | Oprs::Two(_, Opr::Fs(k)) => k,
+                    Oprs::One(Opr::Rela(k)) | Oprs::Two(_, Opr::Rela(k)) => k,
                     _ => unreachable!(),
                 };
                 let rela_offset = item
@@ -159,12 +158,12 @@ impl Codegen {
                             addend as i64,
                         ));
                     }
-                    _ => unreachable!(),
+                    _ => unreachable!("{:?}",item.instr),
                 }
                 bytes_sum += item.bytes.len();
             } else if item.relocatable == Relocatable::Loc {
-                let Oprs::One(Opr::Rel(key)) = item.instr.oprs.clone() else {
-                    unreachable!();
+                let Oprs::One(Opr::Loc(key)) = item.instr.oprs.clone() else {
+                    unreachable!("{:?}",item.instr);
                 };
                 let Some(target) = self.symbols_map.get(&key) else {
                     panic!("Unknown Target!");
@@ -199,7 +198,7 @@ impl Codegen {
         let mut asm = String::new();
         for item in self.instructs.iter() {
             if item.instr.mnem == Mnemonic::Lable {
-                let Oprs::One(Opr::Rel(tag)) = item.instr.oprs.clone() else {
+                let Oprs::One(Opr::Loc(tag)) = item.instr.oprs.clone() else {
                     panic!("Unknown lable instr {}", item.instr);
                 };
                 asm.push_str(format!("{tag}:").as_str());
@@ -287,8 +286,8 @@ impl Codegen {
     fn relocate_lable(&mut self, opr1: impl Into<Opr>) -> (Opr, Relocatable) {
         let opr = opr1.into();
         match opr.to_owned() {
-            Opr::Rel(_) => (opr, Relocatable::Loc),
-            Opr::Fs(_) => (opr, Relocatable::Ref),
+            Opr::Loc(_) => (opr, Relocatable::Loc),
+            Opr::Rela(_) => (opr, Relocatable::Ref),
             _ => (opr, Relocatable::None),
         }
     }

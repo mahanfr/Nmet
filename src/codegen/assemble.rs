@@ -200,7 +200,7 @@ fn validate_opr_sizes(instr: &Instr) -> usize {
             Opr::Imm8(_) | Opr::Imm32(_) | Opr::Imm64(_) => {
                 panic!("Error: First opr for instr ({instr}) can not be an Immidiate value!");
             }
-            Opr::Rel(_) | Opr::Fs(_) => unreachable!(),
+            Opr::Rela(_) | Opr::Loc(_) => unreachable!(),
         }
         match op2 {
             Opr::R64(r) | Opr::R32(r) | Opr::R16(r) | Opr::R8(r) => {
@@ -223,7 +223,7 @@ fn validate_opr_sizes(instr: &Instr) -> usize {
                     panic!("Error: oprand size is unknown for instr ({instr})!");
                 }
             }
-            Opr::Rel(_) | Opr::Fs(_) => unreachable!(),
+            Opr::Rela(_) | Opr::Loc(_) => unreachable!(),
         }
         if rhs_size == 0 || lhs_size == 0 {
             panic!("Error: oprand size is unknown for instr ({instr})!");

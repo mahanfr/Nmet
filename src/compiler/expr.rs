@@ -246,7 +246,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             let id = cc
                 .codegen
                 .add_data(str.as_bytes().to_vec(), VariableType::String);
-            cc.codegen.instr1(Push, Opr::Fs(id));
+            cc.codegen.instr1(Push, Opr::Rela(id));
             cc.codegen.instr1(Push, str.len());
             VariableType::String
         }
@@ -400,10 +400,10 @@ fn compile_function_call(
     cc.codegen.instr2(Mov, RAX, 0);
     match cc.codegen.ffi_map.get(&fc.ident) {
         Some(ident) => {
-            cc.codegen.instr1(Call, Opr::Rel(ident.clone()));
+            cc.codegen.instr1(Call, Opr::Rela(ident.clone()));
         }
         None => {
-            cc.codegen.instr1(Call, Opr::Rel(fc.ident.clone()));
+            cc.codegen.instr1(Call, Opr::Loc(fc.ident.clone()));
         }
     }
     if fun.ret_type != VariableType::Void {

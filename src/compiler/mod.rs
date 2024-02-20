@@ -242,7 +242,7 @@ fn compile_block(cc: &mut CompilerContext, block: &Block, block_type: BlockType)
                     if let BlockType::Loop(loc) = s_block.block_type {
                         cc.codegen.instr1(
                             crate::codegen::mnemonic::Mnemonic::Jmp,
-                            Opr::Rel(format!("{}.LE{}", cc.last_main_label(), loc.1)),
+                            Opr::Loc(format!("{}.LE{}", cc.last_main_label(), loc.1)),
                         );
                         did_break = true;
                         break;
@@ -259,7 +259,7 @@ fn compile_block(cc: &mut CompilerContext, block: &Block, block_type: BlockType)
                         // assert!(false, "Not Implemented yet!");
                         cc.codegen.instr1(
                             crate::codegen::mnemonic::Mnemonic::Jmp,
-                            Opr::Rel(format!("{}.L{}", cc.last_main_label(), loc.1)),
+                            Opr::Loc(format!("{}.L{}", cc.last_main_label(), loc.1)),
                         );
                         //cc.codegen.push_instr(Instr::jmp(0));
                         did_cont = true;

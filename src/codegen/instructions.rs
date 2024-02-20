@@ -26,13 +26,13 @@ pub enum Opr {
     Imm8(i64),
     Imm32(i64),
     Imm64(i64),
-    Rel(String),
-    Fs(String),
+    Rela(String),
+    Loc(String),
 }
 
 impl Opr {
     pub fn rel(rel: impl ToString) -> Self {
-        Self::Rel(rel.to_string())
+        Self::Loc(rel.to_string())
     }
 }
 
@@ -86,8 +86,8 @@ impl Display for Opr {
             Self::R64(r) | Self::R32(r) | Self::R16(r) | Self::R8(r) => r.fmt(f),
             Self::Mem(m) => m.fmt(f),
             Self::Imm8(val) | Self::Imm32(val) | Self::Imm64(val) => val.fmt(f),
-            Self::Rel(refer) => refer.fmt(f),
-            Self::Fs(refer) => refer.fmt(f),
+            Self::Rela(refer) => refer.fmt(f),
+            Self::Loc(refer) => refer.fmt(f),
         }
     }
 }

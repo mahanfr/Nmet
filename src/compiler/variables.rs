@@ -71,7 +71,7 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
             // );
             let mem_acss = memq!(RBP, -(cc.mem_offset as i32 + 8));
             // assert!(false, "Not Implemented yet!");
-            cc.codegen.instr2(Mov, mem_acss, Opr::Fs(struct_tag));
+            cc.codegen.instr2(Mov, mem_acss, Opr::Rela(struct_tag));
         }
         VariableType::String => {}
         _ => (),

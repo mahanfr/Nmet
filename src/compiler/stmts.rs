@@ -65,7 +65,7 @@ fn compile_if_stmt(cc: &mut CompilerContext, ifs: &IFStmt, exit_tag: usize) {
     cc.codegen.instr1(Pop, RAX);
     cc.codegen.instr2(Test, RAX, RAX);
     cc.codegen
-        .instr1(Jz, Opr::Rel(format!("{last_label}.L{next_tag}")));
+        .instr1(Jz, Opr::Loc(format!("{last_label}.L{next_tag}")));
 
     compile_block(cc, &ifs.then_block, BlockType::Condition);
     match ifs.else_block.as_ref() {
@@ -74,14 +74,14 @@ fn compile_if_stmt(cc: &mut CompilerContext, ifs: &IFStmt, exit_tag: usize) {
         }
         ElseBlock::Else(b) => {
             cc.codegen
-                .instr1(Jmp, Opr::Rel(format!("{last_label}.L{exit_tag}")));
+                .instr1(Jmp, Opr::Loc(format!("{last_label}.L{exit_tag}")));
             cc.codegen.set_lable(format!("{last_label}.L{next_tag}"));
             compile_block(cc, b, BlockType::Condition);
             cc.codegen.set_lable(format!("{last_label}.L{exit_tag}"));
         }
         ElseBlock::Elif(iff) => {
             cc.codegen
-                .instr1(Jmp, Opr::Rel(format!("{last_label}.L{exit_tag}")));
+                .instr1(Jmp, Opr::Loc(format!("{last_label}.L{exit_tag}")));
             cc.codegen.set_lable(format!("{last_label}.L{next_tag}"));
             compile_if_stmt(cc, iff, exit_tag);
         }
@@ -110,7 +110,7 @@ pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) {
                     cc.bif_set.insert(Bif::Print);
                     cc.codegen.instr1(Pop, RDI);
                     // assert!(false, "Not Implemented yet!");
-                    cc.codegen.instr1(Call, Opr::Rel("print".to_string()));
+                    cc.codegen.instr1(Call, Opr::Loc("print".to_string()));
                 }
             }
         }
@@ -207,7 +207,7 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) {
     let cond_tag = cc.codegen.get_id();
     cc.codegen.instr1(
         Jmp,
-        Opr::Rel(format!("{}.L{cond_tag}", cc.last_main_label())),
+        Opr::Loc(format!("{}.L{cond_tag}", cc.last_main_label())),
     );
     let block_tag = cond_tag + 1;
     cc.codegen
@@ -227,7 +227,7 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) {
     // TODO: MAKE Sure this works!
     cc.codegen.instr1(
         Jne,
-        Opr::Rel(format!("{}.L{block_tag}", cc.last_main_label())),
+        Opr::Loc(format!("{}.L{block_tag}", cc.last_main_label())),
     );
     cc.codegen
         .set_lable(format!("{}.LE{block_tag}", cc.last_main_label()));
