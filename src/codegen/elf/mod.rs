@@ -30,7 +30,6 @@ pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
         elf_object.add_section(&DataSec::new(&cc.codegen.data_buf));
     }
     if !cc.codegen.bss_buf.is_empty() {
-        println!("REACHED");
         elf_object.add_section(&BssSec::new(
             cc.codegen.bss_buf.iter().map(|x| x.size).sum(),
         ));

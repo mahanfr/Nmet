@@ -39,8 +39,17 @@ pub fn get_program_name(path: impl ToString) -> String {
         .to_string();
 }
 
+/// padding right (like the padding_left library in js)
+pub fn padding_right(str: &str) -> String {
+    let mut text = String::with_capacity(20);
+    text.push_str(str);
+    for _ in 0..(20 - str.len()) {
+        text.push(' ');
+    }
+    text
+}
+
 /// Generate default output path using input string
-pub fn get_output_path_from_input(input: String) -> PathBuf {
-    let p_name = get_program_name(input);
-    std::path::Path::new(&format!("./build/{p_name}")).to_owned()
+pub fn get_output_path_from_input(input: PathBuf) -> PathBuf {
+    std::path::PathBuf::from("./build/out").with_file_name(input.file_name().unwrap())
 }

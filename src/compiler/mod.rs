@@ -32,7 +32,6 @@ use crate::codegen::instructions::Opr;
 use crate::codegen::{register::Reg, Codegen};
 use crate::compiler::{bif::Bif, function::compile_function};
 
-use crate::codegen::text::x86_64_nasm_generator;
 use crate::error_handeling::error;
 use crate::parser::{
     block::{Block, BlockType},
@@ -44,30 +43,8 @@ use crate::parser::{
     types::VariableType,
 };
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::fmt::Display;
-use std::path::PathBuf;
 
 use self::stmts::compile_stmt;
-
-pub fn compile(input: String, output: PathBuf, output_type: OutputType) {
-    let mut compiler_context = CompilerContext::new(input.clone());
-
-    _compile(&mut compiler_context, input.clone());
-    impl_bifs(&mut compiler_context);
-    let prefix = output.parent().unwrap();
-    std::fs::create_dir_all(prefix).unwrap();
-    match output_type {
-        OutputType::Elf => {
-            println!("[info] Generating elf object file...");
-            // generate_elf(output.as_path(), &mut compiler_context);
-            crate::codegen::elf::generate_elf(output.as_path(), &mut compiler_context);
-        }
-        OutputType::Asm => {
-            println!("[info] Generating asm text file...");
-            x86_64_nasm_generator(output.as_path(), &compiler_context).unwrap();
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct VariableMap {
@@ -135,19 +112,6 @@ impl CompilerContext {
             return lab;
         }
         String::new()
-    }
-}
-
-pub enum OutputType {
-    Elf,
-    Asm,
-}
-impl Display for OutputType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Elf => write!(f, "elf"),
-            Self::Asm => write!(f, "asm"),
-        }
     }
 }
 
@@ -225,7 +189,7 @@ pub fn compile_lib(cc: &mut CompilerContext, path: String, exports: Vec<String>)
 }
 
 // TODO: Handle Compilation Error
-pub fn _compile(cc: &mut CompilerContext, path: String) {
+pub fn compile(cc: &mut CompilerContext, path: String) {
     let program = parse_file(path);
     for item in program.items {
         match item {

@@ -76,7 +76,6 @@ impl DataItem {
             }
             asm_str.extend(format!("\"{str}\"").chars());
         }
-        println!("({asm_str})");
         asm_str
     }
 }

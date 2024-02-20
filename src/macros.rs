@@ -31,3 +31,35 @@ macro_rules! asm {
         format!("    {}",format_args!($($arg)+))
     );
 }
+
+/// Log info
+#[macro_export]
+macro_rules! log_info {
+    ($($arg:tt)+) => {
+        println!("\x1b[94m[Info]\x1b[0m {}",format_args!($($arg)+))
+    };
+}
+
+/// Log success
+#[macro_export]
+macro_rules! log_success {
+    ($($arg:tt)+) => {
+        println!("\x1b[92m[Success]\x1b[0m {}",format_args!($($arg)+))
+    };
+}
+
+/// Log Warning
+#[macro_export]
+macro_rules! log_warn {
+    ($($arg:tt)+) => {
+        println!("\x1b[93m[Warn]\x1b[0m {}",format_args!($($arg)+))
+    };
+}
+
+/// Log Warning
+#[macro_export]
+macro_rules! log_error {
+    ($($arg:tt)+) => {
+        eprintln!("\x1b[91m[Error]\x1b[0m {}",format_args!($($arg)+))
+    };
+}

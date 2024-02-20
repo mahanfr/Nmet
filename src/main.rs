@@ -1,3 +1,4 @@
+use std::env::Args;
 /**********************************************************************************************
 *
 *   Nmet main entry point
@@ -27,12 +28,13 @@
 *
 **********************************************************************************************/
 use std::error::Error;
+use std::fs::remove_file;
 use std::path::PathBuf;
 use std::process::Command;
+use std::str::FromStr;
 use std::{env::args, process::exit};
 
 mod codegen;
-mod command_line;
 mod compiler;
 mod error_handeling;
 mod lexer;
@@ -41,14 +43,15 @@ mod parser;
 #[cfg(test)]
 mod tests;
 mod utils;
-use command_line::{help_command, CliArgs};
-use compiler::compile;
+use codegen::text::x86_64_nasm_generator;
+use compiler::{compile, CompilerContext};
 use utils::get_output_path_from_input;
+
+use crate::compiler::impl_bifs;
+use crate::utils::padding_right;
 
 // --- Static Compiler Defenition
 pub static VERSION: &str = "v0.0.1-Beta";
-pub static COPYRIGHT: &str = "Mahan Farzaneh 2023-2024";
-pub static DEBUG: bool = true;
 
 /// Terget name for assembling using Nasm
 fn assembler_target() -> &'static str {
@@ -59,42 +62,63 @@ fn assembler_target() -> &'static str {
     }
 }
 
-/// Compiles the given file into an executable
-fn compile_command(arg: &mut CliArgs) {
-    if arg.get().starts_with('-') {
-        match arg.get().as_str() {
-            "-elf" => {
-                arg.next();
-                let out_path = get_output_path_from_input(arg.get());
-                compile(
-                    arg.get(),
-                    out_path.with_extension("o"),
-                    compiler::OutputType::Elf,
-                );
-                link_to_exc(out_path.with_extension(""));
-                exit(0);
-            }
-            _ => {
-                eprintln!("Unknown option for compile command!");
-                exit(-1);
-            }
+// nmet [options] (input_file)
+// -nasm -no-link -no-assemble -keep-asm -keep-obj
+// -o outputpath
+// -l<mod_name>
+// -L<mod_path>
+pub struct CompilerOptions {
+    pub output_path: Option<PathBuf>,
+    pub use_nasm: bool,
+    pub no_linking: bool,
+    pub no_assembling: bool,
+    pub keep_asm: bool,
+    pub keep_obj: bool,
+    pub linker_flags: Vec<String>,
+}
+impl Default for CompilerOptions {
+    fn default() -> Self {
+        Self {
+            output_path: None,
+            use_nasm: true,
+            no_linking: false,
+            no_assembling: false,
+            keep_asm: false,
+            keep_obj: false,
+            linker_flags: Vec::new(),
         }
     }
-    let out_path = get_output_path_from_input(arg.get());
-    compile(
-        arg.get(),
-        out_path.with_extension("asm"),
-        compiler::OutputType::Asm,
-    );
-    assemble_with_nasm(out_path.with_extension("o"));
-    link_to_exc(out_path.with_extension(""));
+}
+
+fn copywrite() {
+    println!("-------------------------------------------------------------");
+    println!("| Nmet v0.6.0-alpha                                          |");
+    println!("| Nmet Programmin Language Copyright: Mahanfaraneh 2023-2024 |");
+    println!("| Project distributed Under MIT License                      |");
+    println!("-------------------------------------------------------------");
+}
+
+pub fn help_command(program_name: &str) {
+    println!("{program_name} [options] (input_file)");
+    println!("Options:");
+    println!("  {} Specify output path (default: \"./build/input_file\")", padding_right("-o <output_path>"));
+    println!("  {} use Nasm Assembler to assemble generated code", padding_right("-nasm"));
+    println!("  {} Do not link the generated object file", padding_right("-no-link"));
+    println!("  {} Only Generates an asm file", padding_right("-no-assemble"));
+    println!("  {} Do not remove the generated asm file", padding_right("-keep-asm"));
+    println!("  {} Do not remove the generated object file", padding_right("-keep-obj"));
+    println!("  {} Search for library LIBNAME", padding_right("-l<LIBNAME>"));
+    println!("  {} add directory to library search path", padding_right("-L<DIR>"));
+    println!("  {} Show help", padding_right("-h, --help"));
+    println!("  {} Show Version", padding_right("-v, --version"));
 }
 
 /// Runs External commands for generating the object files
 pub fn assemble_with_nasm(path: PathBuf) {
-    println!(
-        "[info] Assembling for {} - generaiting output.o",
-        assembler_target()
+    log_info!(
+        "Assembling for {} - generaiting {}",
+        assembler_target(),
+        path.with_extension("o").to_string_lossy()
     );
     let nasm_output = Command::new("nasm")
         .arg(format!("-f{}", assembler_target()))
@@ -104,60 +128,128 @@ pub fn assemble_with_nasm(path: PathBuf) {
         .output()
         .expect("Can not run nasm command! do you have nasm installed?");
     if !nasm_output.status.success() {
-        println!("[error] Failed to Assemble: Status code non zero");
-        println!("{}", String::from_utf8(nasm_output.stderr).unwrap());
+        log_error!("Failed to Assemble: Status code non zero");
+        eprintln!("{}", String::from_utf8(nasm_output.stderr).unwrap());
     }
+    log_success!("Object file generated using Nasm!");
 }
 
 /// Runs External commands for generating the executable
-pub fn link_to_exc(path: PathBuf) {
-    println!("[info] Linking object file...");
+pub fn link_to_exc(path: PathBuf, options: &Vec<String>) {
+    log_info!("Linking object file - generating {}",
+        path.with_extension("").to_string_lossy()
+    );
     let linker_output = Command::new("ld")
         .arg("-o")
         .arg(path.with_extension(""))
         .arg(path.with_extension("o"))
+        .args(options)
         .output()
         .expect("Can not link using ld command!");
     if !linker_output.status.success() {
-        println!("[error] Failed to Link Exectable: Status code non zero");
-        println!("{}", String::from_utf8(linker_output.stderr).unwrap());
+        log_error!("Failed to Link Exectable: Status code non zero");
+        eprintln!("{}", String::from_utf8(linker_output.stderr).unwrap());
     } else {
-        println!("[sucsees] Executable File Has been Generated!");
+        log_success!("Executable file have been Generated!");
     }
 }
 
-/// Run The Program Directly after generating the executable
-pub fn run_program() {
-    println!("+ Running The Generated Executable");
-    let output = Command::new("./build/output")
-        .output()
-        .expect("Error Executing the program!");
-    println!("{}", String::from_utf8(output.stdout).unwrap());
-}
+pub fn setup_compiler(input: String, co: &CompilerOptions) {
+    let out_path = match co.output_path.clone() {
+        None => get_output_path_from_input(input.clone().into()),
+        Some(pt) => pt
+    };
+    let mut compiler_context = CompilerContext::new(input.clone());
 
-/// Executes commands resived by commandline
-/// nemet [commands] <options> [path]
-/// First level of command line argument parsing
-fn commands(arg: &mut CliArgs) {
-    match arg.get().as_str() {
-        "--help" | "help" | "-h" => {
-            help_command();
-        }
-        "--version" | "-v" => {
-            println!("{VERSION}");
-        }
-        "--compile" | "-c" => {
-            arg.next();
-            compile_command(arg);
-        }
-        _ => {
-            compile_command(arg);
+    compile(&mut compiler_context, input.clone());
+    impl_bifs(&mut compiler_context);
+    let prefix = out_path.parent().unwrap();
+    std::fs::create_dir_all(prefix).unwrap();
+    if co.use_nasm || co.no_assembling {
+        log_info!("Generating asm text file...");
+        x86_64_nasm_generator(&out_path.as_path(), &compiler_context).unwrap();
+        log_success!("Nasm Text file Generated!");
+    } else {
+        log_info!("Generating elf object file...");
+        crate::codegen::elf::generate_elf(&out_path.as_path(), &mut compiler_context);
+        log_success!("Elf object file Generated!");
+    }
+    if co.use_nasm && !co.no_assembling {
+       assemble_with_nasm(out_path.clone());
+    }
+    if !co.no_linking && !co.no_assembling {
+        link_to_exc(out_path.clone(), &co.linker_flags)
+    }
+    if !co.keep_asm || !co.no_assembling {
+        match remove_file(out_path.with_extension("asm")) {
+            Ok(_) => log_info!("Removing asm files"),
+            Err(_) => (),
         }
     }
+    if !co.keep_obj {
+        match remove_file(out_path.with_extension("o")) {
+            Ok(_) => log_info!("Removing object files"),
+            Err(_) => (),
+        }
+    }
+}
+
+fn collect_compiler_options(args: &mut Args) -> (String, CompilerOptions) {
+    let mut co = CompilerOptions::default();
+    let compiler_path = args.next().unwrap();
+    let mut input_path = String::new();
+    loop {
+        let Some(arg) = args.next() else {
+            break;
+        };
+        if arg.starts_with("-l") || arg.starts_with("-L") {
+            co.linker_flags.push(arg.clone());
+            continue;
+        }
+        match arg.as_str() {
+            "-h" => {
+                copywrite();
+                help_command(&compiler_path);
+                exit(0);
+            }
+            "-v" => {
+                copywrite();
+            }
+            "-no-link"     => {co.no_linking = true}
+            "-no-assemble" => {co.no_assembling = true}
+            "-nasm"        => {co.use_nasm = true}
+            "-keep-asm"    => {co.keep_asm = true}
+            "-keep-obj"    => {co.keep_obj = true}
+            "-o" => {
+                let Some(path) = args.next() else {
+                    log_error!("No output path after -o option!");
+                    help_command(&compiler_path);
+                    exit(-1);
+                };
+                co.output_path = Some(PathBuf::from_str(&path).unwrap());
+            }
+            _ => {
+                if arg.starts_with('-') {
+                    log_error!("Invalid compiler option ({})!", arg);
+                    help_command(&compiler_path);
+                    exit(-1);
+                } else {
+                    input_path = arg;
+                }
+            }
+        }
+    }
+    if input_path.is_empty() {
+        log_error!("No file has been provided!");
+        help_command(&compiler_path);
+        exit(-1);
+    }
+    (input_path, co)
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut args = CliArgs::new(args().collect());
-    commands(&mut args);
+    let mut args = args();
+    let (ipath, co) = collect_compiler_options(&mut args);
+    setup_compiler(ipath.into(), &co);
     Ok(())
 }
