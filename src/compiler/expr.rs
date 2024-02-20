@@ -398,7 +398,7 @@ fn compile_function_call(
         ));
     };
     cc.codegen.instr2(Mov, RAX, 0);
-    match cc.ffi_map.get(&fc.ident) {
+    match cc.codegen.ffi_map.get(&fc.ident) {
         Some(ident) => {
             cc.codegen.instr1(Call, Opr::Rel(ident.clone()));
         }

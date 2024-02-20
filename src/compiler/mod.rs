@@ -81,7 +81,6 @@ pub struct CompilerContext {
     pub functions_map: BTreeMap<String, Function>,
     pub structs_map: HashMap<String, StructDef>,
     pub bif_set: HashSet<Bif>,
-    pub ffi_map: BTreeMap<String, String>,
     pub mem_offset: usize,
     pub program_file: String,
 }
@@ -96,7 +95,6 @@ impl CompilerContext {
             bif_set: HashSet::new(),
             variables_map: HashMap::new(),
             functions_map: BTreeMap::new(),
-            ffi_map: BTreeMap::new(),
             structs_map: HashMap::new(),
             mem_offset: 0,
         }
@@ -174,7 +172,7 @@ pub fn compile_lib(cc: &mut CompilerContext, path: String, exports: Vec<String>)
             }
             ProgramItem::FFI(mod_name, f) => {
                 if is_importable(&f.ident) && !cc.functions_map.contains_key(&f.ident) {
-                    cc.ffi_map.insert(f.ident.clone(), mod_name);
+                    cc.codegen.ffi_map.insert(f.ident.clone(), mod_name);
                     cc.functions_map.insert(f.ident.clone(), f.clone());
                 }
             }
@@ -204,7 +202,7 @@ pub fn compile(cc: &mut CompilerContext, path: String) {
                 cc.functions_map.insert(f.ident.clone(), f.clone());
             }
             ProgramItem::FFI(mod_name, f) => {
-                cc.ffi_map.insert(f.ident.clone(), mod_name);
+                cc.codegen.ffi_map.insert(f.ident.clone(), mod_name);
                 cc.functions_map.insert(f.ident.clone(), f.clone());
             }
             ProgramItem::Import(next_path, idents) => {
@@ -218,7 +216,7 @@ pub fn compile(cc: &mut CompilerContext, path: String) {
     let functions = cc.functions_map.clone();
     compile_function(cc, functions.get("main").unwrap());
     for (k, f) in functions.iter() {
-        if k != "main" || cc.ffi_map.get(k).is_some() {
+        if k != "main" && cc.codegen.ffi_map.get(k).is_none() {
             compile_function(cc, f);
         }
     }

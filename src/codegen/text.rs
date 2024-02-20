@@ -13,7 +13,7 @@ pub fn x86_64_nasm_generator(output: &Path, cc: &CompilerContext) -> Result<(), 
 
     file.write_all(b"section .text\n")?;
 
-    for mod_name in cc.ffi_map.values() {
+    for mod_name in cc.codegen.ffi_map.values() {
         let exten = format!("extern {mod_name}\n");
         file.write_all(exten.as_bytes())?;
     }

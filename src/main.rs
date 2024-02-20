@@ -180,7 +180,7 @@ pub fn setup_compiler(input: String, co: &CompilerOptions) {
     if !co.no_linking && !co.no_assembling {
         link_to_exc(out_path.clone(), &co.linker_flags)
     }
-    if !co.keep_asm || !co.no_assembling {
+    if !co.keep_asm && !co.no_assembling {
         match remove_file(out_path.with_extension("asm")) {
             Ok(_) => log_info!("Removing asm files"),
             Err(_) => (),

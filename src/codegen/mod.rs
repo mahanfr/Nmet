@@ -108,6 +108,7 @@ pub struct Codegen {
     pub data_buf: Vec<DataItem>,
     pub bss_buf: Vec<BssItem>,
     pub symbols_map: BTreeMap<String, (usize, SymbolType)>,
+    pub ffi_map: BTreeMap<String, String>,
     pub rela_map: Vec<RelaItem>,
 }
 
@@ -119,6 +120,7 @@ impl Codegen {
             data_buf: Vec::new(),
             symbols_map: BTreeMap::new(),
             rela_map: Vec::new(),
+            ffi_map: BTreeMap::new(),
         }
     }
 
