@@ -23,6 +23,8 @@ use self::{
     },
 };
 
+use super::SymbolType;
+
 pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
     let mut elf_object = Elf::new();
     elf_object.add_section(&TextSec::new(cc.codegen.text_section_bytes()));
@@ -78,11 +80,16 @@ impl Elf {
 
     pub fn bytes(&mut self, cc: &mut CompilerContext) -> IBytes {
         let mut bytes = Vec::new();
+        self.set_symbols(cc);
         for item in cc.codegen.rela_map.iter_mut() {
-            item.r_info = ((self.get_sec_index(&item.sec_name) as u64 + 1) << 32) | 0xb;
+            if item.sym_type == SymbolType::Ffi {
+                let indx = self.strtab.index(&item.sym_name);
+                item.r_section = self.symtab.find(indx) as u32;
+            } else {
+                item.r_section = self.get_sec_index(&item.sym_name) as u32 + 1;
+            }
             self.rela_text.push(item.to_owned());
         }
-        self.set_symbols(cc);
         self.shstrtab.insert(".shstrtab".to_string());
         self.shstrtab.insert(".symtab".to_string());
         self.shstrtab.insert(".strtab".to_string());
@@ -199,8 +206,12 @@ impl Elf {
         for (label, sym) in cc.codegen.symbols_map.iter() {
             // push symbol name to list
             self.strtab.insert(label);
+
+            if label == "_start" || sym.1 == SymbolType::Ffi {
+                continue;
+            }
             // push symbol info to sym_list
-            let info = match label == "_start" {
+            let info = match sym.1 == SymbolType::Ffi {
                 true => st_info!(STB_GLOBAL, STT_NOTYPE),
                 false => st_info!(STB_LOCAL, STT_NOTYPE),
             };
@@ -220,5 +231,25 @@ impl Elf {
                 st_value: sym.0 as u64,
             });
         }
+        // Global items
+        self.symtab.set_global_start();
+        for item in cc.codegen.ffi_map.values() {
+            self.symtab.insert(SymItem {
+                st_name: self.strtab.index(item),
+                st_info: st_info!(STB_GLOBAL, STT_NOTYPE),
+                st_other: st_visibility!(STV_DEFAULT),
+                st_shndx: 0,
+                st_size: 0,
+                st_value: 0,
+            });
+        }
+        self.symtab.insert(SymItem {
+            st_name: self.strtab.index(&"_start".to_owned()),
+            st_info: st_info!(STB_GLOBAL, STT_NOTYPE),
+            st_other: st_visibility!(STV_DEFAULT),
+            st_shndx: self.get_sec_index(".text") as u16,
+            st_size: 0,
+            st_value: 0,
+        });
     }
 }

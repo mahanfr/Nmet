@@ -51,7 +51,7 @@ fn compile_and_test(input: &str, co: CompilerOptions, res_path: &str) {
         String::from_utf8(output.stdout).unwrap(),
         expectation.to_string()
         );
-    remove_file(&opath).unwrap_or_else(|_| ());
+    //remove_file(&opath).unwrap_or_else(|_| ());
 }
 
 macro_rules! test_elf {
@@ -138,6 +138,12 @@ mod asm {
 mod elf {
     use super::*;
 
+    test_elf!(
+        ffi,
+        "./tests/ffi.nmt",
+        "./tests/ffi.txt",
+        "-L./tests", "-ladd"
+    );
     test_elf!(
         binary_expr,
         "./tests/binary_expr.nmt",

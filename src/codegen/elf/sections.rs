@@ -304,16 +304,26 @@ impl Section for ShstrtabSec {
 #[derive(Debug, Clone)]
 pub struct SymtabSec {
     data: Vec<SymItem>,
+    start_of_global: usize,
 }
 impl SymtabSec {
     pub fn new() -> Self {
         Self {
             data: vec![SymItem::default()],
+            start_of_global: 4,
         }
     }
 
     pub fn insert(&mut self, item: SymItem) {
         self.data.push(item);
+    }
+
+    pub fn find(&self, name_index: u32) -> usize {
+        self.data.iter().position(|&r| r.st_name == name_index).unwrap()
+    }
+
+    pub fn set_global_start(&mut self) {
+        self.start_of_global = self.data.len();
     }
 }
 impl Section for SymtabSec {
@@ -348,7 +358,7 @@ impl Section for SymtabSec {
             sh_offset,
             sh_size: (self.data.len() * 24) as u64,
             sh_link,
-            sh_info: self.data.len() as u32,
+            sh_info: self.start_of_global as u32,
             sh_addralign: 8,
             sh_entsize: 24,
         }

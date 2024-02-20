@@ -31,24 +31,29 @@ pub fn placeholder(instr: Instr) -> Instr {
 #[derive(Debug, Clone)]
 pub struct RelaItem {
     r_offset: u64,
-    r_info: u64,
+    pub r_section: u32,
+    r_platform: u32,
     r_addend: i64,
-    sec_name: String,
+    sym_name: String,
+    sym_type: SymbolType,
 }
 impl RelaItem {
-    pub fn new(sec_name: impl ToString, r_offset: u64, r_addend: i64) -> Self {
+    pub fn new(sym_name: impl ToString,sym_type: SymbolType, r_platform: u32, r_offset: u64, r_addend: i64) -> Self {
         Self {
             r_offset,
-            r_info: 0x020000000b,
+            r_section: 0,
+            r_platform,
             r_addend,
-            sec_name: sec_name.to_string(),
+            sym_name: sym_name.to_string(),
+            sym_type,
         }
     }
 
     pub fn to_bytes(&self) -> IBytes {
         let mut bytes = vec![];
+        let r_info = ((self.r_section as u64) << 32) | self.r_platform as u64;
         bytes.extend(self.r_offset.to_le_bytes());
-        bytes.extend(self.r_info.to_le_bytes());
+        bytes.extend(r_info.to_le_bytes());
         bytes.extend(self.r_addend.to_le_bytes());
         bytes
     }
@@ -82,9 +87,10 @@ impl InstrData {
 }
 
 #[allow(unused)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SymbolType {
     Global,
+    Ffi,
     DataSec,
     BssSec,
     TextSec,
@@ -136,6 +142,8 @@ impl Codegen {
                         let addend = self.bss_buf.iter().find(|x| x.name == key).unwrap().index;
                         self.rela_map.push(RelaItem::new(
                             ".bss",
+                            SymbolType::BssSec,
+                            0xb,
                             rela_offset as u64,
                             addend as i64,
                         ));
@@ -144,8 +152,19 @@ impl Codegen {
                         let addend = self.data_buf.iter().find(|x| x.name == key).unwrap().index;
                         self.rela_map.push(RelaItem::new(
                             ".data",
+                            SymbolType::DataSec,
+                            0xb,
                             rela_offset as u64,
                             addend as i64,
+                        ));
+                    }
+                    (_, SymbolType::Ffi) => { 
+                        self.rela_map.push(RelaItem::new(
+                            key,
+                            SymbolType::Ffi,
+                            0x2,
+                            rela_offset as u64,
+                            -4
                         ));
                     }
                     _ => unreachable!("{:?}",item.instr),
@@ -243,6 +262,14 @@ impl Codegen {
     }
 
     pub fn instr1(&mut self, mnemonic: Mnemonic, opr1: impl Into<Opr>) {
+        let opr1 = opr1.into();
+        match (&mnemonic, &opr1) {
+            (Mnemonic::Call, Opr::Rela(r)) => {
+                self.symbols_map.insert( r.clone(), ( 0, SymbolType::Ffi),
+                );
+            },
+            _ => ()
+        }
         self.instructs
             .push(InstrData::new(Instr::new1(mnemonic, opr1)));
     }
