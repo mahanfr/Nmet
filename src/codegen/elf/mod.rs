@@ -86,7 +86,7 @@ impl Elf {
                 let indx = self.strtab.index(&item.sym_name);
                 item.r_section = self.symtab.find(indx) as u32;
             } else {
-                item.r_section = self.get_sec_index(&item.sym_name) as u32 + 1;
+                item.r_section = self.get_sec_index(&item.sym_name) + 1;
             }
             self.rela_text.push(item.to_owned());
         }

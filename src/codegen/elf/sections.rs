@@ -319,7 +319,10 @@ impl SymtabSec {
     }
 
     pub fn find(&self, name_index: u32) -> usize {
-        self.data.iter().position(|&r| r.st_name == name_index).unwrap()
+        self.data
+            .iter()
+            .position(|&r| r.st_name == name_index)
+            .unwrap()
     }
 
     pub fn set_global_start(&mut self) {

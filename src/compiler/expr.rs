@@ -411,4 +411,3 @@ fn compile_function_call(
     }
     Ok(fun.ret_type.clone())
 }
-

@@ -50,6 +50,7 @@ pub struct ProgramFile {
 /// Top level program items
 /// e.g: functions, static variables and imports
 #[derive(Debug, Clone)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum ProgramItem {
     /// Struct Defenition
     Struct(StructDef),

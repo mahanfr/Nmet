@@ -53,7 +53,7 @@ pub struct Function {
 }
 
 /// Parsing Function definition
-pub fn function_def(lexer: &mut Lexer,has_block: bool) -> Function {
+pub fn function_def(lexer: &mut Lexer, has_block: bool) -> Function {
     let loc = lexer.get_current_loc();
     lexer.match_token(TokenType::Func);
     let function_ident_token = lexer.get_token();
@@ -68,7 +68,7 @@ pub fn function_def(lexer: &mut Lexer,has_block: bool) -> Function {
     }
     let block = match has_block {
         true => block(lexer),
-        false => Block { stmts: Vec::new() }
+        false => Block { stmts: Vec::new() },
     };
     Function {
         ident: function_ident_token.literal,

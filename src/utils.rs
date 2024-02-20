@@ -26,19 +26,6 @@ use std::path::PathBuf;
 
 pub type IBytes = Vec<u8>;
 
-/// Parse Program name from path
-pub fn get_program_name(path: impl ToString) -> String {
-    let path = path.to_string();
-    return path
-        .split('/')
-        .last()
-        .unwrap()
-        .split('.')
-        .next()
-        .unwrap()
-        .to_string();
-}
-
 /// padding right (like the padding_left library in js)
 pub fn padding_right(str: &str) -> String {
     let mut text = String::with_capacity(20);

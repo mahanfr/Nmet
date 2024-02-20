@@ -38,7 +38,13 @@ pub struct RelaItem {
     sym_type: SymbolType,
 }
 impl RelaItem {
-    pub fn new(sym_name: impl ToString,sym_type: SymbolType, r_platform: u32, r_offset: u64, r_addend: i64) -> Self {
+    pub fn new(
+        sym_name: impl ToString,
+        sym_type: SymbolType,
+        r_platform: u32,
+        r_offset: u64,
+        r_addend: i64,
+    ) -> Self {
         Self {
             r_offset,
             r_section: 0,
@@ -70,12 +76,9 @@ impl InstrData {
     pub fn new(instr: Instr) -> Self {
         let bytes = match instr.needs_rela_map() || instr.needs_location() {
             true => assemble_instr(&placeholder(instr.clone())),
-            false => assemble_instr(&instr)
+            false => assemble_instr(&instr),
         };
-        Self {
-            instr,
-            bytes,
-        }
+        Self { instr, bytes }
     }
 
     pub fn new_lable(display: String) -> Self {
@@ -158,21 +161,21 @@ impl Codegen {
                             addend as i64,
                         ));
                     }
-                    (_, SymbolType::Ffi) => { 
+                    (_, SymbolType::Ffi) => {
                         self.rela_map.push(RelaItem::new(
                             key,
                             SymbolType::Ffi,
                             0x2,
                             rela_offset as u64,
-                            -4
+                            -4,
                         ));
                     }
-                    _ => unreachable!("{:?}",item.instr),
+                    _ => unreachable!("{:?}", item.instr),
                 }
                 bytes_sum += item.bytes.len();
             } else if item.instr.needs_location() {
                 let Oprs::One(Opr::Loc(key)) = item.instr.oprs.clone() else {
-                    unreachable!("{:?}",item.instr);
+                    unreachable!("{:?}", item.instr);
                 };
                 let Some(target) = self.symbols_map.get(&key) else {
                     panic!("Unknown Target!");
@@ -263,25 +266,19 @@ impl Codegen {
 
     pub fn instr1(&mut self, mnemonic: Mnemonic, opr1: impl Into<Opr>) {
         let opr1 = opr1.into();
-        match (&mnemonic, &opr1) {
-            (Mnemonic::Call, Opr::Rela(r)) => {
-                self.symbols_map.insert( r.clone(), ( 0, SymbolType::Ffi),
-                );
-            },
-            _ => ()
+        if let (Mnemonic::Call, Opr::Rela(r)) = (&mnemonic, &opr1) {
+            self.symbols_map.insert(r.clone(), (0, SymbolType::Ffi));
         }
         self.instructs
             .push(InstrData::new(Instr::new1(mnemonic, opr1)));
     }
 
     pub fn instr0(&mut self, mnemonic: Mnemonic) {
-        self.instructs
-            .push(InstrData::new(Instr::new0(mnemonic)));
+        self.instructs.push(InstrData::new(Instr::new0(mnemonic)));
     }
 
     pub fn new_instr(&mut self, instr: Instr) {
-        self.instructs
-            .push(InstrData::new(instr));
+        self.instructs.push(InstrData::new(instr));
     }
 
     pub fn set_lable(&mut self, lable: impl Display) {
@@ -291,5 +288,4 @@ impl Codegen {
         self.symbols_map
             .insert(lable, (real_loc, SymbolType::TextSec));
     }
-
 }

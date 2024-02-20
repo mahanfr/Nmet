@@ -26,13 +26,13 @@
 *     3. This notice may not be removed or altered from any source distribution.
 *
 **********************************************************************************************/
+use std::env::Args;
 use std::error::Error;
 use std::fs::remove_file;
 use std::path::PathBuf;
 use std::process::Command;
 use std::str::FromStr;
 use std::{env::args, process::exit};
-use std::env::Args;
 
 mod codegen;
 mod compiler;
@@ -101,14 +101,38 @@ fn copywrite() {
 pub fn help_command(program_name: &str) {
     println!("{program_name} [options] (input_file)");
     println!("Options:");
-    println!("  {} Specify output path (default: \"./build/input_file\")", padding_right("-o <output_path>"));
-    println!("  {} use Nasm Assembler to assemble generated code", padding_right("-nasm"));
-    println!("  {} Do not link the generated object file", padding_right("-no-link"));
-    println!("  {} Only Generates an asm file", padding_right("-no-assemble"));
-    println!("  {} Do not remove the generated asm file", padding_right("-keep-asm"));
-    println!("  {} Do not remove the generated object file", padding_right("-keep-obj"));
-    println!("  {} Search for library LIBNAME", padding_right("-l<LIBNAME>"));
-    println!("  {} add directory to library search path", padding_right("-L<DIR>"));
+    println!(
+        "  {} Specify output path (default: \"./build/input_file\")",
+        padding_right("-o <output_path>")
+    );
+    println!(
+        "  {} use Nasm Assembler to assemble generated code",
+        padding_right("-nasm")
+    );
+    println!(
+        "  {} Do not link the generated object file",
+        padding_right("-no-link")
+    );
+    println!(
+        "  {} Only Generates an asm file",
+        padding_right("-no-assemble")
+    );
+    println!(
+        "  {} Do not remove the generated asm file",
+        padding_right("-keep-asm")
+    );
+    println!(
+        "  {} Do not remove the generated object file",
+        padding_right("-keep-obj")
+    );
+    println!(
+        "  {} Search for library LIBNAME",
+        padding_right("-l<LIBNAME>")
+    );
+    println!(
+        "  {} add directory to library search path",
+        padding_right("-L<DIR>")
+    );
     println!("  {} Show help", padding_right("-h, --help"));
     println!("  {} Show Version", padding_right("-v, --version"));
 }
@@ -136,7 +160,8 @@ pub fn assemble_with_nasm(path: PathBuf) {
 
 /// Runs External commands for generating the executable
 pub fn link_to_exc(path: PathBuf, options: &Vec<String>) {
-    log_info!("Linking object file - generating {}",
+    log_info!(
+        "Linking object file - generating {}",
         path.with_extension("").to_string_lossy()
     );
     let linker_output = Command::new("ld")
@@ -157,7 +182,7 @@ pub fn link_to_exc(path: PathBuf, options: &Vec<String>) {
 pub fn setup_compiler(input: String, co: &CompilerOptions) {
     let out_path = match co.output_path.clone() {
         None => get_output_path_from_input(input.clone().into()),
-        Some(pt) => pt
+        Some(pt) => pt,
     };
     let mut compiler_context = CompilerContext::new(input.clone());
 
@@ -167,30 +192,24 @@ pub fn setup_compiler(input: String, co: &CompilerOptions) {
     std::fs::create_dir_all(prefix).unwrap();
     if co.use_nasm || co.no_assembling {
         log_info!("Generating asm text file...");
-        x86_64_nasm_generator(&out_path.as_path(), &compiler_context).unwrap();
+        x86_64_nasm_generator(out_path.as_path(), &compiler_context).unwrap();
         log_success!("Nasm Text file Generated!");
     } else {
         log_info!("Generating elf object file...");
-        crate::codegen::elf::generate_elf(&out_path.as_path(), &mut compiler_context);
+        crate::codegen::elf::generate_elf(out_path.as_path(), &mut compiler_context);
         log_success!("Elf object file Generated!");
     }
     if co.use_nasm && !co.no_assembling {
-       assemble_with_nasm(out_path.clone());
+        assemble_with_nasm(out_path.clone());
     }
     if !co.no_linking && !co.no_assembling {
         link_to_exc(out_path.clone(), &co.linker_flags)
     }
-    if !co.keep_asm && !co.no_assembling {
-        match remove_file(out_path.with_extension("asm")) {
-            Ok(_) => log_info!("Removing asm files"),
-            Err(_) => (),
-        }
+    if !co.keep_asm && !co.no_assembling && remove_file(out_path.with_extension("asm")).is_ok() {
+        log_info!("Removing asm files")
     }
-    if !co.keep_obj {
-        match remove_file(out_path.with_extension("o")) {
-            Ok(_) => log_info!("Removing object files"),
-            Err(_) => (),
-        }
+    if !co.keep_obj && remove_file(out_path.with_extension("o")).is_ok() {
+        log_info!("Removing object files")
     }
 }
 
@@ -215,11 +234,11 @@ fn collect_compiler_options(args: &mut Args) -> (String, CompilerOptions) {
             "-v" => {
                 copywrite();
             }
-            "-no-link"     => {co.no_linking = true}
-            "-no-assemble" => {co.no_assembling = true}
-            "-nasm"        => {co.use_nasm = true}
-            "-keep-asm"    => {co.keep_asm = true}
-            "-keep-obj"    => {co.keep_obj = true}
+            "-no-link" => co.no_linking = true,
+            "-no-assemble" => co.no_assembling = true,
+            "-nasm" => co.use_nasm = true,
+            "-keep-asm" => co.keep_asm = true,
+            "-keep-obj" => co.keep_obj = true,
             "-o" => {
                 let Some(path) = args.next() else {
                     log_error!("No output path after -o option!");
@@ -250,6 +269,6 @@ fn collect_compiler_options(args: &mut Args) -> (String, CompilerOptions) {
 fn main() -> Result<(), Box<dyn Error>> {
     let mut args = args();
     let (ipath, co) = collect_compiler_options(&mut args);
-    setup_compiler(ipath.into(), &co);
+    setup_compiler(ipath, &co);
     Ok(())
 }

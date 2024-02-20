@@ -26,18 +26,18 @@
 *     3. This notice may not be removed or altered from any source distribution.
 *
 **********************************************************************************************/
-use crate::{
-    setup_compiler,
-    CompilerOptions,
-    utils::get_program_name,
-};
+use crate::{setup_compiler, utils::get_program_name, CompilerOptions};
 use std::{fs::remove_file, path::Path, process::Command};
 
 fn compile_and_test(input: &str, co: CompilerOptions, res_path: &str) {
     setup_compiler(input.into(), &co);
     // Test output
-    let opath = co.output_path.unwrap()
-        .with_extension("").to_string_lossy().to_string();
+    let opath = co
+        .output_path
+        .unwrap()
+        .with_extension("")
+        .to_string_lossy()
+        .to_string();
     let output = Command::new(&opath)
         .output()
         .expect("Error Executing the program!");
@@ -50,7 +50,7 @@ fn compile_and_test(input: &str, co: CompilerOptions, res_path: &str) {
     assert_eq!(
         String::from_utf8(output.stdout).unwrap(),
         expectation.to_string()
-        );
+    );
     //remove_file(&opath).unwrap_or_else(|_| ());
 }
 
@@ -106,7 +106,8 @@ mod asm {
         ffi,
         "./tests/ffi.nmt",
         "./tests/ffi.txt",
-        "-L./tests", "-ladd"
+        "-L./tests",
+        "-ladd"
     );
     test_asm!(
         cont_break,
@@ -142,7 +143,8 @@ mod elf {
         ffi,
         "./tests/ffi.nmt",
         "./tests/ffi.txt",
-        "-L./tests", "-ladd"
+        "-L./tests",
+        "-ladd"
     );
     test_elf!(
         binary_expr,
