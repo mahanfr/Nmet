@@ -153,6 +153,20 @@ impl Instr {
             oprs: Oprs::Two(opr1, opr2),
         }
     }
+
+    pub fn needs_rela_map(&self) -> bool {
+        if self.mnem == Mnemonic::Lable {
+            return false;
+        }
+        matches!(self.oprs, Oprs::One(Opr::Rela(_)) | Oprs::Two(Opr::Rela(_), _) | Oprs::Two(_, Opr::Rela(_)))
+    }
+
+    pub fn needs_location(&self) -> bool {
+        if self.mnem == Mnemonic::Lable {
+            return false;
+        }
+        matches!(self.oprs, Oprs::One(Opr::Loc(_)) | Oprs::Two(Opr::Loc(_), _) | Oprs::Two(_, Opr::Loc(_)))
+    }
 }
 // #[import_instructions("./x86/instrs.txt")]
 // pub enum Instr {}

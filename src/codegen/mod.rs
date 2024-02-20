@@ -28,13 +28,6 @@ pub fn placeholder(instr: Instr) -> Instr {
     }
 }
 
-#[derive(Clone, PartialEq)]
-enum Relocatable {
-    None,
-    Ref,
-    Loc,
-}
-
 #[derive(Debug, Clone)]
 pub struct RelaItem {
     r_offset: u64,
@@ -65,27 +58,24 @@ impl RelaItem {
 struct InstrData {
     instr: Instr,
     // span
-    relocatable: Relocatable,
     bytes: IBytes,
 }
 
 impl InstrData {
-    pub fn new(instr: Instr, rel: Relocatable) -> Self {
-        let bytes = match rel {
-            Relocatable::Ref | Relocatable::Loc => assemble_instr(&placeholder(instr.clone())),
-            Relocatable::None => assemble_instr(&instr),
+    pub fn new(instr: Instr) -> Self {
+        let bytes = match instr.needs_rela_map() || instr.needs_location() {
+            true => assemble_instr(&placeholder(instr.clone())),
+            false => assemble_instr(&instr)
         };
         Self {
             instr,
             bytes,
-            relocatable: rel,
         }
     }
 
     pub fn new_lable(display: String) -> Self {
         Self {
             instr: Instr::new1(Mnemonic::Lable, Opr::Loc(display)),
-            relocatable: Relocatable::None,
             bytes: Vec::new(),
         }
     }
@@ -130,7 +120,7 @@ impl Codegen {
     pub fn relocate(&mut self) {
         let mut bytes_sum = 0;
         for item in self.instructs.iter_mut() {
-            if item.relocatable == Relocatable::Ref {
+            if item.instr.needs_rela_map() {
                 let key = match item.instr.oprs.clone() {
                     Oprs::One(Opr::Rela(k)) | Oprs::Two(_, Opr::Rela(k)) => k,
                     _ => unreachable!(),
@@ -161,7 +151,7 @@ impl Codegen {
                     _ => unreachable!("{:?}",item.instr),
                 }
                 bytes_sum += item.bytes.len();
-            } else if item.relocatable == Relocatable::Loc {
+            } else if item.instr.needs_location() {
                 let Oprs::One(Opr::Loc(key)) = item.instr.oprs.clone() else {
                     unreachable!("{:?}",item.instr);
                 };
@@ -248,31 +238,23 @@ impl Codegen {
     }
 
     pub fn instr2(&mut self, mnemonic: Mnemonic, opr1: impl Into<Opr>, opr2: impl Into<Opr>) {
-        let (opr1, rel1) = self.relocate_lable(opr1);
-        let (opr2, rel2) = self.relocate_lable(opr2);
-        let rel = match (rel1, rel2) {
-            (Relocatable::Ref, _) | (_, Relocatable::Ref) => Relocatable::Ref,
-            (Relocatable::Loc, _) | (_, Relocatable::Loc) => Relocatable::Loc,
-            _ => Relocatable::None,
-        };
         self.instructs
-            .push(InstrData::new(Instr::new2(mnemonic, opr1, opr2), rel));
+            .push(InstrData::new(Instr::new2(mnemonic, opr1, opr2)));
     }
 
     pub fn instr1(&mut self, mnemonic: Mnemonic, opr1: impl Into<Opr>) {
-        let (opr1, rel1) = self.relocate_lable(opr1);
         self.instructs
-            .push(InstrData::new(Instr::new1(mnemonic, opr1), rel1));
+            .push(InstrData::new(Instr::new1(mnemonic, opr1)));
     }
 
     pub fn instr0(&mut self, mnemonic: Mnemonic) {
         self.instructs
-            .push(InstrData::new(Instr::new0(mnemonic), Relocatable::None));
+            .push(InstrData::new(Instr::new0(mnemonic)));
     }
 
     pub fn new_instr(&mut self, instr: Instr) {
         self.instructs
-            .push(InstrData::new(instr, Relocatable::None));
+            .push(InstrData::new(instr));
     }
 
     pub fn set_lable(&mut self, lable: impl Display) {
@@ -283,12 +265,4 @@ impl Codegen {
             .insert(lable, (real_loc, SymbolType::TextSec));
     }
 
-    fn relocate_lable(&mut self, opr1: impl Into<Opr>) -> (Opr, Relocatable) {
-        let opr = opr1.into();
-        match opr.to_owned() {
-            Opr::Loc(_) => (opr, Relocatable::Loc),
-            Opr::Rela(_) => (opr, Relocatable::Ref),
-            _ => (opr, Relocatable::None),
-        }
-    }
 }

@@ -1,4 +1,3 @@
-use std::env::Args;
 /**********************************************************************************************
 *
 *   Nmet main entry point
@@ -33,6 +32,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::str::FromStr;
 use std::{env::args, process::exit};
+use std::env::Args;
 
 mod codegen;
 mod compiler;
