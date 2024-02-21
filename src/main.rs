@@ -80,7 +80,7 @@ impl Default for CompilerOptions {
     fn default() -> Self {
         Self {
             output_path: None,
-            use_nasm: true,
+            use_nasm: false,
             no_linking: false,
             no_assembling: false,
             keep_asm: false,

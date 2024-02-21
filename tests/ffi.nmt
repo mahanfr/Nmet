@@ -1,6 +1,10 @@
 
-ffi "add" func nmt_add(a @int, b @int) @int
+ffi "add"   func nmt_add(a @int, b @int) @int
+ffi "multi" func nmt_multi(a @int, b @int) @int
+ffi "sub"   func nmt_sub(a @int, b @int) @int
 
 func main() {
-    print nmt_add(1,2);
+    print nmt_add(2,1);
+    print nmt_multi(2,1);
+    print nmt_sub(2,1);
 }

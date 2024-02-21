@@ -502,7 +502,7 @@ impl Lexer {
                     literal = '\\';
                 }
                 '0' => {
-                    literal = '\\';
+                    literal = '\0';
                 }
                 _ => {
                     error(format!("unsupported escape sequence (\\{})", escape), loc);
@@ -561,6 +561,10 @@ impl Lexer {
                     }
                     'r' => {
                         literal.push('\r');
+                        self.drop();
+                    }
+                    '0' => {
+                        literal.push('\0');
                         self.drop();
                     }
                     '\\' => {

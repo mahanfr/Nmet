@@ -1,0 +1,6 @@
+
+ffi "InitWindow" func init_window(width @int, height @int, title @str) @void
+
+func main() {
+    init_window(800,600,"Hello form Nmet\0");
+}
