@@ -75,6 +75,7 @@ pub struct CompilerOptions {
     pub keep_asm: bool,
     pub keep_obj: bool,
     pub linker_flags: Vec<String>,
+    pub use_libc: bool,
 }
 impl Default for CompilerOptions {
     fn default() -> Self {
@@ -86,6 +87,7 @@ impl Default for CompilerOptions {
             keep_asm: false,
             keep_obj: false,
             linker_flags: Vec::new(),
+            use_libc: false,
         }
     }
 }
@@ -126,6 +128,10 @@ pub fn help_command(program_name: &str) {
         padding_right("-keep-obj")
     );
     println!(
+        "  {} Use C library Dynamicaly",
+        padding_right("-use-libc")
+    );
+    println!(
         "  {} Search for library LIBNAME",
         padding_right("-l<LIBNAME>")
     );
@@ -158,8 +164,9 @@ pub fn assemble_with_nasm(path: PathBuf) {
     log_success!("Object file generated using Nasm!");
 }
 
+ 
 /// Runs External commands for generating the executable
-pub fn link_to_exc(path: PathBuf, options: &Vec<String>) {
+pub fn link_to_exc(path: PathBuf, co: &CompilerOptions) {
     log_info!(
         "Linking object file - generating {}",
         path.with_extension("").to_string_lossy()
@@ -168,7 +175,8 @@ pub fn link_to_exc(path: PathBuf, options: &Vec<String>) {
         .arg("-o")
         .arg(path.with_extension(""))
         .arg(path.with_extension("o"))
-        .args(options)
+        .args(["-dynamic-linker", "/usr/lib64/ld-linux-x86-64.so.2"])
+        .args(&co.linker_flags)
         .output()
         .expect("Can not link using ld command!");
     if !linker_output.status.success() {
@@ -203,7 +211,7 @@ pub fn setup_compiler(input: String, co: &CompilerOptions) {
         assemble_with_nasm(out_path.clone());
     }
     if !co.no_linking && !co.no_assembling {
-        link_to_exc(out_path.clone(), &co.linker_flags)
+        link_to_exc(out_path.clone(), &co)
     }
     if !co.keep_asm && !co.no_assembling && remove_file(out_path.with_extension("asm")).is_ok() {
         log_info!("Removing asm files")
@@ -239,6 +247,7 @@ fn collect_compiler_options(args: &mut Args) -> (String, CompilerOptions) {
             "-nasm" => co.use_nasm = true,
             "-keep-asm" => co.keep_asm = true,
             "-keep-obj" => co.keep_obj = true,
+            "-use-libc" => co.use_libc = true,
             "-o" => {
                 let Some(path) = args.next() else {
                     log_error!("No output path after -o option!");

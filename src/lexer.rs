@@ -696,7 +696,7 @@ impl Lexer {
         if literal.contains('x') {
             self.expect_char(&lit_chars.next(), vec!['0']);
             self.expect_char(&lit_chars.next(), vec!['x']);
-            let mut value: i32 = 0;
+            let mut value: i64 = 0;
             for ch in lit_chars {
                 let digit = ch.to_digit(16).unwrap_or_else(|| {
                     error(
@@ -704,9 +704,9 @@ impl Lexer {
                         loc.clone(),
                     );
                 });
-                value = (value * 16i32) + digit as i32;
+                value = (value as i64 * 16i64) + digit as i64;
             }
-            TokenType::Int(value)
+            TokenType::Int(value as i32)
         } else if literal.contains('b') {
             self.expect_char(&lit_chars.next(), vec!['0']);
             self.expect_char(&lit_chars.next(), vec!['b']);

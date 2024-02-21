@@ -1,6 +1,19 @@
-
+~ cargo run -- -nasm -keep-obj -keep-asm ./examples/game.nmt
+~ld -o ./build/game ./build/game.o -dynamic-linker 
+~ /usr/lib64/ld-linux-x86-64.so.2 -lc -lm -L./examples/ -lraylib
 ffi "InitWindow" func init_window(width @int, height @int, title @str) @void
+ffi "WindowShouldClose" func window_should_close() @bool
+ffi "CloseWindow" func close_window() @void
+ffi "BeginDrawing" func begin_drawing() @void
+ffi "EndDrawing" func end_drawing() @void
+ffi "ClearBackground" func clear_background(color @int) @void
 
 func main() {
-    init_window(800,600,"Hello form Nmet\0");
+    init_window(800,600,"Hello\0");
+    while (window_should_close() != true) {
+        begin_drawing();
+            clear_background(0xff0000ff);
+        end_drawing();
+    }
+    close_window();
 }
