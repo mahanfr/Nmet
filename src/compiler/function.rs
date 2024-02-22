@@ -47,20 +47,11 @@ pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
             vtype_inner: VariableType::Any,
         };
         if args_count < 6 {
-            // let mem_acss = format!(
-            //     "{} [rbp-{}]",
-            //     mem_word(&map.vtype),
-            //     map.offset + map.vtype.size()
-            // );
             let mem_acss = MemAddr::new_disp_s(map.vtype.item_size(), RBP, map.stack_offset());
             let reg = function_args_register_sized(args_count, &map.vtype);
             cc.codegen.instr2(Mov, mem_acss, reg);
         } else {
             todo!();
-            // let mem_overload = format!("{} [rbp+{}]", mem_word(8), 16 + (args_count - 6) * 8);
-            //let mem_acss = format!("{} [rbp-{}]", mem_word(8), map.offset + map.size);
-            //cc.instruct_buf
-            //    .push(asm!("mov {},{}", mem_acss, mem_overload));
         }
         cc.variables_map.insert(ident, map);
         cc.mem_offset += 8;
@@ -81,11 +72,6 @@ pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
         cc.codegen.set_lable(f.ident.clone());
     }
 
-    // set rbp to stack pointer for this block
-    // let index_1 = cc.codegen.place_holder();
-    // let index_2 = cc.codegen.place_holder();
-    // let index_3 = cc.codegen.place_holder();
-
     cc.codegen.instr1(Push, RBP);
     cc.codegen.instr2(Mov, RBP, RSP);
     //cc.codegen.push_instr(Instr::sub(RSP, frame_size(cc.mem_offset)));
@@ -93,8 +79,6 @@ pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
     compile_block(cc, &f.block, BlockType::Function(f.ident.clone()));
     cc.scoped_blocks.pop();
     // Call Exit Syscall
-    // if !cc.variables_map.is_empty() {
-    // }
     if f.ident == "main" {
         cc.codegen.instr2(Mov, RAX, 60);
         cc.codegen.instr2(Mov, RDI, 0);
@@ -103,12 +87,5 @@ pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
         // revert rbp
         cc.codegen.instr0(Leave);
         cc.codegen.instr0(Ret);
-        // if !cc.variables_map.is_empty() {
-        //     //cc.instruct_buf.push(asm!("pop rbp"));
-        //     cc.codegen.push_instr(Instr::Leave);
-        //     cc.codegen.push_instr(Instr::Ret);
-        // } else {
-        //     cc.codegen.push_instr(Instr::Ret);
-        // }
     }
 }

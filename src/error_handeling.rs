@@ -22,7 +22,47 @@
 *     3. This notice may not be removed or altered from any source distribution.
 *
 **********************************************************************************************/
-use std::{fmt::Display, process::exit};
+use std::{fmt::Display, process::exit, error::Error};
+
+use crate::parser::expr::Op;
+
+#[derive(Debug)]
+pub enum CompilationError {
+    UndefinedVariable(String),
+    UnknownType(String),
+    UnexpectedType(String),
+    UndifiendStruct(String),
+    UnknownRefrence,
+    InvalidComparison(String,String),
+    InvalidTypeCasting(String, String),
+    InValidBinaryOperation(Op, String, String),
+    InValidUnaryOperation(Op, String),
+    FunctionOutOfScope(String),
+    InvalidInlineAsm(String),
+    ImmutableVariable(String),
+}
+impl Display for CompilationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::UndefinedVariable(v) => write!(f,"Undifiend Variable ({v})"),
+            Self::UnknownType(v) => write!(f,"Unknown vaiable type ({v})"),
+            Self::UnexpectedType(t) => write!(f,"Unexpected type ({t})"),
+            Self::UndifiendStruct(s) => write!(f,"Undifined structure ({s})"),
+            Self::UnknownRefrence => write!(f,"Trying to accsess unknown refrence"),
+            Self::InvalidComparison(a, b) => write!(f,"Invalide Compare operation between ({a}) and ({b})"),
+            Self::InvalidTypeCasting(a, b) => write!(f, "Types ({a}) and ({b}) can not be casted to eachother for this operation"),
+            Self::InValidBinaryOperation(op, a, b) => write!(f,"Invalid Operation ({op}) on types ({a}) and ({b})"),
+            Self::InValidUnaryOperation(op, a) => write!(f,"Invalid Operation ({op}) on type ({a})"),
+            Self::FunctionOutOfScope(s) => write!(f,"Error: Function {s} is not avaliable in this scope. {}",
+                                                    "Make sure you are calling the correct function"),
+            Self::InvalidInlineAsm(i) => write!(f,"Invalid Identifier for Inline asm instruct ({i})"),
+            Self::ImmutableVariable(v) => write!(f,"Variable ({v}) is not mutable. Did you forgot to define it with '=' insted of ':=' ?" ),
+        }
+    }
+}
+
+impl Error for CompilationError {}
+
 
 /// Code Location
 #[derive(Debug, PartialEq, Clone)]

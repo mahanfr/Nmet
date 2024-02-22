@@ -56,10 +56,18 @@ macro_rules! log_warn {
     };
 }
 
-/// Log Warning
+/// Log Error 
 #[macro_export]
 macro_rules! log_error {
     ($($arg:tt)+) => {
         eprintln!("\x1b[91m[Error]\x1b[0m {}",format_args!($($arg)+))
+    };
+}
+
+/// log CompilerError
+#[macro_export]
+macro_rules! log_cerror {
+    ($loc:expr, $($arg:tt)+) => {
+        eprintln!("\x1b[91m[{}]\x1b[0m {}",$loc,format_args!($($arg)+))
     };
 }

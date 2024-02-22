@@ -25,7 +25,7 @@
 use std::fmt::Display;
 
 use crate::{
-    error_handeling::error,
+    error_handeling::{error, CompilationError},
     lexer::{Lexer, TokenType},
 };
 
@@ -111,7 +111,7 @@ impl VariableType {
     }
 
     /// Cast two types into a single type
-    pub fn cast(&self, other: &Self) -> Result<Self, String> {
+    pub fn cast(&self, other: &Self) -> Result<Self, CompilationError> {
         let cmp = (self, other);
         if cmp.0 == cmp.1 {
             return Ok(self.clone());
@@ -135,10 +135,7 @@ impl VariableType {
                 Ok(cmp.0.clone())
             }
         } else {
-            Err(format!(
-                "Types ({}) and ({}) can not be casted to eachother for this operation",
-                cmp.0, cmp.1
-            ))
+            Err(CompilationError::InvalidTypeCasting(cmp.0.to_string(), cmp.1.to_string()))
         }
     }
 

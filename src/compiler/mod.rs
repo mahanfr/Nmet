@@ -32,7 +32,7 @@ use crate::codegen::instructions::Opr;
 use crate::codegen::{register::Reg, Codegen};
 use crate::compiler::{bif::Bif, function::compile_function};
 
-use crate::error_handeling::error;
+use crate::{log_cerror, log_error};
 use crate::parser::{
     block::{Block, BlockType},
     function::Function,
@@ -43,6 +43,7 @@ use crate::parser::{
     types::VariableType,
 };
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::process::exit;
 
 use self::stmts::compile_stmt;
 
@@ -83,6 +84,7 @@ pub struct CompilerContext {
     pub bif_set: HashSet<Bif>,
     pub mem_offset: usize,
     pub program_file: String,
+    errors: usize,
 }
 
 impl CompilerContext {
@@ -97,8 +99,13 @@ impl CompilerContext {
             functions_map: BTreeMap::new(),
             structs_map: HashMap::new(),
             mem_offset: 0,
+            errors: 0,
         }
     }
+    pub fn error(&mut self) {
+        self.errors += 1;
+    }
+
     pub fn last_main_label(&self) -> String {
         for block in self.scoped_blocks.iter().rev() {
             let BlockType::Function(lab) = block.block_type.clone() else {
@@ -220,6 +227,10 @@ pub fn compile(cc: &mut CompilerContext, path: String) {
             compile_function(cc, f);
         }
     }
+    if cc.errors > 0 {
+        log_error!("Compilation Failed due to {} previous errors!", cc.errors);
+        exit(-1);
+    }
     assert!(
         cc.scoped_blocks.is_empty(),
         "Somting went wrong: Scope has not been cleared"
@@ -249,29 +260,32 @@ fn compile_block(cc: &mut CompilerContext, block: &Block, block_type: BlockType)
                     }
                 }
                 if !did_break {
-                    error("Can not break out of non-loop blocks!", stmt.loc.clone());
+                    cc.error();
+                    log_cerror!(stmt.loc, "Can not break in non-loop blocks!");
                 }
             }
             StmtType::Continue => {
                 let mut did_cont: bool = false;
                 for s_block in cc.scoped_blocks.iter().rev() {
                     if let BlockType::Loop(loc) = s_block.block_type {
-                        // assert!(false, "Not Implemented yet!");
                         cc.codegen.instr1(
                             crate::codegen::mnemonic::Mnemonic::Jmp,
                             Opr::Loc(format!("{}.L{}", cc.last_main_label(), loc.1)),
                         );
-                        //cc.codegen.push_instr(Instr::jmp(0));
                         did_cont = true;
                         break;
                     }
                 }
                 if !did_cont {
-                    error("Can not continue in non-loop blocks!", stmt.loc.clone());
+                    cc.error();
+                    log_cerror!(stmt.loc, "Can not continue in non-loop blocks!");
                 }
             }
             _ => {
-                compile_stmt(cc, stmt);
+               compile_stmt(cc, stmt).unwrap_or_else(|e| {
+                        cc.error();
+                        log_cerror!(stmt.loc, "{e}");
+               });
             }
         }
     }

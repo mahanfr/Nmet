@@ -29,7 +29,7 @@ use crate::{
         mnemonic::Mnemonic::*,
         register::Reg::{self, *},
     },
-    error_handeling::error,
+    error_handeling::{error, CompilationError},
     mem, memq,
     parser::{
         expr::{CompareOp, Expr, ExprType, FunctionCall, Op},
@@ -43,30 +43,30 @@ use super::{
     CompilerContext,
 };
 
-pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
+pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> Result<VariableType, CompilationError> {
     // left = compile expr
     // right = compile expr
     // +
     match &expr.etype {
         ExprType::Variable(v) => {
             let Some(v_map) = get_vriable_map(cc, v) else {
-                error("Trying to access an Undifined variable", expr.loc.clone());
+                return Err(CompilationError::UndefinedVariable(v.to_owned()));
             };
             let mem_acss = MemAddr::new_disp_s(v_map.vtype.item_size(), RBP, v_map.stack_offset());
             cc.codegen
                 .instr2(Mov, Reg::AX_sized(&v_map.vtype), mem_acss);
             cc.codegen.instr1(Push, RAX);
-            v_map.vtype
+            Ok(v_map.vtype)
         }
         ExprType::Access(ident, ac) => {
             let Some(v_map) = get_vriable_map(cc, ident) else {
-                error("Trying to access an Undifined variable", expr.loc.clone());
+                return Err(CompilationError::UndefinedVariable(ident.to_owned()));
             };
             let VariableType::Custom(struct_ident) = v_map.vtype.clone() else {
-                error("Trying to access an Undifined Structure", expr.loc.clone());
+                return Err(CompilationError::UnexpectedType(v_map.vtype.to_string()));
             };
             let Some(struc) = cc.structs_map.get(&struct_ident) else {
-                error("Trying to access an Undifined Structure", expr.loc.clone());
+                return Err(CompilationError::UndifiendStruct(struct_ident));
             };
             let mut offset: usize = 0;
             let mut actype = VariableType::Any;
@@ -83,10 +83,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                 _ => todo!(),
             }
             if actype.is_any() {
-                error(
-                    "Trying to access unknown item from the list",
-                    expr.loc.clone(),
-                );
+                return Err(CompilationError::UnknownRefrence);
             }
             cc.codegen.instr2(Mov, RDX, mem!(RBP, v_map.stack_offset()));
             cc.codegen.instr2(Add, RDX, offset);
@@ -96,20 +93,20 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                 MemAddr::new_s(actype.item_size(), RDX),
             );
             cc.codegen.instr1(Push, RAX);
-            actype
+            Ok(actype)
         }
         ExprType::Bool(b) => {
             cc.codegen.instr1(Push, *b as i32);
-            VariableType::Bool
+            Ok(VariableType::Bool)
         }
         ExprType::Char(x) => {
             cc.codegen.instr1(Push, *x as i32);
-            VariableType::Char
+            Ok(VariableType::Char)
         }
         ExprType::Int(x) => {
             // push x
             cc.codegen.instr1(Push, *x);
-            VariableType::Int
+            Ok(VariableType::Int)
         }
         ExprType::Float(_) => {
             todo!()
@@ -117,8 +114,8 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
             // VariableType::Float
         }
         ExprType::Compare(c) => {
-            let left_type = compile_expr(cc, c.left.as_ref());
-            let right_type = compile_expr(cc, c.right.as_ref());
+            let left_type = compile_expr(cc, c.left.as_ref())?;
+            let right_type = compile_expr(cc, c.right.as_ref())?;
             cc.codegen.instr2(Mov, RCX, 0);
             cc.codegen.instr2(Mov, RDX, 1);
             let mut reg_type = left_type.clone();
@@ -130,13 +127,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                         reg_type = right_type;
                     }
                 } else {
-                    error(
-                        format!(
-                            "Invalid Comparison between types: ({}) and ({})",
-                            left_type, right_type
-                        ),
-                        expr.loc.clone(),
-                    );
+                    return Err(CompilationError::InvalidComparison(left_type.to_string(), right_type.to_string()));
                 }
             }
             // Make sure rbx is first so the order is correct
@@ -165,11 +156,11 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                 }
             }
             cc.codegen.instr1(Push, RCX);
-            VariableType::Bool
+            Ok(VariableType::Bool)
         }
         ExprType::Binary(b) => {
-            let left_type = compile_expr(cc, b.left.as_ref());
-            let right_type = compile_expr(cc, b.right.as_ref());
+            let left_type = compile_expr(cc, b.left.as_ref())?;
+            let right_type = compile_expr(cc, b.right.as_ref())?;
             cc.codegen.instr1(Pop, RBX);
             cc.codegen.instr1(Pop, RAX);
             match b.op {
@@ -216,30 +207,21 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                 Op::LogicalOr => {
                     cc.codegen.instr2(Or, RAX, RBX);
                     cc.codegen.instr1(Push, RAX);
-                    return VariableType::Bool;
+                    return Ok(VariableType::Bool);
                 }
                 Op::LogicalAnd => {
                     cc.codegen.instr2(And, RAX, RBX);
                     cc.codegen.instr1(Push, RAX);
-                    return VariableType::Bool;
+                    return Ok(VariableType::Bool);
                 }
                 Op::Not => {
-                    panic!("Unvalid binary operation");
+                    return Err(CompilationError::InValidBinaryOperation(b.op.to_owned(), left_type.to_string(), right_type.to_string()));
                 }
             }
             if right_type.is_numeric() && left_type.is_numeric() {
-                match left_type.cast(&right_type) {
-                    Ok(t) => t,
-                    Err(msg) => error(msg, expr.loc.clone()),
-                }
+                left_type.cast(&right_type)
             } else {
-                error(
-                    format!(
-                        "Invalid Operation ({}) on non-numeric types: ({}) and ({})",
-                        b.op, left_type, right_type
-                    ),
-                    expr.loc.clone(),
-                );
+                Err(CompilationError::InValidBinaryOperation(b.op.to_owned(), left_type.to_string(), right_type.to_string()))
             }
         }
         ExprType::String(str) => {
@@ -248,19 +230,19 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                 .add_data(str.as_bytes().to_vec(), VariableType::String);
             cc.codegen.instr1(Push, Opr::Rela(id));
             cc.codegen.instr1(Push, str.len());
-            VariableType::String
+            Ok(VariableType::String)
         }
         ExprType::Unary(u) => {
-            let right_type = compile_expr(cc, &u.right);
+            let right_type = compile_expr(cc, &u.right)?;
             cc.codegen.instr1(Pop, RAX);
             match u.op {
                 Op::Sub => {
                     cc.codegen.instr1(Neg, RAX);
                     cc.codegen.instr1(Push, RAX);
                     if right_type == VariableType::UInt {
-                        return VariableType::Int;
+                        return Ok(VariableType::Int);
                     } else {
-                        return right_type;
+                        return Ok(right_type);
                     }
                 }
                 Op::Plus => {
@@ -274,25 +256,19 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                     unreachable!();
                 }
             }
-            if right_type.is_numeric() {
-                right_type
+            if right_type.is_numeric() || right_type == VariableType::Bool {
+                Ok(right_type)
             } else {
-                error(
-                    format!("Invalid Operation ({}) for type ({})", u.op, right_type),
-                    expr.loc.clone(),
-                );
+                Err(CompilationError::InValidUnaryOperation(u.op.to_owned(), right_type.to_string()))
             }
         }
-        ExprType::FunctionCall(fc) => match compile_function_call(cc, fc) {
-            Ok(ftype) => ftype,
-            Err(msg) => error(msg, expr.loc.clone()),
-        },
+        ExprType::FunctionCall(fc) => compile_function_call(cc, fc),
         ExprType::Ptr(e) => {
-            compile_ptr(cc, e);
-            VariableType::Pointer
+            compile_ptr(cc, e)?;
+            Ok(VariableType::Pointer)
         }
         ExprType::DeRef(r) => {
-            let t = compile_expr(cc, r);
+            let t = compile_expr(cc, r)?;
             match t {
                 VariableType::Array(_, _) => {
                     todo!("Changed!");
@@ -306,7 +282,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                     error(format!("Expected a Pointer found ({t})"), expr.loc.clone());
                 }
             }
-            VariableType::Any
+            Ok(VariableType::Any)
         }
         ExprType::ArrayIndex(ai) => {
             let v_map = find_variable(cc, ai.ident.clone()).unwrap_or_else(|| {
@@ -315,55 +291,38 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> VariableType {
                     expr.loc.clone(),
                 );
             });
-            compile_expr(cc, &ai.indexer);
+            compile_expr(cc, &ai.indexer)?;
             cc.codegen.instr1(Pop, RBX);
-            // cc.instruct_buf
-            //     .push(asm!("mov rdx, [rbp-{}]", v_map.offset + v_map.vtype.size()));
-            // cc.instruct_buf
-            //     .push(asm!("imul rbx, {}", v_map.vtype.item_size()));
-            // cc.instruct_buf.push(asm!("add rdx, rbx"));
-
-            // let mem_acss = format!("{} [rdx]", mem_word(&v_map.vtype));
-            // let mem_acss = format!(
-            //     "{} [rbp-{}+rbx*{}]",
-            //     mem_word(&v_map.vtype),
-            //     v_map.offset + v_map.vtype.size(),
-            //     v_map.vtype.item_size()
-            // );
             let mem_acss = mem!(RBP, v_map.stack_offset(), RBX, v_map.vtype.item_size());
             let reg = Reg::AX_sized(&v_map.vtype);
             cc.codegen.instr2(Mov, reg, mem_acss);
             cc.codegen.instr1(Push, RAX);
             match v_map.vtype {
-                VariableType::Array(t, _) => t.as_ref().clone(),
+                VariableType::Array(t, _) => Ok(t.as_ref().clone()),
                 _ => unreachable!(),
             }
         }
     }
 }
 
-fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) {
+fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) -> Result<(), CompilationError> {
     match &expr.etype {
         ExprType::Variable(v) => {
             let Some(v_map) = get_vriable_map(cc, v) else {
-                error("Trying to access an Undifined variable", expr.loc.clone());
+                return Err(CompilationError::UndefinedVariable(v.to_owned()));
             };
             match v_map.vtype {
                 VariableType::Array(_, _) => {
-                    //todo!("ReImplemnt");
-                    //let mov_addr = format!("qword [rbp - {}]", v_map.offset + v_map.vtype.size());
-                    //cc.codegen.mov(RAX, mov_addr);
-                    //cc.codegen.push(RAX);
-
-                    //cc.codegen.mov(RAX, RBP);
                     cc.codegen.instr2(Lea, RAX, mem!(RBP, v_map.stack_offset()));
                     cc.codegen.instr1(Push, RAX);
+                    Ok(())
                 }
                 _ => {
                     cc.codegen.instr2(Mov, RAX, RBP);
                     cc.codegen
                         .instr2(Sub, RAX, v_map.offset + v_map.vtype.size());
                     cc.codegen.instr1(Push, RAX);
+                    Ok(())
                 }
             }
         }
@@ -376,10 +335,10 @@ fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) {
 fn compile_function_call(
     cc: &mut CompilerContext,
     fc: &FunctionCall,
-) -> Result<VariableType, String> {
+) -> Result<VariableType, CompilationError> {
     for (index, arg) in fc.args.iter().enumerate() {
         // let argv_type = expr_type(arg);
-        compile_expr(cc, arg);
+        compile_expr(cc, arg)?;
         match arg.etype {
             ExprType::String(_) => {
                 cc.codegen.instr1(Pop, RAX);
@@ -392,10 +351,7 @@ fn compile_function_call(
     }
     // TODO: Setup a unresolved function table
     let Some(fun) = cc.functions_map.get(&fc.ident) else {
-        return Err(format!(
-            "Error: Function {} is not avaliable in this scope. {}",
-            &fc.ident, "Make sure you are calling the correct function"
-        ));
+        return Err(CompilationError::FunctionOutOfScope(fc.ident.clone()));
     };
     cc.codegen.instr2(Mov, RAX, 0);
     cc.codegen.instr1(Pop, RBP);

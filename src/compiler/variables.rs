@@ -30,7 +30,7 @@ use crate::{
         register::Reg::{self, *},
     },
     compiler::VariableMap,
-    error_handeling::error,
+    error_handeling::{error, CompilationError},
     mem, memq,
     parser::{types::VariableType, variable_decl::VariableDeclare},
 };
@@ -48,7 +48,7 @@ pub fn find_variable(cc: &CompilerContext, ident: String) -> Option<VariableMap>
     None
 }
 
-pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Result<(), String> {
+pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Result<(), CompilationError> {
     let ident = format!("{}%{}", var.ident, cc.block_id);
     let mut vtype = match var.v_type.as_ref() {
         Some(vt) => vt.clone(),
@@ -60,15 +60,10 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
         VariableType::Array(_, _) => (),
         VariableType::Custom(s) => {
             let Some(struct_map) = cc.structs_map.get(s) else {
-                return Err("Type dose not exists in the current scope".to_string());
+                return Err(CompilationError::UnknownType(s.to_owned()));
             };
             let size: usize = struct_map.items.iter().map(|(_, v)| v.size()).sum();
             let struct_tag = cc.codegen.add_bss_seg(size);
-            // let mem_acss = format!(
-            //     "{} [rbp-{}]",
-            //     mem_word(&VariableType::Pointer),
-            //     cc.mem_offset + 8
-            // );
             let mem_acss = memq!(RBP, -(cc.mem_offset as i32 + 8));
             // assert!(false, "Not Implemented yet!");
             cc.codegen.instr2(Mov, mem_acss, Opr::Rela(struct_tag));
@@ -80,11 +75,10 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
     if var.init_value.is_some() {
         let init_value = var.init_value.clone().unwrap();
         // this pushes result in stack
-        let texpr = compile_expr(cc, &init_value);
+        let texpr = compile_expr(cc, &init_value)?;
         // TODO: Strings should include size
         match vtype.cast(&texpr) {
             Ok(vt) => {
-                // let mem_acss = format!("{} [rbp-{}]", mem_word(&vt), cc.mem_offset + vt.size());
                 let mem_acss = mem!(RBP, -((cc.mem_offset + vt.size()) as i32));
                 cc.codegen.instr1(Pop, RAX);
                 cc.codegen.instr2(Mov, mem_acss, Reg::AX_sized(&vt));
@@ -97,10 +91,7 @@ pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Resul
     }
     // Type checking
     if vtype == VariableType::Any {
-        return Err(format!(
-            "Variable ({}) type is not known at compile time",
-            var.ident
-        ));
+        return Err(CompilationError::UnknownType(var.ident.to_owned()));
     }
     let var_map = VariableMap {
         vtype: vtype.clone(),
