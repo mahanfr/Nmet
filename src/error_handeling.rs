@@ -22,7 +22,7 @@
 *     3. This notice may not be removed or altered from any source distribution.
 *
 **********************************************************************************************/
-use std::{fmt::Display, process::exit, error::Error};
+use std::{error::Error, fmt::Display, process::exit};
 
 use crate::parser::expr::Op;
 
@@ -33,7 +33,7 @@ pub enum CompilationError {
     UnexpectedType(String),
     UndifiendStruct(String),
     UnknownRefrence,
-    InvalidComparison(String,String),
+    InvalidComparison(String, String),
     InvalidTypeCasting(String, String),
     InValidBinaryOperation(Op, String, String),
     InValidUnaryOperation(Op, String),
@@ -53,8 +53,7 @@ impl Display for CompilationError {
             Self::InvalidTypeCasting(a, b) => write!(f, "Types ({a}) and ({b}) can not be casted to eachother for this operation"),
             Self::InValidBinaryOperation(op, a, b) => write!(f,"Invalid Operation ({op}) on types ({a}) and ({b})"),
             Self::InValidUnaryOperation(op, a) => write!(f,"Invalid Operation ({op}) on type ({a})"),
-            Self::FunctionOutOfScope(s) => write!(f,"Error: Function {s} is not avaliable in this scope. {}",
-                                                    "Make sure you are calling the correct function"),
+            Self::FunctionOutOfScope(s) => write!(f,"Error: Function {s} is not avaliable in this scope. Make sure you are calling the correct function"),
             Self::InvalidInlineAsm(i) => write!(f,"Invalid Identifier for Inline asm instruct ({i})"),
             Self::ImmutableVariable(v) => write!(f,"Variable ({v}) is not mutable. Did you forgot to define it with '=' insted of ':=' ?" ),
         }
@@ -62,7 +61,6 @@ impl Display for CompilationError {
 }
 
 impl Error for CompilationError {}
-
 
 /// Code Location
 #[derive(Debug, PartialEq, Clone)]

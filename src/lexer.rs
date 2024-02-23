@@ -249,7 +249,7 @@ impl Token {
     /// Returns a Token Structure
     ///
     /// # Arguments
-    ///  
+    ///
     /// * `t_type` - TokenType extracted by lexer
     /// * `literal` - The String Literal related to the token
     /// * `loc` - The location of the token
@@ -704,7 +704,7 @@ impl Lexer {
                         loc.clone(),
                     );
                 });
-                value = (value as i64 * 16i64) + digit as i64;
+                value = (value * 16i64) + digit as i64;
             }
             TokenType::Int(value as i32)
         } else if literal.contains('b') {

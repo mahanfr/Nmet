@@ -32,7 +32,6 @@ use crate::codegen::instructions::Opr;
 use crate::codegen::{register::Reg, Codegen};
 use crate::compiler::{bif::Bif, function::compile_function};
 
-use crate::{log_cerror, log_error};
 use crate::parser::{
     block::{Block, BlockType},
     function::Function,
@@ -42,6 +41,7 @@ use crate::parser::{
     structs::StructDef,
     types::VariableType,
 };
+use crate::{log_cerror, log_error};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::process::exit;
 
@@ -282,10 +282,10 @@ fn compile_block(cc: &mut CompilerContext, block: &Block, block_type: BlockType)
                 }
             }
             _ => {
-               compile_stmt(cc, stmt).unwrap_or_else(|e| {
-                        cc.error();
-                        log_cerror!(stmt.loc, "{e}");
-               });
+                compile_stmt(cc, stmt).unwrap_or_else(|e| {
+                    cc.error();
+                    log_cerror!(stmt.loc, "{e}");
+                });
             }
         }
     }

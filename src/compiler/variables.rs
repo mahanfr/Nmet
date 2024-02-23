@@ -48,7 +48,10 @@ pub fn find_variable(cc: &CompilerContext, ident: String) -> Option<VariableMap>
     None
 }
 
-pub fn insert_variable(cc: &mut CompilerContext, var: &VariableDeclare) -> Result<(), CompilationError> {
+pub fn insert_variable(
+    cc: &mut CompilerContext,
+    var: &VariableDeclare,
+) -> Result<(), CompilationError> {
     let ident = format!("{}%{}", var.ident, cc.block_id);
     let mut vtype = match var.v_type.as_ref() {
         Some(vt) => vt.clone(),

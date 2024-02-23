@@ -43,7 +43,10 @@ use super::{
     CompilerContext,
 };
 
-pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> Result<VariableType, CompilationError> {
+pub fn compile_expr(
+    cc: &mut CompilerContext,
+    expr: &Expr,
+) -> Result<VariableType, CompilationError> {
     // left = compile expr
     // right = compile expr
     // +
@@ -127,7 +130,10 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> Result<VariableTyp
                         reg_type = right_type;
                     }
                 } else {
-                    return Err(CompilationError::InvalidComparison(left_type.to_string(), right_type.to_string()));
+                    return Err(CompilationError::InvalidComparison(
+                        left_type.to_string(),
+                        right_type.to_string(),
+                    ));
                 }
             }
             // Make sure rbx is first so the order is correct
@@ -215,13 +221,21 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> Result<VariableTyp
                     return Ok(VariableType::Bool);
                 }
                 Op::Not => {
-                    return Err(CompilationError::InValidBinaryOperation(b.op.to_owned(), left_type.to_string(), right_type.to_string()));
+                    return Err(CompilationError::InValidBinaryOperation(
+                        b.op.to_owned(),
+                        left_type.to_string(),
+                        right_type.to_string(),
+                    ));
                 }
             }
             if right_type.is_numeric() && left_type.is_numeric() {
                 left_type.cast(&right_type)
             } else {
-                Err(CompilationError::InValidBinaryOperation(b.op.to_owned(), left_type.to_string(), right_type.to_string()))
+                Err(CompilationError::InValidBinaryOperation(
+                    b.op.to_owned(),
+                    left_type.to_string(),
+                    right_type.to_string(),
+                ))
             }
         }
         ExprType::String(str) => {
@@ -259,7 +273,10 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> Result<VariableTyp
             if right_type.is_numeric() || right_type == VariableType::Bool {
                 Ok(right_type)
             } else {
-                Err(CompilationError::InValidUnaryOperation(u.op.to_owned(), right_type.to_string()))
+                Err(CompilationError::InValidUnaryOperation(
+                    u.op.to_owned(),
+                    right_type.to_string(),
+                ))
             }
         }
         ExprType::FunctionCall(fc) => compile_function_call(cc, fc),

@@ -56,7 +56,7 @@ macro_rules! log_warn {
     };
 }
 
-/// Log Error 
+/// Log Error
 #[macro_export]
 macro_rules! log_error {
     ($($arg:tt)+) => {

@@ -135,7 +135,10 @@ impl VariableType {
                 Ok(cmp.0.clone())
             }
         } else {
-            Err(CompilationError::InvalidTypeCasting(cmp.0.to_string(), cmp.1.to_string()))
+            Err(CompilationError::InvalidTypeCasting(
+                cmp.0.to_string(),
+                cmp.1.to_string(),
+            ))
         }
     }
 

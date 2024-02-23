@@ -32,14 +32,14 @@ use crate::{
     },
     compiler::VariableMap,
     error_handeling::CompilationError,
-    mem,
+    log_cerror, log_warn, mem,
     parser::{
         assign::{Assign, AssignOp},
         block::BlockType,
-        expr::{ExprType, Expr},
+        expr::{Expr, ExprType},
         stmt::{ElseBlock, IFStmt, Stmt, StmtType, WhileStmt},
         types::VariableType,
-    }, log_warn, log_cerror,
+    },
 };
 
 use super::{
@@ -50,7 +50,11 @@ use super::{
     CompilerContext,
 };
 
-fn compile_if_stmt(cc: &mut CompilerContext, ifs: &IFStmt, exit_tag: usize) -> Result<(),CompilationError>{
+fn compile_if_stmt(
+    cc: &mut CompilerContext,
+    ifs: &IFStmt,
+    exit_tag: usize,
+) -> Result<(), CompilationError> {
     let condition_type = compile_expr(cc, &ifs.condition)?;
     let last_label = cc.last_main_label();
     VariableType::Bool.cast(&condition_type)?;
@@ -88,7 +92,7 @@ fn compile_if_stmt(cc: &mut CompilerContext, ifs: &IFStmt, exit_tag: usize) -> R
     }
 }
 
-fn compile_print(cc: &mut CompilerContext, expr: &Expr) -> Result<(), CompilationError>{
+fn compile_print(cc: &mut CompilerContext, expr: &Expr) -> Result<(), CompilationError> {
     compile_expr(cc, expr)?;
     match expr.etype {
         ExprType::String(_) => {
@@ -113,9 +117,7 @@ fn compile_print(cc: &mut CompilerContext, expr: &Expr) -> Result<(), Compilatio
 pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) -> Result<(), CompilationError> {
     match &stmt.stype {
         StmtType::VariableDecl(v) => insert_variable(cc, v),
-        StmtType::Print(e) => {
-            compile_print(cc, e)
-        }
+        StmtType::Print(e) => compile_print(cc, e),
         StmtType::If(ifs) => {
             let exit_tag = cc.codegen.get_id();
             compile_if_stmt(cc, ifs, exit_tag)
@@ -145,8 +147,8 @@ pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) -> Result<(), Compila
                     Ok(_) => (),
                     Err(e) => {
                         cc.error();
-                        log_cerror!(stmt.loc,"{e}");
-                    },
+                        log_cerror!(stmt.loc, "{e}");
+                    }
                 }
             }
             Ok(())
@@ -227,7 +229,11 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) -> Result<(), Com
     Ok(())
 }
 
-fn assgin_op(cc: &mut CompilerContext, op: &AssignOp, v_map: &VariableMap) -> Result<(), CompilationError> {
+fn assgin_op(
+    cc: &mut CompilerContext,
+    op: &AssignOp,
+    v_map: &VariableMap,
+) -> Result<(), CompilationError> {
     let reg: Reg;
     let mem_acss = match &v_map.vtype {
         VariableType::Array(t, _) => {

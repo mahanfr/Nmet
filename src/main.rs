@@ -67,6 +67,7 @@ fn assembler_target() -> &'static str {
 // -o outputpath
 // -l<mod_name>
 // -L<mod_path>
+#[derive(Debug, Default)]
 pub struct CompilerOptions {
     pub output_path: Option<PathBuf>,
     pub use_nasm: bool,
@@ -76,20 +77,6 @@ pub struct CompilerOptions {
     pub keep_obj: bool,
     pub linker_flags: Vec<String>,
     pub use_libc: bool,
-}
-impl Default for CompilerOptions {
-    fn default() -> Self {
-        Self {
-            output_path: None,
-            use_nasm: false,
-            no_linking: false,
-            no_assembling: false,
-            keep_asm: false,
-            keep_obj: false,
-            linker_flags: Vec::new(),
-            use_libc: false,
-        }
-    }
 }
 
 fn copywrite() {
@@ -127,10 +114,7 @@ pub fn help_command(program_name: &str) {
         "  {} Do not remove the generated object file",
         padding_right("-keep-obj")
     );
-    println!(
-        "  {} Use C library Dynamicaly",
-        padding_right("-use-libc")
-    );
+    println!("  {} Use C library Dynamicaly", padding_right("-use-libc"));
     println!(
         "  {} Search for library LIBNAME",
         padding_right("-l<LIBNAME>")
@@ -164,7 +148,6 @@ pub fn assemble_with_nasm(path: PathBuf) {
     log_success!("Object file generated using Nasm!");
 }
 
- 
 /// Runs External commands for generating the executable
 pub fn link_to_exc(path: PathBuf, co: &CompilerOptions) {
     log_info!(
@@ -211,7 +194,7 @@ pub fn setup_compiler(input: String, co: &CompilerOptions) {
         assemble_with_nasm(out_path.clone());
     }
     if !co.no_linking && !co.no_assembling {
-        link_to_exc(out_path.clone(), &co)
+        link_to_exc(out_path.clone(), co)
     }
     if !co.keep_asm && !co.no_assembling && remove_file(out_path.with_extension("asm")).is_ok() {
         log_info!("Removing asm files")
