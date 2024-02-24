@@ -8,6 +8,7 @@ pub mod mnemonic;
 pub mod opcodes;
 pub mod register;
 pub mod text;
+pub mod optimization;
 use std::{collections::BTreeMap, fmt::Display};
 
 use crate::{parser::types::VariableType, utils::IBytes};
@@ -103,7 +104,7 @@ pub enum SymbolType {
 #[derive(Clone)]
 pub struct Codegen {
     instructs: Vec<InstrData>,
-    pub data_buf: Vec<DataItem>,
+    pub data_buf: BTreeMap<String, DataItem>,
     pub bss_buf: Vec<BssItem>,
     pub symbols_map: BTreeMap<String, (usize, SymbolType)>,
     pub ffi_map: BTreeMap<String, String>,
@@ -115,7 +116,7 @@ impl Codegen {
         Self {
             instructs: Vec::new(),
             bss_buf: Vec::new(),
-            data_buf: Vec::new(),
+            data_buf: BTreeMap::new(),
             symbols_map: BTreeMap::new(),
             rela_map: Vec::new(),
             ffi_map: BTreeMap::new(),
@@ -152,7 +153,7 @@ impl Codegen {
                         ));
                     }
                     (_, SymbolType::DataSec) => {
-                        let addend = self.data_buf.iter().find(|x| x.name == key).unwrap().index;
+                        let addend = self.data_buf.values().find(|x| x.name == key).unwrap().index;
                         self.rela_map.push(RelaItem::new(
                             ".data",
                             SymbolType::DataSec,
@@ -225,19 +226,19 @@ impl Codegen {
 
     pub fn add_data(&mut self, data: Vec<u8>, dtype: VariableType) -> String {
         let name = format!("data{}", self.data_buf.len());
-        let index = match self.data_buf.last() {
+        let index = match self.data_buf.values().last() {
             Some(dt) => dt.index + dt.data.len(),
             None => 0,
         };
         self.symbols_map.insert(
             name.clone(),
             (
-                self.data_buf.iter().map(|x| x.data.len()).sum(),
+                self.data_buf.values().map(|x| x.data.len()).sum(),
                 SymbolType::DataSec,
             ),
         );
         self.data_buf
-            .push(DataItem::new(name.clone(), index, data, dtype));
+            .insert(name.clone(),DataItem::new(name.clone(), index, data, dtype));
         name
     }
 

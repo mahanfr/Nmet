@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use crate::parser::types::VariableType;
+
 #[allow(unused_imports)]
 use super::{
     memory::MemAddr,
@@ -31,6 +33,36 @@ pub enum Opr {
 }
 
 impl Opr {
+    pub fn sized(self, vtype: &VariableType) -> Self {
+        match self {
+            Self::R8(r) | Self::R16(r) | Self::R32(r) | Self::R64(r) => r.convert(vtype.size() as u8).into(),
+            Self::Mem(m) => {
+                let mut cmem = m.clone();
+                cmem.size = vtype.size() as u8;
+                cmem.into()
+            }
+            Self::Imm8(v) | Self::Imm32(v) | Self::Imm64(v) => {
+                if vtype.size() == 1 {
+                    Self::Imm8(v as i64)
+                } else if vtype.size() == 4 || vtype.size() == 2 {
+                    Self::Imm32(v as i64)
+                } else {
+                    Self::Imm64(v as i64)
+                }
+            }
+            _ => self.to_owned()
+        }
+    }
+    
+    pub fn is_literal(&self) -> bool {
+        matches!(self, Opr::Imm8(_) | Opr::Imm32(_) | Opr::Imm64(_))
+    }
+    pub fn get_literal_value(&self) -> i64 {
+        match self {
+            Opr::Imm8(val) | Opr::Imm32(val) | Opr::Imm64(val) => *val,
+            _ => unreachable!(),
+        }
+    }
     pub fn rel(rel: impl ToString) -> Self {
         Self::Loc(rel.to_string())
     }

@@ -27,7 +27,7 @@ pub fn x86_64_nasm_generator(output: &Path, cc: &CompilerContext) -> Result<(), 
 
     if !cc.codegen.data_buf.is_empty() {
         file.write_all(b"section .data\n")?;
-        for data in &cc.codegen.data_buf {
+        for data in cc.codegen.data_buf.values() {
             file.write_all(data.to_string().as_bytes())?;
             file.write_all(b"\n")?;
         }

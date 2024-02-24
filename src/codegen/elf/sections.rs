@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 
 use crate::{
     codegen::{data_bss::DataItem, RelaItem},
@@ -125,9 +125,9 @@ pub struct DataSec {
     data: IBytes,
 }
 impl DataSec {
-    pub fn new(items: &[DataItem]) -> Self {
+    pub fn new(items: &BTreeMap<String, DataItem>) -> Self {
         let mut data = Vec::new();
-        for item in items.iter() {
+        for item in items.values() {
             data.extend(item.data.clone());
         }
         Self { data }
