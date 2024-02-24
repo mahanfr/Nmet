@@ -27,25 +27,24 @@ mod expr;
 mod function;
 mod stmts;
 mod variables;
+mod block;
 
-use crate::codegen::instructions::Opr;
 use crate::codegen::{register::Reg, Codegen};
 use crate::compiler::{bif::Bif, function::compile_function};
 
 use crate::parser::{
-    block::{Block, BlockType},
+    block::BlockType,
     function::Function,
     parse_file,
     program::ProgramItem,
-    stmt::StmtType,
     structs::StructDef,
     types::VariableType,
 };
-use crate::{log_cerror, log_error};
+use crate::log_error;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::process::exit;
 
-use self::stmts::compile_stmt;
+use self::block::ScopeBlock;
 
 #[derive(Debug, Clone)]
 pub struct VariableMap {
@@ -63,16 +62,6 @@ impl VariableMap {
 }
 
 pub type BLocation = (usize, usize);
-
-pub struct ScopeBlock {
-    pub id: usize,
-    pub block_type: BlockType,
-}
-impl ScopeBlock {
-    pub fn new(id: usize, block_type: BlockType) -> Self {
-        Self { id, block_type }
-    }
-}
 
 pub struct CompilerContext {
     pub codegen: Codegen,
@@ -237,58 +226,3 @@ pub fn compile(cc: &mut CompilerContext, path: String) {
     );
 }
 
-/*
- *  keep in mind there could be a problem when a variable wants to access
- *  somthing that added after in code but it could be a feature too :)
- */
-fn compile_block(cc: &mut CompilerContext, block: &Block, block_type: BlockType) {
-    cc.block_id += 1;
-    cc.scoped_blocks
-        .push(ScopeBlock::new(cc.block_id, block_type));
-    for stmt in &block.stmts {
-        match stmt.stype {
-            StmtType::Break => {
-                let mut did_break: bool = false;
-                for s_block in cc.scoped_blocks.iter().rev() {
-                    if let BlockType::Loop(loc) = s_block.block_type {
-                        cc.codegen.instr1(
-                            crate::codegen::mnemonic::Mnemonic::Jmp,
-                            Opr::Loc(format!("{}.LE{}", cc.last_main_label(), loc.1)),
-                        );
-                        did_break = true;
-                        break;
-                    }
-                }
-                if !did_break {
-                    cc.error();
-                    log_cerror!(stmt.loc, "Can not break in non-loop blocks!");
-                }
-            }
-            StmtType::Continue => {
-                let mut did_cont: bool = false;
-                for s_block in cc.scoped_blocks.iter().rev() {
-                    if let BlockType::Loop(loc) = s_block.block_type {
-                        cc.codegen.instr1(
-                            crate::codegen::mnemonic::Mnemonic::Jmp,
-                            Opr::Loc(format!("{}.L{}", cc.last_main_label(), loc.1)),
-                        );
-                        did_cont = true;
-                        break;
-                    }
-                }
-                if !did_cont {
-                    cc.error();
-                    log_cerror!(stmt.loc, "Can not continue in non-loop blocks!");
-                }
-            }
-            _ => {
-                compile_stmt(cc, stmt).unwrap_or_else(|e| {
-                    cc.error();
-                    log_cerror!(stmt.loc, "{e}");
-                });
-            }
-        }
-    }
-    cc.block_id -= 1;
-    cc.scoped_blocks.pop().unwrap();
-}
