@@ -396,11 +396,12 @@ fn compile_function_call(
             cc.codegen.instr1(Call, Opr::Loc(fc.ident.clone()));
         }
     }
+    cc.codegen.instr1(Push, RBP);
+    cc.codegen.instr2(Mov, RBP, RSP);
     if fun.ret_type != VariableType::Void {
         cc.codegen.instr1(Push, RAX);
         Ok(ExprOpr::new(RAX, fun.ret_type.clone()))
     } else {
-        cc.codegen.instr1(Push, RBP);
         Ok(ExprOpr::new(RBP, fun.ret_type.clone()))
     }
 }

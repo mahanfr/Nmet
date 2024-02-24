@@ -27,10 +27,10 @@ func syscall_open(filename @str, flags @int, mode @int) @u32 {
     asm {
         "mov rax, 2"
         "mov rdi, %filename"
-        "mov rsi, %flags"
-        "mov rdx, %mode"
+        "mov esi, %flags"
+        "mov edx, %mode"
         "syscall"
-        "mov %fd, rax"
+        "mov %fd, eax"
     }
     return fd;
 }
