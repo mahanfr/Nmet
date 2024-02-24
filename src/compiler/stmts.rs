@@ -44,7 +44,7 @@ use crate::{
 
 use super::{
     bif::Bif,
-    compile_block,
+    block::compile_block,
     expr::compile_expr,
     variables::{find_variable, get_vriable_map, insert_variable},
     CompilerContext,
@@ -55,9 +55,9 @@ fn compile_if_stmt(
     ifs: &IFStmt,
     exit_tag: usize,
 ) -> Result<(), CompilationError> {
-    let condition_type = compile_expr(cc, &ifs.condition)?;
+    let condition_eo = compile_expr(cc, &ifs.condition)?;
     let last_label = cc.last_main_label();
-    VariableType::Bool.cast(&condition_type)?;
+    VariableType::Bool.cast(&condition_eo.vtype)?;
 
     let next_tag = match ifs.else_block.as_ref() {
         ElseBlock::None => exit_tag,
@@ -214,8 +214,8 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) -> Result<(), Com
     cc.codegen
         .set_lable(format!("{}.L{cond_tag}", cc.last_main_label()));
     // Jump after a compare
-    let condition_type = compile_expr(cc, &w_stmt.condition)?;
-    VariableType::Bool.cast(&condition_type)?;
+    let condition_eo = compile_expr(cc, &w_stmt.condition)?;
+    VariableType::Bool.cast(&condition_eo.vtype)?;
     cc.codegen.instr1(Pop, RAX);
     cc.codegen.instr2(Test, RAX, RAX);
     // assert!(false, "Not implemented yet!");
@@ -311,8 +311,8 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Compi
             if !v_map.is_mut {
                 return Err(CompilationError::ImmutableVariable(v.to_owned()));
             }
-            let right_type = compile_expr(cc, &assign.right)?;
-            v_map.vtype.cast(&right_type)?;
+            let right_eo = compile_expr(cc, &assign.right)?;
+            v_map.vtype.cast(&right_eo.vtype)?;
             assgin_op(cc, &assign.op, &v_map)?;
             Ok(())
         }
@@ -323,9 +323,9 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Compi
             if !v_map.is_mut {
                 return Err(CompilationError::ImmutableVariable(ai.ident.clone()));
             }
-            let right_type = compile_expr(cc, &assign.right)?;
+            let right_eo = compile_expr(cc, &assign.right)?;
             let _ = match &v_map.vtype {
-                VariableType::Array(t, _) => t.cast(&right_type)?,
+                VariableType::Array(t, _) => t.cast(&right_eo.vtype)?,
                 _ => unreachable!(),
             };
             compile_expr(cc, &ai.indexer)?;
@@ -357,8 +357,8 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Compi
                     if vtype.is_any() {
                         return Err(CompilationError::UnknownRefrence);
                     }
-                    let right_type = compile_expr(cc, &assign.right)?;
-                    vtype.cast(&right_type)?;
+                    let right_eo = compile_expr(cc, &assign.right)?;
+                    vtype.cast(&right_eo.vtype)?;
                     let mut item_map = v_map.clone();
                     item_map.offset_inner = offset_inner;
                     item_map.vtype_inner = vtype;

@@ -24,7 +24,7 @@
 **********************************************************************************************/
 use std::{error::Error, fmt::Display, process::exit};
 
-use crate::parser::expr::Op;
+use crate::parser::{expr::Op, types::VariableType};
 
 #[derive(Debug)]
 pub enum CompilationError {
@@ -40,6 +40,7 @@ pub enum CompilationError {
     FunctionOutOfScope(String),
     InvalidInlineAsm(String),
     ImmutableVariable(String),
+    UnmatchingTypes(VariableType, VariableType),
 }
 impl Display for CompilationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -56,6 +57,7 @@ impl Display for CompilationError {
             Self::FunctionOutOfScope(s) => write!(f,"Error: Function {s} is not avaliable in this scope. Make sure you are calling the correct function"),
             Self::InvalidInlineAsm(i) => write!(f,"Invalid Identifier for Inline asm instruct ({i})"),
             Self::ImmutableVariable(v) => write!(f,"Variable ({v}) is not mutable. Did you forgot to define it with '=' insted of ':=' ?" ),
+            Self::UnmatchingTypes(a, b) => write!(f, "Expected type ({a}), found type ({b})"),
         }
     }
 }
@@ -91,6 +93,6 @@ impl Display for Loc {
 
 /// eprint error msg with location and exit the program
 pub fn error(msg: impl ToString, loc: Loc) -> ! {
-    eprintln!("ERROR: {} {loc}", msg.to_string());
+    eprintln!("\x1b[91m[{}]\x1b[0m {}",loc,msg.to_string());
     exit(-1);
 }

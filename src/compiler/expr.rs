@@ -43,10 +43,25 @@ use super::{
     CompilerContext,
 };
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct ExprOpr {
+    pub value: Opr,
+    pub vtype: VariableType,
+}
+
+impl ExprOpr {
+    pub fn new(value: impl Into<Opr>, vtype: VariableType) -> Self {
+        Self {
+            value: value.into(),
+            vtype
+        }
+    }
+}
+
 pub fn compile_expr(
     cc: &mut CompilerContext,
     expr: &Expr,
-) -> Result<VariableType, CompilationError> {
+) -> Result<ExprOpr, CompilationError> {
     // left = compile expr
     // right = compile expr
     // +
@@ -59,7 +74,7 @@ pub fn compile_expr(
             cc.codegen
                 .instr2(Mov, Reg::AX_sized(&v_map.vtype), mem_acss);
             cc.codegen.instr1(Push, RAX);
-            Ok(v_map.vtype)
+            Ok(ExprOpr::new(RAX, v_map.vtype))
         }
         ExprType::Access(ident, ac) => {
             let Some(v_map) = get_vriable_map(cc, ident) else {
@@ -96,20 +111,20 @@ pub fn compile_expr(
                 MemAddr::new_s(actype.item_size(), RDX),
             );
             cc.codegen.instr1(Push, RAX);
-            Ok(actype)
+            Ok(ExprOpr::new(RAX, actype))
         }
         ExprType::Bool(b) => {
             cc.codegen.instr1(Push, *b as i32);
-            Ok(VariableType::Bool)
+            Ok(ExprOpr::new(*b as i32, VariableType::Bool))
         }
         ExprType::Char(x) => {
             cc.codegen.instr1(Push, *x as i32);
-            Ok(VariableType::Char)
+            Ok(ExprOpr::new(*x as i32, VariableType::Char))
         }
         ExprType::Int(x) => {
             // push x
             cc.codegen.instr1(Push, *x);
-            Ok(VariableType::Int)
+            Ok(ExprOpr::new(*x, VariableType::Int))
         }
         ExprType::Float(_) => {
             todo!()
@@ -117,22 +132,22 @@ pub fn compile_expr(
             // VariableType::Float
         }
         ExprType::Compare(c) => {
-            let left_type = compile_expr(cc, c.left.as_ref())?;
-            let right_type = compile_expr(cc, c.right.as_ref())?;
+            let l_eo = compile_expr(cc, c.left.as_ref())?;
+            let r_eo = compile_expr(cc, c.right.as_ref())?;
             cc.codegen.instr2(Mov, RCX, 0);
             cc.codegen.instr2(Mov, RDX, 1);
-            let mut reg_type = left_type.clone();
-            if right_type != left_type {
-                if right_type.is_numeric() && left_type.is_numeric() {
-                    if left_type.size() < right_type.size() {
-                        reg_type = left_type;
+            let mut reg_type = l_eo.vtype.clone();
+            if r_eo.vtype != l_eo.vtype {
+                if r_eo.vtype.is_numeric() && l_eo.vtype.is_numeric() {
+                    if l_eo.vtype.size() < r_eo.vtype.size() {
+                        reg_type = l_eo.vtype;
                     } else {
-                        reg_type = right_type;
+                        reg_type = r_eo.vtype;
                     }
                 } else {
                     return Err(CompilationError::InvalidComparison(
-                        left_type.to_string(),
-                        right_type.to_string(),
+                        l_eo.vtype.to_string(),
+                        r_eo.vtype.to_string(),
                     ));
                 }
             }
@@ -162,11 +177,11 @@ pub fn compile_expr(
                 }
             }
             cc.codegen.instr1(Push, RCX);
-            Ok(VariableType::Bool)
+            Ok(ExprOpr::new(RCX, VariableType::Bool))
         }
         ExprType::Binary(b) => {
-            let left_type = compile_expr(cc, b.left.as_ref())?;
-            let right_type = compile_expr(cc, b.right.as_ref())?;
+            let left_eo = compile_expr(cc, b.left.as_ref())?;
+            let right_eo = compile_expr(cc, b.right.as_ref())?;
             cc.codegen.instr1(Pop, RBX);
             cc.codegen.instr1(Pop, RAX);
             match b.op {
@@ -213,28 +228,32 @@ pub fn compile_expr(
                 Op::LogicalOr => {
                     cc.codegen.instr2(Or, RAX, RBX);
                     cc.codegen.instr1(Push, RAX);
-                    return Ok(VariableType::Bool);
+                    return Ok(ExprOpr::new(RAX, VariableType::Bool));
                 }
                 Op::LogicalAnd => {
                     cc.codegen.instr2(And, RAX, RBX);
                     cc.codegen.instr1(Push, RAX);
-                    return Ok(VariableType::Bool);
+                    return Ok(ExprOpr::new(RAX, VariableType::Bool));
                 }
                 Op::Not => {
                     return Err(CompilationError::InValidBinaryOperation(
                         b.op.to_owned(),
-                        left_type.to_string(),
-                        right_type.to_string(),
+                        left_eo.vtype.to_string(),
+                        right_eo.vtype.to_string(),
                     ));
                 }
             }
-            if right_type.is_numeric() && left_type.is_numeric() {
-                left_type.cast(&right_type)
+            if right_eo.vtype.is_numeric() && left_eo.vtype.is_numeric() {
+                Ok(ExprOpr::new(
+                    RAX,
+                    left_eo.vtype.cast(&right_eo.vtype)?
+                    )
+                  )
             } else {
                 Err(CompilationError::InValidBinaryOperation(
                     b.op.to_owned(),
-                    left_type.to_string(),
-                    right_type.to_string(),
+                    left_eo.vtype.to_string(),
+                    right_eo.vtype.to_string(),
                 ))
             }
         }
@@ -242,21 +261,21 @@ pub fn compile_expr(
             let id = cc
                 .codegen
                 .add_data(str.as_bytes().to_vec(), VariableType::String);
-            cc.codegen.instr1(Push, Opr::Rela(id));
+            cc.codegen.instr1(Push, Opr::Rela(id.clone()));
             cc.codegen.instr1(Push, str.len());
-            Ok(VariableType::String)
+            Ok(ExprOpr::new(Opr::Rela(id.to_owned()), VariableType::String))
         }
         ExprType::Unary(u) => {
-            let right_type = compile_expr(cc, &u.right)?;
+            let right_eo = compile_expr(cc, &u.right)?;
             cc.codegen.instr1(Pop, RAX);
             match u.op {
                 Op::Sub => {
                     cc.codegen.instr1(Neg, RAX);
                     cc.codegen.instr1(Push, RAX);
-                    if right_type == VariableType::UInt {
-                        return Ok(VariableType::Int);
+                    if right_eo.vtype == VariableType::UInt {
+                        return Ok(ExprOpr::new(RAX,VariableType::Int));
                     } else {
-                        return Ok(right_type);
+                        return Ok(right_eo);
                     }
                 }
                 Op::Plus => {
@@ -270,23 +289,20 @@ pub fn compile_expr(
                     unreachable!();
                 }
             }
-            if right_type.is_numeric() || right_type == VariableType::Bool {
-                Ok(right_type)
+            if right_eo.vtype.is_numeric() || right_eo.vtype == VariableType::Bool {
+                Ok(right_eo)
             } else {
                 Err(CompilationError::InValidUnaryOperation(
                     u.op.to_owned(),
-                    right_type.to_string(),
+                    right_eo.vtype.to_string(),
                 ))
             }
         }
         ExprType::FunctionCall(fc) => compile_function_call(cc, fc),
-        ExprType::Ptr(e) => {
-            compile_ptr(cc, e)?;
-            Ok(VariableType::Pointer)
-        }
+        ExprType::Ptr(e) => compile_ptr(cc, e),
         ExprType::DeRef(r) => {
             let t = compile_expr(cc, r)?;
-            match t {
+            match t.vtype {
                 VariableType::Array(_, _) => {
                     todo!("Changed!");
                 }
@@ -294,12 +310,12 @@ pub fn compile_expr(
                     cc.codegen.instr1(Pop, RAX);
                     cc.codegen.instr2(Mov, RCX, memq!(RAX));
                     cc.codegen.instr1(Push, RCX);
+                    Ok(ExprOpr::new(RCX, VariableType::Any))
                 }
                 _ => {
-                    error(format!("Expected a Pointer found ({t})"), expr.loc.clone());
+                    Err(CompilationError::UnmatchingTypes(VariableType::Pointer, t.vtype))
                 }
             }
-            Ok(VariableType::Any)
         }
         ExprType::ArrayIndex(ai) => {
             let v_map = find_variable(cc, ai.ident.clone()).unwrap_or_else(|| {
@@ -315,14 +331,14 @@ pub fn compile_expr(
             cc.codegen.instr2(Mov, reg, mem_acss);
             cc.codegen.instr1(Push, RAX);
             match v_map.vtype {
-                VariableType::Array(t, _) => Ok(t.as_ref().clone()),
+                VariableType::Array(t, _) => Ok(ExprOpr::new(RAX, t.as_ref().clone())),
                 _ => unreachable!(),
             }
         }
     }
 }
 
-fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) -> Result<(), CompilationError> {
+fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) -> Result<ExprOpr, CompilationError> {
     match &expr.etype {
         ExprType::Variable(v) => {
             let Some(v_map) = get_vriable_map(cc, v) else {
@@ -332,14 +348,14 @@ fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) -> Result<(), CompilationE
                 VariableType::Array(_, _) => {
                     cc.codegen.instr2(Lea, RAX, mem!(RBP, v_map.stack_offset()));
                     cc.codegen.instr1(Push, RAX);
-                    Ok(())
+                    Ok(ExprOpr::new(RAX, VariableType::Pointer))
                 }
                 _ => {
                     cc.codegen.instr2(Mov, RAX, RBP);
                     cc.codegen
                         .instr2(Sub, RAX, v_map.offset + v_map.vtype.size());
                     cc.codegen.instr1(Push, RAX);
-                    Ok(())
+                    Ok(ExprOpr::new(RAX, VariableType::Pointer))
                 }
             }
         }
@@ -352,7 +368,7 @@ fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) -> Result<(), CompilationE
 fn compile_function_call(
     cc: &mut CompilerContext,
     fc: &FunctionCall,
-) -> Result<VariableType, CompilationError> {
+) -> Result<ExprOpr, CompilationError> {
     for (index, arg) in fc.args.iter().enumerate() {
         // let argv_type = expr_type(arg);
         compile_expr(cc, arg)?;
@@ -380,9 +396,11 @@ fn compile_function_call(
             cc.codegen.instr1(Call, Opr::Loc(fc.ident.clone()));
         }
     }
-    cc.codegen.instr1(Push, RBP);
     if fun.ret_type != VariableType::Void {
         cc.codegen.instr1(Push, RAX);
+        Ok(ExprOpr::new(RAX, fun.ret_type.clone()))
+    } else {
+        cc.codegen.instr1(Push, RBP);
+        Ok(ExprOpr::new(RBP, fun.ret_type.clone()))
     }
-    Ok(fun.ret_type.clone())
 }

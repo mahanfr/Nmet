@@ -78,9 +78,9 @@ pub fn insert_variable(
     if var.init_value.is_some() {
         let init_value = var.init_value.clone().unwrap();
         // this pushes result in stack
-        let texpr = compile_expr(cc, &init_value)?;
+        let expro = compile_expr(cc, &init_value)?;
         // TODO: Strings should include size
-        match vtype.cast(&texpr) {
+        match vtype.cast(&expro.vtype) {
             Ok(vt) => {
                 let mem_acss = mem!(RBP, -((cc.mem_offset + vt.size()) as i32));
                 cc.codegen.instr1(Pop, RAX);
