@@ -38,15 +38,14 @@ use crate::{
             UnaryExpr,
         },
         types::VariableType,
-    },
+    }, type_check::tc_compare_expr,
 };
 
-use super::{
-    function_args_register,
-    variables::get_vriable_map,
-    CompilerContext,
-};
+use super::{function_args_register, variables::get_vriable_map, CompilerContext};
 
+/// This function is part of the Nmet compiler and programming language.
+/// It takes expression (Expr) and a compiler context (CompilerContext)
+/// as input and generates assembly code for the expression.
 pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> Result<ExprOpr, CompilationError> {
     match &expr.etype {
         ExprType::Compare(c) => compile_compare_expr(cc, c),
@@ -93,30 +92,19 @@ fn compile_compare_expr(
     cc: &mut CompilerContext,
     cexpr: &CompareExpr,
 ) -> Result<ExprOpr, CompilationError> {
-    let l_eo = compile_expr(cc, cexpr.left.as_ref())?;
-    let r_eo = compile_expr(cc, cexpr.right.as_ref())?;
+    let left = compile_expr(cc, cexpr.left.as_ref())?;
+    // cc.codegen.instr2(Mov, RAX, left.value);
+    let right = compile_expr(cc, cexpr.right.as_ref())?;
+    // cc.codegen.instr2(Mov, RBX, right.value);
+    tc_compare_expr(cc, &left, &right)?;
+
     cc.codegen.instr2(Mov, RCX, 0);
     cc.codegen.instr2(Mov, RDX, 1);
-    let mut reg_type = l_eo.vtype.clone();
-    if r_eo.vtype != l_eo.vtype {
-        if r_eo.vtype.is_numeric() && l_eo.vtype.is_numeric() {
-            if l_eo.vtype.size() < r_eo.vtype.size() {
-                reg_type = l_eo.vtype;
-            } else {
-                reg_type = r_eo.vtype;
-            }
-        } else {
-            return Err(CompilationError::InvalidComparison(
-                l_eo.vtype.to_string(),
-                r_eo.vtype.to_string(),
-            ));
-        }
-    }
     // Make sure rbx is first so the order is correct
     cc.codegen.instr1(Pop, RBX);
     cc.codegen.instr1(Pop, RAX);
     cc.codegen
-        .instr2(Cmp, Reg::AX_sized(&reg_type), Reg::BX_sized(&reg_type));
+        .instr2(Cmp, RAX, RBX);
     match cexpr.op {
         CompareOp::Eq => {
             cc.codegen.instr2(Cmove, RCX, RDX);

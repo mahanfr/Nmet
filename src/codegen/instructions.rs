@@ -33,6 +33,15 @@ pub enum Opr {
 }
 
 impl Opr {
+    pub fn size(&self) -> u8 {
+        match self {
+            Self::R64(_) | Self::Imm64(_) => 8,
+            Self::R32(_) | Self::Imm32(_) | Self::Rela(_) | Self::Loc(_) => 4,
+            Self::R16(_) => 2,
+            Self::R8(_) | Self::Imm8(_) => 1,
+            Self::Mem(m) => m.size,
+        }
+    }
     pub fn sized(self, vtype: &VariableType) -> Self {
         match self {
             Self::R8(r) | Self::R16(r) | Self::R32(r) | Self::R64(r) => {
