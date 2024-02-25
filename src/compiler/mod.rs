@@ -23,24 +23,20 @@
 *
 **********************************************************************************************/
 pub mod bif;
+mod block;
 mod expr;
 mod function;
 mod stmts;
 mod variables;
-mod block;
 
 use crate::codegen::{register::Reg, Codegen};
 use crate::compiler::{bif::Bif, function::compile_function};
 
+use crate::log_error;
 use crate::parser::{
-    block::BlockType,
-    function::Function,
-    parse_file,
-    program::ProgramItem,
-    structs::StructDef,
+    block::BlockType, function::Function, parse_file, program::ProgramItem, structs::StructDef,
     types::VariableType,
 };
-use crate::log_error;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::process::exit;
 
@@ -225,4 +221,3 @@ pub fn compile(cc: &mut CompilerContext, path: String) {
         "Somting went wrong: Scope has not been cleared"
     );
 }
-

@@ -93,6 +93,6 @@ impl Display for Loc {
 
 /// eprint error msg with location and exit the program
 pub fn error(msg: impl ToString, loc: Loc) -> ! {
-    eprintln!("\x1b[91m[{}]\x1b[0m {}",loc,msg.to_string());
+    eprintln!("\x1b[91m[{}]\x1b[0m {}", loc, msg.to_string());
     exit(-1);
 }

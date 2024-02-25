@@ -6,9 +6,9 @@ pub mod instructions;
 pub mod memory;
 pub mod mnemonic;
 pub mod opcodes;
+pub mod optimization;
 pub mod register;
 pub mod text;
-pub mod optimization;
 use std::{collections::BTreeMap, fmt::Display};
 
 use crate::{parser::types::VariableType, utils::IBytes};
@@ -153,7 +153,12 @@ impl Codegen {
                         ));
                     }
                     (_, SymbolType::DataSec) => {
-                        let addend = self.data_buf.values().find(|x| x.name == key).unwrap().index;
+                        let addend = self
+                            .data_buf
+                            .values()
+                            .find(|x| x.name == key)
+                            .unwrap()
+                            .index;
                         self.rela_map.push(RelaItem::new(
                             ".data",
                             SymbolType::DataSec,
@@ -237,8 +242,10 @@ impl Codegen {
                 SymbolType::DataSec,
             ),
         );
-        self.data_buf
-            .insert(name.clone(),DataItem::new(name.clone(), index, data, dtype));
+        self.data_buf.insert(
+            name.clone(),
+            DataItem::new(name.clone(), index, data, dtype),
+        );
         name
     }
 

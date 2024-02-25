@@ -46,7 +46,7 @@ use super::{
     bif::Bif,
     block::compile_block,
     expr::compile_expr,
-    variables::{find_variable, get_vriable_map, insert_variable},
+    variables::{get_vriable_map, insert_variable},
     CompilerContext,
 };
 
@@ -175,9 +175,7 @@ fn compile_inline_asm(cc: &mut CompilerContext, instr: &String) -> Result<(), Co
                     index += 1;
                 }
                 if !ident.is_empty() {
-                    let Some(v_map) = find_variable(cc, ident.clone()) else {
-                        return Err(CompilationError::UndefinedVariable(ident.clone()));
-                    };
+                    let v_map = get_vriable_map(cc, &ident)?;
                     let mem_acss =
                         MemAddr::new_disp_s(v_map.vtype.item_size(), RBP, v_map.stack_offset())
                             .to_string();
@@ -305,9 +303,7 @@ fn assgin_op(
 fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), CompilationError> {
     match &assign.left.etype {
         ExprType::Variable(v) => {
-            let Some(v_map) = get_vriable_map(cc, v) else {
-                return Err(CompilationError::UndefinedVariable(v.to_owned()));
-            };
+            let v_map = get_vriable_map(cc, v)?;
             if !v_map.is_mut {
                 return Err(CompilationError::ImmutableVariable(v.to_owned()));
             }
@@ -317,9 +313,7 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Compi
             Ok(())
         }
         ExprType::ArrayIndex(ai) => {
-            let Some(v_map) = get_vriable_map(cc, &ai.ident) else {
-                return Err(CompilationError::UndefinedVariable(ai.ident.clone()));
-            };
+            let v_map = get_vriable_map(cc, &ai.ident)?;
             if !v_map.is_mut {
                 return Err(CompilationError::ImmutableVariable(ai.ident.clone()));
             }
@@ -334,9 +328,7 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Compi
             Ok(())
         }
         ExprType::Access(ident, expr) => {
-            let Some(v_map) = get_vriable_map(cc, ident) else {
-                return Err(CompilationError::UndefinedVariable(ident.to_owned()));
-            };
+            let v_map = get_vriable_map(cc, ident)?;
             let VariableType::Custom(struct_ident) = v_map.vtype.clone() else {
                 unreachable!();
             };

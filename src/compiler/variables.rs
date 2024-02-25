@@ -37,17 +37,6 @@ use crate::{
 
 use super::{expr::compile_expr, CompilerContext};
 
-pub fn find_variable(cc: &CompilerContext, ident: String) -> Option<VariableMap> {
-    for scoped_block in &cc.scoped_blocks {
-        let map_ident = format!("{ident}%{}", scoped_block.id);
-        let map = cc.variables_map.get(&map_ident);
-        if let Some(map) = map {
-            return Some(map.clone());
-        }
-    }
-    None
-}
-
 pub fn insert_variable(
     cc: &mut CompilerContext,
     var: &VariableDeclare,
@@ -109,6 +98,12 @@ pub fn insert_variable(
     Ok(())
 }
 
-pub fn get_vriable_map(cc: &mut CompilerContext, var_ident: &str) -> Option<VariableMap> {
-    find_variable(cc, var_ident.to_owned())
+pub fn get_vriable_map(cc: &mut CompilerContext, var_ident: &str) -> Result<VariableMap, CompilationError> {
+    for scoped_block in &cc.scoped_blocks {
+        let map_ident = format!("{var_ident}%{}", scoped_block.id);
+        if let Some(map) = cc.variables_map.get(&map_ident) {
+            return Ok(map.clone());
+        }
+    }
+    Err(CompilationError::UndefinedVariable(var_ident.to_owned()))
 }

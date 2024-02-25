@@ -1,13 +1,13 @@
 use crate::codegen::instructions::Opr;
 
+use crate::log_cerror;
 use crate::parser::{
     block::{Block, BlockType},
     stmt::StmtType,
 };
-use crate::log_cerror;
 
-use super::CompilerContext;
 use super::stmts::compile_stmt;
+use super::CompilerContext;
 
 pub struct ScopeBlock {
     pub id: usize,
@@ -25,7 +25,7 @@ pub struct BlockIR {}
  *  keep in mind there could be a problem when a variable wants to access
  *  somthing that added after in code but it could be a feature too :)
  */
-pub fn compile_block(cc: &mut CompilerContext, block: &Block, block_type: BlockType) -> BlockIR{
+pub fn compile_block(cc: &mut CompilerContext, block: &Block, block_type: BlockType) -> BlockIR {
     cc.block_id += 1;
     cc.scoped_blocks
         .push(ScopeBlock::new(cc.block_id, block_type));

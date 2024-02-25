@@ -34,9 +34,9 @@ use crate::{
     },
 };
 
-use super::{function_args_register_sized, CompilerContext, block::compile_block};
+use super::{block::compile_block, function_args_register_sized, CompilerContext};
 
-pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]){
+pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
     for (args_count, arg) in args.iter().enumerate() {
         let ident = format!("{}%{}", arg.ident, cc.block_id);
         let map = VariableMap {

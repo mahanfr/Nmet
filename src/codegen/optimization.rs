@@ -1,4 +1,7 @@
-use crate::{parser::{types::VariableType, expr::Op}, error_handeling::CompilationError};
+use crate::{
+    error_handeling::CompilationError,
+    parser::{expr::Op, types::VariableType},
+};
 
 use super::instructions::Opr;
 
@@ -12,12 +15,16 @@ impl ExprOpr {
     pub fn new(value: impl Into<Opr>, vtype: VariableType) -> Self {
         Self {
             value: value.into(),
-            vtype
+            vtype,
         }
     }
 }
 
-pub fn compact_binary_expr(left: &ExprOpr, right: &ExprOpr, op: &Op) -> Result<ExprOpr, CompilationError> {
+pub fn compact_binary_expr(
+    left: &ExprOpr,
+    right: &ExprOpr,
+    op: &Op,
+) -> Result<ExprOpr, CompilationError> {
     let vtype = left.vtype.cast(&right.vtype)?;
     let l_val = left.value.get_literal_value();
     let r_val = right.value.get_literal_value();
@@ -35,10 +42,10 @@ pub fn compact_binary_expr(left: &ExprOpr, right: &ExprOpr, op: &Op) -> Result<E
         Op::LogicalAnd => Ok(ExprOpr::new(l_val & r_val, VariableType::Bool)),
         Op::Not => {
             return Err(CompilationError::InValidBinaryOperation(
-                    op.to_owned(),
-                    left.vtype.to_string(),
-                    right.vtype.to_string(),
-                    ));
+                op.to_owned(),
+                left.vtype.to_string(),
+                right.vtype.to_string(),
+            ));
         }
     }
 }
