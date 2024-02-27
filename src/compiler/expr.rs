@@ -27,7 +27,6 @@ use crate::{
         instructions::Opr,
         memory::MemAddr,
         mnemonic::Mnemonic::*,
-        optimization::ExprOpr,
         register::Reg::{self, *},
     },
     error_handeling::CompilationError,
@@ -38,7 +37,7 @@ use crate::{
             UnaryExpr,
         },
         types::VariableType,
-    }, type_check::tc_compare_expr,
+    }, optim::{ExprOpr, optim_compare_expr},
 };
 
 use super::{function_args_register, variables::get_vriable_map, CompilerContext};
@@ -59,21 +58,15 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> Result<ExprOpr, Co
         ExprType::Variable(v) => {
             let v_map = get_vriable_map(cc, v)?;
             let mem_acss = MemAddr::new_disp_s(v_map.vtype.item_size(), RBP, v_map.stack_offset());
-            cc.codegen
-                .instr2(Mov, Reg::AX_sized(&v_map.vtype), mem_acss);
-            cc.codegen.instr1(Push, RAX);
-            Ok(ExprOpr::new(RAX, v_map.vtype))
+            Ok(ExprOpr::new(mem_acss, v_map.vtype))
         }
         ExprType::Bool(b) => {
-            cc.codegen.instr1(Push, *b as i32);
             Ok(ExprOpr::new(*b as i32, VariableType::Bool))
         }
         ExprType::Char(x) => {
-            cc.codegen.instr1(Push, *x as i32);
             Ok(ExprOpr::new(*x as i32, VariableType::Char))
         }
         ExprType::Int(x) => {
-            cc.codegen.instr1(Push, *x);
             Ok(ExprOpr::new(*x, VariableType::Int))
         }
         ExprType::String(str) => {
@@ -92,40 +85,43 @@ fn compile_compare_expr(
     cc: &mut CompilerContext,
     cexpr: &CompareExpr,
 ) -> Result<ExprOpr, CompilationError> {
+    // Compile the left Exprssion
     let left = compile_expr(cc, cexpr.left.as_ref())?;
-    // cc.codegen.instr2(Mov, RAX, left.value);
+    // Store in memory if register
+    if left.needs_stack() {
+        cc.codegen.instr1(Push, left.value.clone());
+    }
+    // Compile the right Exprssion
     let right = compile_expr(cc, cexpr.right.as_ref())?;
-    // cc.codegen.instr2(Mov, RBX, right.value);
-    tc_compare_expr(cc, &left, &right)?;
 
+    // Check for possiblity of optimization
+    // NOTE: If valuse where literal noting has been added to the codegen
+    if left.value.is_literal() && right.value.is_literal() {
+        return optim_compare_expr(&left, &right, &cexpr.op);
+    }
+
+    // Move Result to RBX Register
+    cc.codegen.instr2(Mov, RBX, right.value.clone());
+    // Retrive the first instr values to RAX
+    if left.needs_stack() {
+        cc.codegen.instr1(Pop, RAX);
+    } else {
+        cc.codegen.instr2(Mov, RAX, left.value.clone());
+    }
+    // Result of Compare instruction
     cc.codegen.instr2(Mov, RCX, 0);
     cc.codegen.instr2(Mov, RDX, 1);
-    // Make sure rbx is first so the order is correct
-    cc.codegen.instr1(Pop, RBX);
-    cc.codegen.instr1(Pop, RAX);
-    cc.codegen
-        .instr2(Cmp, RAX, RBX);
-    match cexpr.op {
-        CompareOp::Eq => {
-            cc.codegen.instr2(Cmove, RCX, RDX);
-        }
-        CompareOp::NotEq => {
-            cc.codegen.instr2(Cmovne, RCX, RDX);
-        }
-        CompareOp::Bigger => {
-            cc.codegen.instr2(Cmovg, RCX, RDX);
-        }
-        CompareOp::Smaller => {
-            cc.codegen.instr2(Cmovl, RCX, RDX);
-        }
-        CompareOp::BiggerEq => {
-            cc.codegen.instr2(Cmovge, RCX, RDX);
-        }
-        CompareOp::SmallerEq => {
-            cc.codegen.instr2(Cmovle, RCX, RDX);
-        }
-    }
-    cc.codegen.instr1(Push, RCX);
+    cc.codegen.instr2(Cmp, RAX, RBX);
+    // set the result based on flag register
+    let mnem = match cexpr.op {
+        CompareOp::Eq => Cmove,
+        CompareOp::NotEq => Cmovne,
+        CompareOp::Bigger => Cmovg,
+        CompareOp::Smaller => Cmovl,
+        CompareOp::BiggerEq => Cmovge,
+        CompareOp::SmallerEq => Cmovle,
+    };
+    cc.codegen.instr2(mnem, RCX, RDX);
     Ok(ExprOpr::new(RCX, VariableType::Bool))
 }
 

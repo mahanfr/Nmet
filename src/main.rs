@@ -43,6 +43,7 @@ mod parser;
 #[cfg(test)]
 mod tests;
 mod type_check;
+mod optim;
 mod utils;
 use codegen::text::x86_64_nasm_generator;
 use compiler::{compile, CompilerContext};

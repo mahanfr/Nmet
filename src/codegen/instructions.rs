@@ -68,6 +68,11 @@ impl Opr {
     pub fn is_literal(&self) -> bool {
         matches!(self, Opr::Imm8(_) | Opr::Imm32(_) | Opr::Imm64(_))
     }
+
+    pub fn is_mem(&self) -> bool {
+        matches!(self, Opr::Mem(_))
+    }
+
     pub fn get_literal_value(&self) -> i64 {
         match self {
             Opr::Imm8(val) | Opr::Imm32(val) | Opr::Imm64(val) => *val,
