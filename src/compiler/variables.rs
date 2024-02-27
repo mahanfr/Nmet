@@ -27,7 +27,7 @@ use crate::{
         instructions::Opr,
         memory::MemAddr,
         mnemonic::Mnemonic::*,
-        register::Reg::{self, *},
+        register::Reg::*,
     },
     compiler::VariableMap,
     error_handeling::{error, CompilationError},
@@ -66,14 +66,11 @@ pub fn insert_variable(
     // compile initial value
     if var.init_value.is_some() {
         let init_value = var.init_value.clone().unwrap();
-        // this pushes result in stack
         let expro = compile_expr(cc, &init_value)?;
-        // TODO: Strings should include size
         match vtype.cast(&expro.vtype) {
             Ok(vt) => {
                 let mem_acss = mem!(RBP, -((cc.mem_offset + vt.size()) as i32));
-                cc.codegen.instr1(Pop, RAX);
-                cc.codegen.instr2(Mov, mem_acss, Reg::AX_sized(&vt));
+                cc.codegen.instr2(Mov, mem_acss, expro.value);
                 vtype = vt;
             }
             Err(msg) => {

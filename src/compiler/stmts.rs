@@ -28,7 +28,7 @@ use crate::{
         instructions::Opr,
         memory::MemAddr,
         mnemonic::Mnemonic::*,
-        register::Reg::{self, *},
+        register::Reg::*, optimization::mov_unknown_to_register,
     },
     compiler::VariableMap,
     error_handeling::CompilationError,
@@ -63,7 +63,7 @@ fn compile_if_stmt(
         ElseBlock::None => exit_tag,
         _ => cc.codegen.get_id(),
     };
-    cc.codegen.instr1(Pop, RAX);
+    mov_unknown_to_register(cc, RAX, condition_eo.value);
     cc.codegen.instr2(Test, RAX, RAX);
     cc.codegen
         .instr1(Jz, Opr::Loc(format!("{last_label}.L{next_tag}")));
@@ -93,13 +93,13 @@ fn compile_if_stmt(
 }
 
 fn compile_print(cc: &mut CompilerContext, expr: &Expr) -> Result<(), CompilationError> {
-    compile_expr(cc, expr)?;
-    match expr.etype {
-        ExprType::String(_) => {
+    let expr_opr = compile_expr(cc, expr)?;
+    match &expr.etype {
+        ExprType::String(s) => {
             cc.codegen.instr2(Mov, RAX, 1);
             cc.codegen.instr2(Mov, RDI, 1);
-            cc.codegen.instr1(Pop, RBX);
-            cc.codegen.instr1(Pop, RCX);
+            cc.codegen.instr2(Mov, RBX, expr_opr.value);
+            cc.codegen.instr2(Mov, RCX, s.len());
             cc.codegen.instr2(Mov, RSI, RCX);
             cc.codegen.instr2(Mov, RDX, RBX);
             cc.codegen.instr0(Syscall);
@@ -124,19 +124,22 @@ pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) -> Result<(), Compila
         }
         StmtType::Assign(a) => compile_assgin(cc, a),
         StmtType::While(w) => compile_while(cc, w),
-        StmtType::Expr(e) => match e.etype {
-            ExprType::FunctionCall(_) => {
-                compile_expr(cc, e)?;
+        StmtType::Expr(e) => match &e.etype {
+            ExprType::FunctionCall(fc) => {
+                let eo = compile_expr(cc, e)?;
+                if eo.vtype != VariableType::Void {
+                    log_warn!("({}), Unused return value of function {}!",stmt.loc, fc.ident);
+                }
                 Ok(())
             }
             _ => {
-                log_warn!("Expression with no effect ignored!");
+                log_warn!("({}) Expression with no effect ignored!", stmt.loc);
                 Ok(())
             }
         },
         StmtType::Return(e) => {
-            compile_expr(cc, e)?;
-            cc.codegen.instr1(Pop, RAX);
+            let ret_expr = compile_expr(cc, e)?;
+            mov_unknown_to_register(cc, RAX, ret_expr.value);
             cc.codegen.instr0(Leave);
             cc.codegen.instr0(Ret);
             Ok(())
@@ -214,7 +217,7 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) -> Result<(), Com
     // Jump after a compare
     let condition_eo = compile_expr(cc, &w_stmt.condition)?;
     VariableType::Bool.cast(&condition_eo.vtype)?;
-    cc.codegen.instr1(Pop, RAX);
+    mov_unknown_to_register(cc, RAX, condition_eo.value);
     cc.codegen.instr2(Test, RAX, RAX);
     // assert!(false, "Not implemented yet!");
     // TODO: MAKE Sure this works!
@@ -230,12 +233,11 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) -> Result<(), Com
 fn assgin_op(
     cc: &mut CompilerContext,
     op: &AssignOp,
+    opr: Opr,
     v_map: &VariableMap,
 ) -> Result<(), CompilationError> {
-    let reg: Reg;
     let mem_acss = match &v_map.vtype {
-        VariableType::Array(t, _) => {
-            reg = Reg::AX_sized(t);
+        VariableType::Array(_, _) => {
             MemAddr::new_sib_s(
                 v_map.vtype.item_size(),
                 RBP,
@@ -248,53 +250,46 @@ fn assgin_op(
             cc.codegen
                 .instr2(Mov, RDX, mem!(RBP, -(v_map.offset as i32 + 8)));
             cc.codegen.instr2(Add, RDX, v_map.offset_inner);
-            reg = Reg::AX_sized(&v_map.vtype_inner);
-            // format!("{} [rdx]", mem_word(&v_map.vtype_inner))
             MemAddr::new_s(v_map.vtype_inner.item_size(), RDX)
         }
         _ => {
-            reg = Reg::AX_sized(&v_map.vtype);
             MemAddr::new_disp_s(v_map.vtype.item_size(), RBP, v_map.stack_offset())
         }
     };
-    cc.codegen.instr1(Pop, RAX);
+    mov_unknown_to_register(cc, RAX, opr);
     match op {
         AssignOp::Eq => {
-            cc.codegen.instr2(Mov, mem_acss, reg);
+            cc.codegen.instr2(Mov, mem_acss, RAX.convert(v_map.vtype.size() as u8));
             Ok(())
         }
         AssignOp::PlusEq => {
-            cc.codegen.instr2(Add, mem_acss, reg);
+            cc.codegen.instr2(Add, mem_acss, RAX.convert(v_map.vtype.size() as u8));
             Ok(())
         }
         AssignOp::SubEq => {
-            cc.codegen.instr2(Sub, mem_acss, reg);
+            cc.codegen.instr2(Sub, mem_acss, RAX.convert(v_map.vtype.size() as u8));
             Ok(())
         }
         AssignOp::MultiEq => {
-            let b_reg = Reg::BX_sized(&v_map.vtype);
-            cc.codegen.instr2(Mov, b_reg, mem_acss);
-            cc.codegen.instr2(Imul, reg, b_reg);
-            cc.codegen.instr2(Mov, mem_acss, reg);
+            mov_unknown_to_register(cc, RBX, mem_acss.into());
+            cc.codegen.instr2(Imul, RAX, RBX);
+            cc.codegen.instr2(Mov, mem_acss, RAX.convert(v_map.vtype.size() as u8));
             Ok(())
         }
         AssignOp::DevideEq => {
-            let b_reg = Reg::BX_sized(&v_map.vtype);
-            cc.codegen.instr2(Mov, b_reg, reg);
-            cc.codegen.instr2(Mov, reg, mem_acss);
+            cc.codegen.instr2(Mov, RBX, RAX);
+            mov_unknown_to_register(cc, RAX, mem_acss.into());
             cc.codegen.instr0(Cqo);
             cc.codegen.instr1(Idiv, RBX);
-            cc.codegen.instr2(Mov, mem_acss, reg);
+            cc.codegen.instr2(Mov, mem_acss, RAX.convert(v_map.vtype.size() as u8));
             Ok(())
         }
         AssignOp::ModEq => {
-            let b_reg = Reg::BX_sized(&v_map.vtype);
-            cc.codegen.instr2(Mov, b_reg, reg);
-            cc.codegen.instr2(Mov, reg, mem_acss);
+            cc.codegen.instr2(Mov, RBX, RAX);
+            mov_unknown_to_register(cc, RAX, mem_acss.into());
             cc.codegen.instr0(Cqo);
             cc.codegen.instr1(Idiv, RBX);
-            let d_reg = Reg::DX_sized(&v_map.vtype);
-            cc.codegen.instr2(Mov, mem_acss, d_reg);
+            cc.codegen.instr2(Mov, mem_acss, RDX.convert(v_map.vtype.size() as u8));
             Ok(())
         }
     }
@@ -309,7 +304,7 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Compi
             }
             let right_eo = compile_expr(cc, &assign.right)?;
             v_map.vtype.cast(&right_eo.vtype)?;
-            assgin_op(cc, &assign.op, &v_map)?;
+            assgin_op(cc, &assign.op, right_eo.value ,&v_map)?;
             Ok(())
         }
         ExprType::ArrayIndex(ai) => {
@@ -318,13 +313,21 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Compi
                 return Err(CompilationError::ImmutableVariable(ai.ident.clone()));
             }
             let right_eo = compile_expr(cc, &assign.right)?;
+            if right_eo.needs_stack() {
+                cc.codegen.instr1(Push, right_eo.value.clone());
+            }
             let _ = match &v_map.vtype {
                 VariableType::Array(t, _) => t.cast(&right_eo.vtype)?,
                 _ => unreachable!(),
             };
-            compile_expr(cc, &ai.indexer)?;
-            cc.codegen.instr1(Pop, RBX);
-            assgin_op(cc, &assign.op, &v_map)?;
+            let indexer = compile_expr(cc, &ai.indexer)?;
+            cc.codegen.instr2(Mov, RBX, indexer.value);
+            if right_eo.needs_stack() {
+                cc.codegen.instr1(Pop, RAX);
+                assgin_op(cc, &assign.op, RAX.into(), &v_map)?;
+            } else {
+                assgin_op(cc, &assign.op, right_eo.value, &v_map)?;
+            }
             Ok(())
         }
         ExprType::Access(ident, expr) => {
@@ -354,7 +357,7 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Compi
                     let mut item_map = v_map.clone();
                     item_map.offset_inner = offset_inner;
                     item_map.vtype_inner = vtype;
-                    assgin_op(cc, &assign.op, &item_map)?;
+                    assgin_op(cc, &assign.op, right_eo.value, &item_map)?;
                 }
                 ExprType::ArrayIndex(_) => todo!(),
                 ExprType::Access(_, _) => todo!(),
