@@ -1,5 +1,5 @@
 use crate::{
-    codegen::instructions::Opr,
+    codegen::{instructions::Opr, register::Reg},
     error_handeling::CompilationError,
     parser::{
         expr::{CompareOp, Op},
@@ -22,7 +22,17 @@ impl ExprOpr {
     }
 
     pub fn is_temp(&self) -> bool {
-        !self.value.is_literal() && !self.value.is_mem()
+        match self.value {
+            Opr::Imm8(_) | Opr::Imm32(_) | Opr::Imm64(_) | Opr::Rela(_) | Opr::Loc(_) => false,
+            Opr::Mem(m) => {
+                if m.register != Reg::RBP || m.s_register.is_some() {
+                    true
+                } else {
+                    false
+                }
+            }
+            Opr::R64(_) | Opr::R32(_) | Opr::R16(_) | Opr::R8(_) => true,
+        }
     }
 }
 

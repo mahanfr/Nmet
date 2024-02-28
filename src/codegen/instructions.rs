@@ -56,6 +56,10 @@ impl Opr {
         }
     }
 
+    pub fn is_register(&self) -> bool {
+        matches!(self, Opr::R8(_) | Opr::R16(_) | Opr::R32(_) | Opr::R64(_))
+    }
+
     pub fn is_literal(&self) -> bool {
         matches!(self, Opr::Imm8(_) | Opr::Imm32(_) | Opr::Imm64(_))
     }

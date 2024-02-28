@@ -25,7 +25,7 @@
 use crate::{
     codegen::{
         asm_parser::parse_asm, instructions::Opr, memory::MemAddr, mnemonic::Mnemonic::*,
-        utils::mov_unknown_to_register, register::Reg::*,
+        utils::{mov_unknown_to_register, save_temp_value, restore_last_temp_value}, register::Reg::*,
     },
     compiler::VariableMap,
     error_handeling::CompilationError,
@@ -310,7 +310,7 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Compi
             }
             let right_eo = compile_expr(cc, &assign.right)?;
             if right_eo.is_temp() {
-                cc.codegen.instr1(Push, right_eo.value.clone());
+                save_temp_value(cc, right_eo.value.clone());
             }
             let _ = match &v_map.vtype {
                 VariableType::Array(t, _) => t.cast(&right_eo.vtype)?,
@@ -319,7 +319,7 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Compi
             let indexer = compile_expr(cc, &ai.indexer)?;
             mov_unknown_to_register(cc, RBX, indexer.value);
             if right_eo.is_temp() {
-                cc.codegen.instr1(Pop, RAX);
+                restore_last_temp_value(cc, RAX);
                 assgin_op(cc, &assign.op, RAX.into(), &v_map)?;
             } else {
                 assgin_op(cc, &assign.op, right_eo.value, &v_map)?;

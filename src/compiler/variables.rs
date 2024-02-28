@@ -69,7 +69,7 @@ pub fn insert_variable(
             Ok(vt) => {
                 let mem_acss =
                     MemAddr::new_disp_s(vt.item_size(), RBP, -((cc.mem_offset + vt.size()) as i32));
-                if expro.is_temp() {
+                if expro.value.is_register() {
                     cc.codegen.instr2(Mov, mem_acss, expro.value.sized(&vt));
                 } else {
                     mov_unknown_to_register(cc, RAX, expro.value);

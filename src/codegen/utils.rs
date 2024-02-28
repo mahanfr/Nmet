@@ -21,3 +21,16 @@ pub fn mov_unknown_to_register(cc: &mut CompilerContext, r: Reg, opr: Opr) {
         }
     }
 }
+
+pub fn restore_last_temp_value(cc: &mut CompilerContext, to: Reg) {
+    cc.codegen.instr1(Mnemonic::Pop, to);
+}
+
+pub fn save_temp_value(cc: &mut CompilerContext, opr: Opr) {
+    if opr.is_mem() {
+        mov_unknown_to_register(cc, Reg::RAX, opr);
+        cc.codegen.instr1(Mnemonic::Push, Reg::RAX);
+    } else {
+        cc.codegen.instr1(Mnemonic::Push, opr);
+    }
+}

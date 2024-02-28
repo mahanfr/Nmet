@@ -25,7 +25,7 @@
 use crate::{
     codegen::{
         instructions::Opr, memory::MemAddr, mnemonic::Mnemonic::*,
-        utils::mov_unknown_to_register, register::Reg::*,
+        utils::{mov_unknown_to_register, save_temp_value, restore_last_temp_value}, register::Reg::*,
     },
     error_handeling::CompilationError,
     mem, memq,
@@ -80,7 +80,7 @@ fn compile_compare_expr(
     let left = compile_expr(cc, cexpr.left.as_ref())?;
     // Store in memory if register
     if left.is_temp() {
-        cc.codegen.instr1(Push, left.value.clone());
+        save_temp_value(cc, left.value.clone());
     }
     // Compile the right Exprssion
     let right = compile_expr(cc, cexpr.right.as_ref())?;
@@ -95,7 +95,7 @@ fn compile_compare_expr(
     mov_unknown_to_register(cc, RBX, right.value.clone());
     // Retrive the first instr values to RAX
     if left.is_temp() {
-        cc.codegen.instr1(Pop, RAX);
+        restore_last_temp_value(cc, RAX);
     } else {
         mov_unknown_to_register(cc, RAX, left.value.clone());
     }
@@ -124,7 +124,7 @@ fn compile_binary_expr(
     let left = compile_expr(cc, bexpr.left.as_ref())?;
     // Store in memory if register
     if left.is_temp() {
-        cc.codegen.instr1(Push, left.value.clone());
+        save_temp_value(cc, left.value.clone());
     }
     // Compile the right Exprssion
     let right = compile_expr(cc, bexpr.right.as_ref())?;
@@ -139,7 +139,7 @@ fn compile_binary_expr(
     mov_unknown_to_register(cc, RBX, right.value.clone());
     // Retrive the left expr result to RAX
     if left.is_temp() {
-        cc.codegen.instr1(Pop, RAX);
+        restore_last_temp_value(cc, RAX);
     } else {
         mov_unknown_to_register(cc, RAX, left.value.clone());
     }
@@ -314,14 +314,13 @@ fn compile_function_call(
     for arg in fc.args.iter().rev() {
         let expr_op = compile_expr(cc, arg)?;
         if expr_op.is_temp() {
-            mov_unknown_to_register(cc, RAX, expr_op.value.clone());
-            cc.codegen.instr1(Push, RAX);
+            save_temp_value(cc, expr_op.value.clone());
         }
         expr_list.push(expr_op);
     }
     for (i, item) in expr_list.iter().rev().enumerate() {
         if item.is_temp() {
-            cc.codegen.instr1(Pop, function_args_register(i));
+            restore_last_temp_value(cc, function_args_register(i));
         } else {
             mov_unknown_to_register(cc, function_args_register(i), item.value.clone());
         }
