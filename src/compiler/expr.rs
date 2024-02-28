@@ -27,7 +27,7 @@ use crate::{
         instructions::Opr,
         memory::MemAddr,
         mnemonic::Mnemonic::*,
-        register::Reg::{self, *},
+        register::Reg::*, optimization::mov_unknown_to_register,
     },
     error_handeling::CompilationError,
     mem, memq,
@@ -73,7 +73,6 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> Result<ExprOpr, Co
             let id = cc
                 .codegen
                 .add_data(str.as_bytes().to_vec(), VariableType::String);
-            cc.codegen.instr1(Push, Opr::Rela(id.clone()));
             Ok(ExprOpr::new(Opr::Rela(id.to_owned()), VariableType::String))
         }
         ExprType::Float(_) => todo!(),
@@ -100,12 +99,12 @@ fn compile_compare_expr(
     }
 
     // Move Result to RBX Register
-    cc.codegen.instr2(Mov, RBX, right.value.clone());
+    mov_unknown_to_register(cc, RBX, right.value.clone());
     // Retrive the first instr values to RAX
     if left.needs_stack() {
         cc.codegen.instr1(Pop, RAX);
     } else {
-        cc.codegen.instr2(Mov, RAX, left.value.clone());
+        mov_unknown_to_register(cc, RAX, left.value.clone());
     }
     // Result of Compare instruction
     cc.codegen.instr2(Mov, RCX, 0);
@@ -143,13 +142,13 @@ fn compile_binary_expr(
         return fold_binary_expr(&left, &right, &bexpr.op);
     }
 
-    // Move Result to RBX Register
-    cc.codegen.instr2(Mov, RBX, right.value.clone());
-    // Retrive the first instr values to RAX
+    // Move Result of right to RBX Register
+    mov_unknown_to_register(cc, RBX, right.value.clone());
+    // Retrive the left expr result to RAX
     if left.needs_stack() {
         cc.codegen.instr1(Pop, RAX);
     } else {
-        cc.codegen.instr2(Mov, RAX, left.value.clone());
+        mov_unknown_to_register(cc, RAX, left.value.clone());
     }
     match bexpr.op {
         Op::Plus => {
@@ -169,7 +168,6 @@ fn compile_binary_expr(
         Op::Mod => {
             cc.codegen.instr0(Cqo);
             cc.codegen.instr1(Idiv, RBX);
-            cc.codegen.instr1(Push, RDX);
             cc.codegen.instr2(Mov, RAX, RDX);
         }
         Op::Or => {
@@ -188,12 +186,10 @@ fn compile_binary_expr(
         }
         Op::LogicalOr => {
             cc.codegen.instr2(Or, RAX, RBX);
-            cc.codegen.instr1(Push, RAX);
             return Ok(ExprOpr::new(RAX, VariableType::Bool));
         }
         Op::LogicalAnd => {
             cc.codegen.instr2(And, RAX, RBX);
-            cc.codegen.instr1(Push, RAX);
             return Ok(ExprOpr::new(RAX, VariableType::Bool));
         }
         Op::Not => {
@@ -213,12 +209,12 @@ fn compile_array_index(
 ) -> Result<ExprOpr, CompilationError> {
     let v_map = get_vriable_map(cc, &ai.ident)?;
     let indexer = compile_expr(cc, &ai.indexer)?;
-    cc.codegen.instr2(Mov, RBX, indexer.value);
-    let mem_acss = mem!(RBP, v_map.stack_offset(), RBX, v_map.vtype.item_size());
-    let reg = Reg::AX_sized(&v_map.vtype);
-    cc.codegen.instr2(Mov, reg, mem_acss);
+    mov_unknown_to_register(cc, RBX, indexer.value);
+    let mem_acss = MemAddr::new_sib_s(v_map.vtype.item_size(),
+        RBP, v_map.stack_offset(),
+        RBX, v_map.vtype.item_size());
     match v_map.vtype {
-        VariableType::Array(t, _) => Ok(ExprOpr::new(RAX, t.as_ref().clone())),
+        VariableType::Array(t, _) => Ok(ExprOpr::new(mem_acss, t.as_ref().clone())),
         _ => unreachable!(),
     }
 }
@@ -239,7 +235,7 @@ fn compile_unaray_expr(
     };
     match uexpr.op {
         Op::Sub => {
-            cc.codegen.instr2(Mov, RAX, left_eo.value);
+            mov_unknown_to_register(cc, RAX, left_eo.value);
             cc.codegen.instr1(Neg, RAX);
             Ok(ExprOpr::new(RAX, new_type))
         }
@@ -247,7 +243,7 @@ fn compile_unaray_expr(
             Ok(ExprOpr::new(left_eo.value, new_type))
         }
         Op::Not => {
-            cc.codegen.instr2(Mov, RAX, left_eo.value);
+            mov_unknown_to_register(cc, RAX, left_eo.value);
             cc.codegen.instr1(Not, RAX);
             Ok(ExprOpr::new(RAX, new_type))
         }
@@ -286,13 +282,9 @@ fn compile_access(
     if actype.is_any() {
         return Err(CompilationError::UnknownRefrence);
     }
-    cc.codegen.instr2(Mov, RDX, mem!(RBP, v_map.stack_offset()));
+    mov_unknown_to_register(cc, RDX, mem!(RBP, v_map.stack_offset()).into());
     cc.codegen.instr2(Add, RDX, offset);
-    cc.codegen.instr2(
-        Mov,
-        Reg::AX_sized(&actype),
-        MemAddr::new_s(actype.item_size(), RDX),
-    );
+    mov_unknown_to_register(cc, RAX, MemAddr::new_s(actype.item_size(), RDX).into());
     Ok(ExprOpr::new(RAX, actype))
 }
 
@@ -323,12 +315,21 @@ fn compile_function_call(
     cc: &mut CompilerContext,
     fc: &FunctionCall,
 ) -> Result<ExprOpr, CompilationError> {
-    for arg in fc.args.iter() {
+    let mut expr_list = Vec::new();
+    for arg in fc.args.iter().rev() {
         let expr_op = compile_expr(cc, arg)?;
-        cc.codegen.instr1(Push, expr_op.value);
+        if expr_op.needs_stack() {
+            mov_unknown_to_register(cc, RAX, expr_op.value.clone());
+            cc.codegen.instr1(Push, RAX);
+        }
+        expr_list.push(expr_op);
     }
-    for i in 0..fc.args.len() {
-        cc.codegen.instr1(Pop, function_args_register(i));
+    for (i,item) in expr_list.iter().rev().enumerate() {
+        if item.needs_stack() {
+            cc.codegen.instr1(Pop, function_args_register(i));
+        } else {
+            mov_unknown_to_register(cc, function_args_register(i), item.value.clone());
+        }
     }
     let Some(fun) = cc.functions_map.get(&fc.ident) else {
         return Err(CompilationError::FunctionOutOfScope(fc.ident.clone()));
@@ -366,7 +367,7 @@ fn compile_deref(cc: &mut CompilerContext, expr: &Expr) -> Result<ExprOpr, Compi
                     t.vtype,
                 ));
             };
-            cc.codegen.instr2(Mov, RCX, memq!(r));
+            mov_unknown_to_register(cc, RCX, memq!(r).into());
             Ok(ExprOpr::new(RCX, VariableType::Any))
         }
         _ => Err(CompilationError::UnmatchingTypes(

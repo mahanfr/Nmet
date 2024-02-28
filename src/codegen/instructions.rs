@@ -45,17 +45,17 @@ impl Opr {
     pub fn sized(self, vtype: &VariableType) -> Self {
         match self {
             Self::R8(r) | Self::R16(r) | Self::R32(r) | Self::R64(r) => {
-                r.convert(vtype.size() as u8).into()
+                r.convert(vtype.item_size() as u8).into()
             }
             Self::Mem(m) => {
                 let mut cmem = m.clone();
-                cmem.size = vtype.size() as u8;
+                cmem.size = vtype.item_size() as u8;
                 cmem.into()
             }
             Self::Imm8(v) | Self::Imm32(v) | Self::Imm64(v) => {
                 if vtype.size() == 1 {
                     Self::Imm8(v as i64)
-                } else if vtype.size() == 4 || vtype.size() == 2 {
+                } else if vtype.item_size() == 4 || vtype.item_size() == 2 {
                     Self::Imm32(v as i64)
                 } else {
                     Self::Imm64(v as i64)

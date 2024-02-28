@@ -18,10 +18,9 @@ impl ExprOpr {
     }
 
     pub fn needs_stack(&self) -> bool {
-        !self.value.is_literal() || !self.value.is_mem()
+        !self.value.is_literal() && !self.value.is_mem()
     }
 }
-
 
 pub fn fold_binary_expr(
     left: &ExprOpr,
@@ -39,8 +38,8 @@ pub fn fold_binary_expr(
         Op::Mod => l_val % r_val,
         Op::And => l_val & r_val,
         Op::Or => l_val | r_val,
-        Op::Lsh => l_val >> r_val,
-        Op::Rsh => l_val << r_val,
+        Op::Lsh => l_val << r_val,
+        Op::Rsh => l_val >> r_val,
         Op::LogicalOr => ((l_val != 0) || (r_val != 0)) as i64,
         Op::LogicalAnd => ((l_val != 0) && (r_val != 0)) as i64,
         Op::Not => {

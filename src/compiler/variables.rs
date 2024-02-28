@@ -27,11 +27,11 @@ use crate::{
         instructions::Opr,
         memory::MemAddr,
         mnemonic::Mnemonic::*,
-        register::Reg::*,
+        register::Reg::*, optimization::mov_unknown_to_register,
     },
     compiler::VariableMap,
     error_handeling::{error, CompilationError},
-    mem, memq,
+    memq,
     parser::{types::VariableType, variable_decl::VariableDeclare},
 };
 
@@ -69,8 +69,14 @@ pub fn insert_variable(
         let expro = compile_expr(cc, &init_value)?;
         match vtype.cast(&expro.vtype) {
             Ok(vt) => {
-                let mem_acss = mem!(RBP, -((cc.mem_offset + vt.size()) as i32));
-                cc.codegen.instr2(Mov, mem_acss, expro.value);
+                let mem_acss = MemAddr::new_disp_s(vt.item_size(), 
+                               RBP, -((cc.mem_offset + vt.size()) as i32));
+                if expro.needs_stack() {
+                    cc.codegen.instr2(Mov, mem_acss, expro.value.sized(&vt));
+                } else {
+                    mov_unknown_to_register(cc, RAX, expro.value);
+                    cc.codegen.instr2(Mov, mem_acss, RAX.convert(vt.item_size()));
+                }
                 vtype = vt;
             }
             Err(msg) => {

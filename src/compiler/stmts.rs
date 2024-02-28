@@ -98,16 +98,13 @@ fn compile_print(cc: &mut CompilerContext, expr: &Expr) -> Result<(), Compilatio
         ExprType::String(s) => {
             cc.codegen.instr2(Mov, RAX, 1);
             cc.codegen.instr2(Mov, RDI, 1);
-            cc.codegen.instr2(Mov, RBX, expr_opr.value);
-            cc.codegen.instr2(Mov, RCX, s.len());
-            cc.codegen.instr2(Mov, RSI, RCX);
-            cc.codegen.instr2(Mov, RDX, RBX);
+            cc.codegen.instr2(Mov, RSI, expr_opr.value);
+            cc.codegen.instr2(Mov, RDX, s.len());
             cc.codegen.instr0(Syscall);
         }
         _ => {
             cc.bif_set.insert(Bif::Print);
-            cc.codegen.instr1(Pop, RDI);
-            // assert!(false, "Not Implemented yet!");
+            mov_unknown_to_register(cc, RDI, expr_opr.value);
             cc.codegen.instr1(Call, Opr::Loc("print".to_string()));
         }
     }
@@ -236,6 +233,7 @@ fn assgin_op(
     opr: Opr,
     v_map: &VariableMap,
 ) -> Result<(), CompilationError> {
+    let mut reg_size = v_map.vtype.item_size() as u8;
     let mem_acss = match &v_map.vtype {
         VariableType::Array(_, _) => {
             MemAddr::new_sib_s(
@@ -250,6 +248,7 @@ fn assgin_op(
             cc.codegen
                 .instr2(Mov, RDX, mem!(RBP, -(v_map.offset as i32 + 8)));
             cc.codegen.instr2(Add, RDX, v_map.offset_inner);
+            reg_size = v_map.vtype_inner.item_size();
             MemAddr::new_s(v_map.vtype_inner.item_size(), RDX)
         }
         _ => {
@@ -259,21 +258,21 @@ fn assgin_op(
     mov_unknown_to_register(cc, RAX, opr);
     match op {
         AssignOp::Eq => {
-            cc.codegen.instr2(Mov, mem_acss, RAX.convert(v_map.vtype.size() as u8));
+            cc.codegen.instr2(Mov, mem_acss, RAX.convert(reg_size));
             Ok(())
         }
         AssignOp::PlusEq => {
-            cc.codegen.instr2(Add, mem_acss, RAX.convert(v_map.vtype.size() as u8));
+            cc.codegen.instr2(Add, mem_acss, RAX.convert(reg_size));
             Ok(())
         }
         AssignOp::SubEq => {
-            cc.codegen.instr2(Sub, mem_acss, RAX.convert(v_map.vtype.size() as u8));
+            cc.codegen.instr2(Sub, mem_acss, RAX.convert(reg_size));
             Ok(())
         }
         AssignOp::MultiEq => {
             mov_unknown_to_register(cc, RBX, mem_acss.into());
             cc.codegen.instr2(Imul, RAX, RBX);
-            cc.codegen.instr2(Mov, mem_acss, RAX.convert(v_map.vtype.size() as u8));
+            cc.codegen.instr2(Mov, mem_acss, RAX.convert(reg_size));
             Ok(())
         }
         AssignOp::DevideEq => {
@@ -281,7 +280,7 @@ fn assgin_op(
             mov_unknown_to_register(cc, RAX, mem_acss.into());
             cc.codegen.instr0(Cqo);
             cc.codegen.instr1(Idiv, RBX);
-            cc.codegen.instr2(Mov, mem_acss, RAX.convert(v_map.vtype.size() as u8));
+            cc.codegen.instr2(Mov, mem_acss, RAX.convert(reg_size));
             Ok(())
         }
         AssignOp::ModEq => {
@@ -289,7 +288,7 @@ fn assgin_op(
             mov_unknown_to_register(cc, RAX, mem_acss.into());
             cc.codegen.instr0(Cqo);
             cc.codegen.instr1(Idiv, RBX);
-            cc.codegen.instr2(Mov, mem_acss, RDX.convert(v_map.vtype.size() as u8));
+            cc.codegen.instr2(Mov, mem_acss, RDX.convert(reg_size));
             Ok(())
         }
     }
@@ -321,7 +320,7 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Compi
                 _ => unreachable!(),
             };
             let indexer = compile_expr(cc, &ai.indexer)?;
-            cc.codegen.instr2(Mov, RBX, indexer.value);
+            mov_unknown_to_register(cc, RBX, indexer.value);
             if right_eo.needs_stack() {
                 cc.codegen.instr1(Pop, RAX);
                 assgin_op(cc, &assign.op, RAX.into(), &v_map)?;
