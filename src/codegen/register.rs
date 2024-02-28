@@ -1,7 +1,5 @@
 use std::{fmt::Display, str::FromStr};
 
-use crate::parser::types::VariableType;
-
 #[allow(dead_code)]
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -206,94 +204,6 @@ impl Reg {
                 8 => Self::R9,
                 _ => unreachable!(),
             },
-        }
-    }
-
-    pub fn AX_sized(vtype: &VariableType) -> Self {
-        let size = vtype.item_size();
-        match size {
-            1 => Self::AL,
-            2 => Self::AX,
-            4 => Self::EAX,
-            8 => Self::RAX,
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn BX_sized(vtype: &VariableType) -> Self {
-        let size = vtype.item_size();
-        match size {
-            1 => Self::BL,
-            2 => Self::BX,
-            4 => Self::EBX,
-            8 => Self::RBX,
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn CX_sized(vtype: &VariableType) -> Self {
-        let size = vtype.item_size();
-        match size {
-            1 => Self::CL,
-            2 => Self::CX,
-            4 => Self::ECX,
-            8 => Self::RCX,
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn DX_sized(vtype: &VariableType) -> Self {
-        let size = vtype.item_size();
-        match size {
-            1 => Self::DL,
-            2 => Self::DX,
-            4 => Self::EDX,
-            8 => Self::RDX,
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn DI_sized(vtype: &VariableType) -> Self {
-        let size = vtype.item_size();
-        match size {
-            1 => Self::DIL,
-            2 => Self::DI,
-            4 => Self::EDI,
-            8 => Self::RDI,
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn Si_sized(vtype: &VariableType) -> Self {
-        let size = vtype.item_size();
-        match size {
-            1 => Self::SIL,
-            2 => Self::SI,
-            4 => Self::ESI,
-            8 => Self::RSI,
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn R8_sized(vtype: &VariableType) -> Self {
-        let size = vtype.item_size();
-        match size {
-            1 => Self::R8B,
-            2 => Self::R8W,
-            4 => Self::R8D,
-            8 => Self::R8,
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn R9_sized(vtype: &VariableType) -> Self {
-        let size = vtype.item_size();
-        match size {
-            1 => Self::R9B,
-            2 => Self::R9W,
-            4 => Self::R9D,
-            8 => Self::R9,
-            _ => unreachable!(),
         }
     }
 }

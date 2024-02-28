@@ -39,11 +39,11 @@ mod compiler;
 mod error_handeling;
 mod lexer;
 mod macros;
+mod optim;
 mod parser;
 #[cfg(test)]
 mod tests;
 mod type_check;
-mod optim;
 mod utils;
 use codegen::text::x86_64_nasm_generator;
 use compiler::{compile, CompilerContext};

@@ -6,7 +6,7 @@ pub mod instructions;
 pub mod memory;
 pub mod mnemonic;
 pub mod opcodes;
-pub mod optimization;
+pub mod utils;
 pub mod register;
 pub mod text;
 use std::{collections::BTreeMap, fmt::Display};

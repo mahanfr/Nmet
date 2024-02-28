@@ -113,12 +113,12 @@ pub fn impl_bifs(cc: &mut CompilerContext) {
 
 pub fn function_args_register_sized(arg_numer: usize, vtype: &VariableType) -> Reg {
     match arg_numer {
-        0 => Reg::DI_sized(vtype),
-        1 => Reg::Si_sized(vtype),
-        2 => Reg::DX_sized(vtype),
-        3 => Reg::CX_sized(vtype),
-        4 => Reg::R8_sized(vtype),
-        5 => Reg::R9_sized(vtype),
+        0 => Reg::RDI.convert(vtype.item_size()),
+        1 => Reg::RSI.convert(vtype.item_size()),
+        2 => Reg::RDX.convert(vtype.item_size()),
+        3 => Reg::RCX.convert(vtype.item_size()),
+        4 => Reg::R8.convert(vtype.item_size()),
+        5 => Reg::R9.convert(vtype.item_size()),
         _ => unreachable!(),
     }
 }

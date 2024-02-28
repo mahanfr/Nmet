@@ -24,11 +24,8 @@
 **********************************************************************************************/
 use crate::{
     codegen::{
-        asm_parser::parse_asm,
-        instructions::Opr,
-        memory::MemAddr,
-        mnemonic::Mnemonic::*,
-        register::Reg::*, optimization::mov_unknown_to_register,
+        asm_parser::parse_asm, instructions::Opr, memory::MemAddr, mnemonic::Mnemonic::*,
+        utils::mov_unknown_to_register, register::Reg::*,
     },
     compiler::VariableMap,
     error_handeling::CompilationError,
@@ -125,7 +122,11 @@ pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) -> Result<(), Compila
             ExprType::FunctionCall(fc) => {
                 let eo = compile_expr(cc, e)?;
                 if eo.vtype != VariableType::Void {
-                    log_warn!("({}), Unused return value of function {}!",stmt.loc, fc.ident);
+                    log_warn!(
+                        "({}), Unused return value of function {}!",
+                        stmt.loc,
+                        fc.ident
+                    );
                 }
                 Ok(())
             }
@@ -233,17 +234,15 @@ fn assgin_op(
     opr: Opr,
     v_map: &VariableMap,
 ) -> Result<(), CompilationError> {
-    let mut reg_size = v_map.vtype.item_size() as u8;
+    let mut reg_size = v_map.vtype.item_size();
     let mem_acss = match &v_map.vtype {
-        VariableType::Array(_, _) => {
-            MemAddr::new_sib_s(
-                v_map.vtype.item_size(),
-                RBP,
-                v_map.stack_offset(),
-                RBX,
-                v_map.vtype.item_size(),
-            )
-        }
+        VariableType::Array(_, _) => MemAddr::new_sib_s(
+            v_map.vtype.item_size(),
+            RBP,
+            v_map.stack_offset(),
+            RBX,
+            v_map.vtype.item_size(),
+        ),
         VariableType::Custom(_) => {
             cc.codegen
                 .instr2(Mov, RDX, mem!(RBP, -(v_map.offset as i32 + 8)));
@@ -251,9 +250,7 @@ fn assgin_op(
             reg_size = v_map.vtype_inner.item_size();
             MemAddr::new_s(v_map.vtype_inner.item_size(), RDX)
         }
-        _ => {
-            MemAddr::new_disp_s(v_map.vtype.item_size(), RBP, v_map.stack_offset())
-        }
+        _ => MemAddr::new_disp_s(v_map.vtype.item_size(), RBP, v_map.stack_offset()),
     };
     mov_unknown_to_register(cc, RAX, opr);
     match op {
@@ -303,7 +300,7 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Compi
             }
             let right_eo = compile_expr(cc, &assign.right)?;
             v_map.vtype.cast(&right_eo.vtype)?;
-            assgin_op(cc, &assign.op, right_eo.value ,&v_map)?;
+            assgin_op(cc, &assign.op, right_eo.value, &v_map)?;
             Ok(())
         }
         ExprType::ArrayIndex(ai) => {
@@ -312,7 +309,7 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Compi
                 return Err(CompilationError::ImmutableVariable(ai.ident.clone()));
             }
             let right_eo = compile_expr(cc, &assign.right)?;
-            if right_eo.needs_stack() {
+            if right_eo.is_temp() {
                 cc.codegen.instr1(Push, right_eo.value.clone());
             }
             let _ = match &v_map.vtype {
@@ -321,7 +318,7 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Compi
             };
             let indexer = compile_expr(cc, &ai.indexer)?;
             mov_unknown_to_register(cc, RBX, indexer.value);
-            if right_eo.needs_stack() {
+            if right_eo.is_temp() {
                 cc.codegen.instr1(Pop, RAX);
                 assgin_op(cc, &assign.op, RAX.into(), &v_map)?;
             } else {

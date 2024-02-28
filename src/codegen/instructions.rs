@@ -33,32 +33,23 @@ pub enum Opr {
 }
 
 impl Opr {
-    pub fn size(&self) -> u8 {
-        match self {
-            Self::R64(_) | Self::Imm64(_) => 8,
-            Self::R32(_) | Self::Imm32(_) | Self::Rela(_) | Self::Loc(_) => 4,
-            Self::R16(_) => 2,
-            Self::R8(_) | Self::Imm8(_) => 1,
-            Self::Mem(m) => m.size,
-        }
-    }
     pub fn sized(self, vtype: &VariableType) -> Self {
         match self {
             Self::R8(r) | Self::R16(r) | Self::R32(r) | Self::R64(r) => {
-                r.convert(vtype.item_size() as u8).into()
+                r.convert(vtype.item_size()).into()
             }
             Self::Mem(m) => {
-                let mut cmem = m.clone();
-                cmem.size = vtype.item_size() as u8;
+                let mut cmem = m;
+                cmem.size = vtype.item_size();
                 cmem.into()
             }
             Self::Imm8(v) | Self::Imm32(v) | Self::Imm64(v) => {
                 if vtype.size() == 1 {
-                    Self::Imm8(v as i64)
+                    Self::Imm8(v)
                 } else if vtype.item_size() == 4 || vtype.item_size() == 2 {
-                    Self::Imm32(v as i64)
+                    Self::Imm32(v)
                 } else {
-                    Self::Imm64(v as i64)
+                    Self::Imm64(v)
                 }
             }
             _ => self.to_owned(),

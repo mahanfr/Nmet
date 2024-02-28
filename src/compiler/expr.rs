@@ -24,20 +24,19 @@
 **********************************************************************************************/
 use crate::{
     codegen::{
-        instructions::Opr,
-        memory::MemAddr,
-        mnemonic::Mnemonic::*,
-        register::Reg::*, optimization::mov_unknown_to_register,
+        instructions::Opr, memory::MemAddr, mnemonic::Mnemonic::*,
+        utils::mov_unknown_to_register, register::Reg::*,
     },
     error_handeling::CompilationError,
     mem, memq,
+    optim::{fold_binary_expr, fold_compare_expr, fold_unary_expr, ExprOpr},
     parser::{
         expr::{
             ArrayIndex, BinaryExpr, CompareExpr, CompareOp, Expr, ExprType, FunctionCall, Op,
             UnaryExpr,
         },
         types::VariableType,
-    }, optim::{ExprOpr, fold_binary_expr, fold_compare_expr, fold_unary_expr},
+    },
 };
 
 use super::{function_args_register, variables::get_vriable_map, CompilerContext};
@@ -60,15 +59,9 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> Result<ExprOpr, Co
             let mem_acss = MemAddr::new_disp_s(v_map.vtype.item_size(), RBP, v_map.stack_offset());
             Ok(ExprOpr::new(mem_acss, v_map.vtype))
         }
-        ExprType::Bool(b) => {
-            Ok(ExprOpr::new(*b as i32, VariableType::Bool))
-        }
-        ExprType::Char(x) => {
-            Ok(ExprOpr::new(*x as i32, VariableType::Char))
-        }
-        ExprType::Int(x) => {
-            Ok(ExprOpr::new(*x, VariableType::Int))
-        }
+        ExprType::Bool(b) => Ok(ExprOpr::new(*b as i32, VariableType::Bool)),
+        ExprType::Char(x) => Ok(ExprOpr::new(*x as i32, VariableType::Char)),
+        ExprType::Int(x) => Ok(ExprOpr::new(*x, VariableType::Int)),
         ExprType::String(str) => {
             let id = cc
                 .codegen
@@ -86,7 +79,7 @@ fn compile_compare_expr(
     // Compile the left Exprssion
     let left = compile_expr(cc, cexpr.left.as_ref())?;
     // Store in memory if register
-    if left.needs_stack() {
+    if left.is_temp() {
         cc.codegen.instr1(Push, left.value.clone());
     }
     // Compile the right Exprssion
@@ -101,7 +94,7 @@ fn compile_compare_expr(
     // Move Result to RBX Register
     mov_unknown_to_register(cc, RBX, right.value.clone());
     // Retrive the first instr values to RAX
-    if left.needs_stack() {
+    if left.is_temp() {
         cc.codegen.instr1(Pop, RAX);
     } else {
         mov_unknown_to_register(cc, RAX, left.value.clone());
@@ -130,7 +123,7 @@ fn compile_binary_expr(
     // Compile the left Exprssion
     let left = compile_expr(cc, bexpr.left.as_ref())?;
     // Store in memory if register
-    if left.needs_stack() {
+    if left.is_temp() {
         cc.codegen.instr1(Push, left.value.clone());
     }
     // Compile the right Exprssion
@@ -145,7 +138,7 @@ fn compile_binary_expr(
     // Move Result of right to RBX Register
     mov_unknown_to_register(cc, RBX, right.value.clone());
     // Retrive the left expr result to RAX
-    if left.needs_stack() {
+    if left.is_temp() {
         cc.codegen.instr1(Pop, RAX);
     } else {
         mov_unknown_to_register(cc, RAX, left.value.clone());
@@ -210,9 +203,13 @@ fn compile_array_index(
     let v_map = get_vriable_map(cc, &ai.ident)?;
     let indexer = compile_expr(cc, &ai.indexer)?;
     mov_unknown_to_register(cc, RBX, indexer.value);
-    let mem_acss = MemAddr::new_sib_s(v_map.vtype.item_size(),
-        RBP, v_map.stack_offset(),
-        RBX, v_map.vtype.item_size());
+    let mem_acss = MemAddr::new_sib_s(
+        v_map.vtype.item_size(),
+        RBP,
+        v_map.stack_offset(),
+        RBX,
+        v_map.vtype.item_size(),
+    );
     match v_map.vtype {
         VariableType::Array(t, _) => Ok(ExprOpr::new(mem_acss, t.as_ref().clone())),
         _ => unreachable!(),
@@ -225,7 +222,7 @@ fn compile_unaray_expr(
 ) -> Result<ExprOpr, CompilationError> {
     let left_eo = compile_expr(cc, &uexpr.right)?;
     if left_eo.value.is_literal() {
-       return fold_unary_expr(&left_eo, &uexpr.op);
+        return fold_unary_expr(&left_eo, &uexpr.op);
     }
     let new_type = match left_eo.vtype {
         VariableType::UInt => VariableType::Int,
@@ -239,9 +236,7 @@ fn compile_unaray_expr(
             cc.codegen.instr1(Neg, RAX);
             Ok(ExprOpr::new(RAX, new_type))
         }
-        Op::Plus => {
-            Ok(ExprOpr::new(left_eo.value, new_type))
-        }
+        Op::Plus => Ok(ExprOpr::new(left_eo.value, new_type)),
         Op::Not => {
             mov_unknown_to_register(cc, RAX, left_eo.value);
             cc.codegen.instr1(Not, RAX);
@@ -258,7 +253,7 @@ fn compile_access(
     ident: &str,
     expr: &Expr,
 ) -> Result<ExprOpr, CompilationError> {
-    let v_map = get_vriable_map(cc, &ident)?;
+    let v_map = get_vriable_map(cc, ident)?;
     let VariableType::Custom(struct_ident) = v_map.vtype.clone() else {
         return Err(CompilationError::UnexpectedType(v_map.vtype.to_string()));
     };
@@ -318,14 +313,14 @@ fn compile_function_call(
     let mut expr_list = Vec::new();
     for arg in fc.args.iter().rev() {
         let expr_op = compile_expr(cc, arg)?;
-        if expr_op.needs_stack() {
+        if expr_op.is_temp() {
             mov_unknown_to_register(cc, RAX, expr_op.value.clone());
             cc.codegen.instr1(Push, RAX);
         }
         expr_list.push(expr_op);
     }
-    for (i,item) in expr_list.iter().rev().enumerate() {
-        if item.needs_stack() {
+    for (i, item) in expr_list.iter().rev().enumerate() {
+        if item.is_temp() {
             cc.codegen.instr1(Pop, function_args_register(i));
         } else {
             mov_unknown_to_register(cc, function_args_register(i), item.value.clone());

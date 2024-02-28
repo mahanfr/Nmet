@@ -1,6 +1,10 @@
 use crate::{
+    codegen::instructions::Opr,
     error_handeling::CompilationError,
-    parser::{expr::{Op, CompareOp}, types::VariableType}, codegen::instructions::Opr
+    parser::{
+        expr::{CompareOp, Op},
+        types::VariableType,
+    },
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -17,7 +21,7 @@ impl ExprOpr {
         }
     }
 
-    pub fn needs_stack(&self) -> bool {
+    pub fn is_temp(&self) -> bool {
         !self.value.is_literal() && !self.value.is_mem()
     }
 }
@@ -72,10 +76,7 @@ pub fn fold_compare_expr(
     Ok(ExprOpr::new(val, VariableType::Bool))
 }
 
-pub fn fold_unary_expr(
-    left: &ExprOpr,
-    op: &Op,
-) -> Result<ExprOpr, CompilationError> {
+pub fn fold_unary_expr(left: &ExprOpr, op: &Op) -> Result<ExprOpr, CompilationError> {
     let l_val = left.value.get_literal_value();
     let val = match op {
         Op::Sub => -l_val,
