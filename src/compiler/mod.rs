@@ -29,6 +29,8 @@ mod function;
 mod stmts;
 mod variables;
 
+use crate::codegen::instructions::Opr;
+use crate::codegen::mnemonic::Mnemonic;
 use crate::codegen::{register::Reg, Codegen};
 use crate::compiler::{bif::Bif, function::compile_function};
 
@@ -206,9 +208,11 @@ pub fn compile(cc: &mut CompilerContext, path: String) {
         }
     }
     let functions = cc.functions_map.clone();
-    compile_function(cc, functions.get("main").unwrap());
+    compile_init_function(cc);
+    // compile_function(cc, functions.get("main").unwrap());
     for (k, f) in functions.iter() {
-        if k != "main" && cc.codegen.ffi_map.get(k).is_none() {
+        // if k != "main" && cc.codegen.ffi_map.get(k).is_none() {
+        if cc.codegen.ffi_map.get(k).is_none() {
             compile_function(cc, f);
         }
     }
@@ -221,3 +225,13 @@ pub fn compile(cc: &mut CompilerContext, path: String) {
         "Somting went wrong: Scope has not been cleared"
     );
 }
+
+fn compile_init_function(cc: &mut CompilerContext) {
+    cc.codegen.set_lable("_start");
+    // TODO: Add a condition for compiling libraries
+    cc.codegen.instr1(Mnemonic::Call, Opr::Loc("main".to_owned()));
+    cc.codegen.instr2(Mnemonic::Mov, Opr::R64(Reg::RAX), 60);
+    cc.codegen.instr2(Mnemonic::Mov, Opr::R64(Reg::RDI), 0);
+    cc.codegen.instr0(Mnemonic::Syscall);
+}
+

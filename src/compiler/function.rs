@@ -66,26 +66,14 @@ pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
         .push(ScopeBlock::new(0, BlockType::Function(f.ident.clone())));
     cc.mem_offset = 0;
     cc.variables_map = HashMap::new();
-    if f.ident == "main" {
-        cc.codegen.set_lable("_start");
-    } else {
-        cc.codegen.set_lable(f.ident.clone());
-    }
+    cc.codegen.set_lable(f.ident.clone());
 
     cc.codegen.instr1(Push, RBP);
     cc.codegen.instr2(Mov, RBP, RSP);
-    //cc.codegen.push_instr(Instr::sub(RSP, frame_size(cc.mem_offset)));
     function_args(cc, &f.args);
     compile_block(cc, &f.block, BlockType::Function(f.ident.clone()));
     cc.scoped_blocks.pop();
-    // Call Exit Syscall
-    if f.ident == "main" {
-        cc.codegen.instr2(Mov, RAX, 60);
-        cc.codegen.instr2(Mov, RDI, 0);
-        cc.codegen.instr0(Syscall);
-    } else {
-        // revert rbp
-        cc.codegen.instr0(Leave);
-        cc.codegen.instr0(Ret);
-    }
+    // revert rbp
+    cc.codegen.instr0(Leave);
+    cc.codegen.instr0(Ret);
 }
