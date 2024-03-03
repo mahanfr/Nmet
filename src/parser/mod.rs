@@ -33,6 +33,7 @@ pub mod types;
 pub mod variable_decl;
 use std::fs;
 
+use crate::compiler::CompilerContext;
 use crate::lexer::Lexer;
 use crate::parser::program::*;
 
@@ -45,11 +46,11 @@ use crate::parser::program::*;
 /// Programfile containing the ast of the parsed file
 ///
 /// Can panic if file dose not exists
-pub fn parse_file(path: String) -> ProgramFile {
+pub fn parse_file(cc: &mut CompilerContext, path: String) -> ProgramFile {
     let source = fs::read_to_string(path.clone()).unwrap_or_else(|_| {
         eprintln!("Error reading file \"{}\"", path.clone());
         panic!("Can not open file!");
     });
     let mut lexer = Lexer::new(path, source);
-    program(&mut lexer)
+    parse_source_file(cc, &mut lexer)
 }

@@ -25,13 +25,13 @@
 use crate::{
     error_handeling::error,
     lexer::{Lexer, TokenType},
-    parser::function::Function,
+    parser::function::Function, compiler::CompilerContext,
 };
 
 use super::{
     function::function_def,
     structs::{struct_def, StructDef},
-    variable_decl::{variable_declare, VariableDeclare},
+    variable_decl::{variable_declare, VariableDeclare}, parse_file,
 };
 
 /// Program file information
@@ -60,14 +60,11 @@ pub enum ProgramItem {
     StaticVar(VariableDeclare),
     /// Foregin Function interface
     FFI(String, Function),
-    /// Import Functions
-    /// filePath, Import names
-    Import(String, Vec<String>),
 }
 
 /// Parse Program
 /// Returns Programfile wich is the ast root
-pub fn program(lexer: &mut Lexer) -> ProgramFile {
+pub fn parse_source_file(cc: &mut CompilerContext, lexer: &mut Lexer) -> ProgramFile {
     lexer.next_token();
     let mut items = Vec::<ProgramItem>::new();
     loop {
@@ -77,18 +74,30 @@ pub fn program(lexer: &mut Lexer) -> ProgramFile {
         let loc = lexer.get_token_loc();
         match lexer.get_token_type() {
             TokenType::Struct => {
-                items.push(ProgramItem::Struct(struct_def(lexer)));
+                let struct_def = struct_def(lexer);
+                cc.structs_map.insert(struct_def.ident.clone(), struct_def.clone());
+                items.push(ProgramItem::Struct(struct_def));
             }
             TokenType::Ffi => {
-                items.push(ffi_function(lexer));
+                let ffi_function = ffi_function_mapping(lexer);
+                cc.codegen.ffi_map.insert(ffi_function.1.ident.clone(), ffi_function.0.clone());
+                cc.functions_map.insert(ffi_function.1.ident.clone(), ffi_function.1.clone());
+                items.push(ProgramItem::FFI(ffi_function.0, ffi_function.1));
             }
             TokenType::Func => {
-                items.push(ProgramItem::Func(function_def(lexer, true)));
+                let function_def = function_def(lexer, true);
+                cc.functions_map.insert(function_def.ident.clone(), function_def.clone());
+                items.push(ProgramItem::Func(function_def));
             }
             TokenType::Var => {
                 items.push(ProgramItem::StaticVar(variable_declare(lexer)));
             }
-            TokenType::Import => items.push(import_file(lexer)),
+            TokenType::Import => {
+                let import = parse_mod_import(lexer);
+                let mut new_path = String::from(import.0);
+                new_path.push_str(".nmt");
+                parse_file(cc, new_path);
+            },
             _ => error(
                 format!(
                     "Unexpected Token ({}) for the top level program",
@@ -109,17 +118,17 @@ pub fn program(lexer: &mut Lexer) -> ProgramFile {
 ///
 /// Syntax:
 /// ffi "fopen" func nmt_fopen(pathname @str, mode @str) @FILE
-pub fn ffi_function(lexer: &mut Lexer) -> ProgramItem {
+pub fn ffi_function_mapping(lexer: &mut Lexer) -> (String, Function) {
     lexer.match_token(TokenType::Ffi);
     let module_name = lexer.get_token().literal;
     lexer.match_token(TokenType::String);
     let function = function_def(lexer, false);
-    ProgramItem::FFI(module_name, function)
+    (module_name, function)
 }
 
 /// import Program
 /// Returns Import Program Item
-pub fn import_file(lexer: &mut Lexer) -> ProgramItem {
+pub fn parse_mod_import(lexer: &mut Lexer) -> (String, Vec<String>) {
     lexer.match_token(TokenType::Import);
     let file_path = lexer.get_token().literal;
     lexer.match_token(TokenType::String);
@@ -136,8 +145,8 @@ pub fn import_file(lexer: &mut Lexer) -> ProgramItem {
                 break;
             }
         }
-        ProgramItem::Import(file_path, idents_vec)
+        (file_path, idents_vec)
     } else {
-        ProgramItem::Import(file_path, vec![])
+        (file_path, vec![])
     }
 }

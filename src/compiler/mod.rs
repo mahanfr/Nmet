@@ -141,72 +141,9 @@ fn _frame_size(mem_offset: usize) -> usize {
     2 << mem_offset.ilog2() as usize
 }
 
-pub fn compile_lib(cc: &mut CompilerContext, path: String, exports: Vec<String>) {
-    let program = parse_file(path);
-    let is_importable = |ident: &String| {
-        if !exports.is_empty() {
-            exports.contains(ident)
-        } else {
-            true
-        }
-    };
-    for item in program.items {
-        match item {
-            ProgramItem::Struct(_) => {
-                todo!();
-            }
-            ProgramItem::StaticVar(_s) => {
-                todo!();
-                // self.insert_variable(&s);
-            }
-            ProgramItem::Func(f) => {
-                if is_importable(&f.ident) && !cc.functions_map.contains_key(&f.ident) {
-                    cc.functions_map.insert(f.ident.clone(), f.clone());
-                }
-            }
-            ProgramItem::FFI(mod_name, f) => {
-                if is_importable(&f.ident) && !cc.functions_map.contains_key(&f.ident) {
-                    cc.codegen.ffi_map.insert(f.ident.clone(), mod_name);
-                    cc.functions_map.insert(f.ident.clone(), f.clone());
-                }
-            }
-            ProgramItem::Import(next_path, idents) => {
-                let mut new_path = String::new();
-                new_path.push_str(next_path.as_str());
-                new_path.push_str(".nmt");
-                compile_lib(cc, new_path, idents);
-            }
-        }
-    }
-}
-
 // TODO: Handle Compilation Error
 pub fn compile(cc: &mut CompilerContext, path: String) {
-    let program = parse_file(path);
-    for item in program.items {
-        match item {
-            ProgramItem::Struct(s) => {
-                cc.structs_map.insert(s.ident.clone(), s.clone());
-            }
-            ProgramItem::StaticVar(_s) => {
-                todo!();
-                // self.insert_variable(&s);
-            }
-            ProgramItem::Func(f) => {
-                cc.functions_map.insert(f.ident.clone(), f.clone());
-            }
-            ProgramItem::FFI(mod_name, f) => {
-                cc.codegen.ffi_map.insert(f.ident.clone(), mod_name);
-                cc.functions_map.insert(f.ident.clone(), f.clone());
-            }
-            ProgramItem::Import(next_path, idents) => {
-                let mut new_path = String::new();
-                new_path.push_str(next_path.as_str());
-                new_path.push_str(".nmt");
-                compile_lib(cc, new_path, idents);
-            }
-        }
-    }
+    let _program = parse_file(cc, path);
     let functions = cc.functions_map.clone();
     compile_init_function(cc);
     // compile_function(cc, functions.get("main").unwrap());
