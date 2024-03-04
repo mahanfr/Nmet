@@ -36,9 +36,10 @@ use crate::compiler::{bif::Bif, function::compile_function};
 
 use crate::log_error;
 use crate::parser::{
-    block::BlockType, function::Function, parse_file, program::ProgramItem, structs::StructDef,
+    block::BlockType, function::Function, parse_file, structs::StructDef,
     types::VariableType,
 };
+use crate::type_check::Identifier;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::process::exit;
 
@@ -98,9 +99,6 @@ impl CompilerContext {
             let BlockType::Function(lab) = block.block_type.clone() else {
                 continue;
             };
-            if lab == "main" {
-                return "_start".to_string();
-            }
             return lab;
         }
         String::new()
@@ -146,9 +144,7 @@ pub fn compile(cc: &mut CompilerContext, path: String) {
     let _program = parse_file(cc, path);
     let functions = cc.functions_map.clone();
     compile_init_function(cc);
-    // compile_function(cc, functions.get("main").unwrap());
     for (k, f) in functions.iter() {
-        // if k != "main" && cc.codegen.ffi_map.get(k).is_none() {
         if cc.codegen.ffi_map.get(k).is_none() {
             compile_function(cc, f);
         }
@@ -166,6 +162,10 @@ pub fn compile(cc: &mut CompilerContext, path: String) {
 fn compile_init_function(cc: &mut CompilerContext) {
     cc.codegen.set_lable("_start");
     // TODO: Add a condition for compiling libraries
+    if cc.functions_map.get("main").is_none() {
+        log_error!("Executable programs should have an entry point");
+        exit(-1);
+    }
     cc.codegen.instr1(Mnemonic::Call, Opr::Loc("main".to_owned()));
     cc.codegen.instr2(Mnemonic::Mov, Opr::R64(Reg::RAX), 60);
     cc.codegen.instr2(Mnemonic::Mov, Opr::R64(Reg::RDI), 0);
