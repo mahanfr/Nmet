@@ -26,9 +26,8 @@ use std::collections::HashMap;
 
 use crate::{
     codegen::{memory::MemAddr, mnemonic::Mnemonic::*, register::Reg::*},
-    compiler::{ScopeBlock, VariableMap},
+    compiler::VariableMap,
     parser::{
-        block::BlockType,
         function::{Function, FunctionArg},
         types::VariableType,
     },
@@ -38,7 +37,7 @@ use super::{block::compile_block, function_args_register_sized, CompilerContext}
 
 pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
     for (args_count, arg) in args.iter().enumerate() {
-        let ident = format!("{}%{}", arg.ident, cc.block_id);
+        let ident = format!("{}%{}", arg.ident, cc.scoped_blocks.last().unwrap().id);
         let map = VariableMap {
             offset: cc.mem_offset,
             offset_inner: 0,
@@ -61,17 +60,15 @@ pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
 
 pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
     cc.scoped_blocks = Vec::new();
-    cc.block_id = 0;
-    cc.scoped_blocks
-        .push(ScopeBlock::new(0, BlockType::Function(f.ident.clone())));
+    cc.scoped_blocks.push(f.block.clone());
     cc.mem_offset = 0;
     cc.variables_map = HashMap::new();
-    cc.codegen.set_lable(f.ident.clone());
+    cc.codegen.set_lable(f.block.start_name());
 
     cc.codegen.instr1(Push, RBP);
     cc.codegen.instr2(Mov, RBP, RSP);
     function_args(cc, &f.args);
-    compile_block(cc, &f.block, BlockType::Function(f.ident.clone()));
+    compile_block(cc, &f.block);
     cc.scoped_blocks.pop();
     // revert rbp
     cc.codegen.instr0(Leave);

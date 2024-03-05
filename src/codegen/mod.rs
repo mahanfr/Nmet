@@ -123,10 +123,6 @@ impl Codegen {
         }
     }
 
-    pub fn get_id(&self) -> usize {
-        self.instructs.len()
-    }
-
     pub fn relocate(&mut self) {
         let mut bytes_sum = 0;
         for item in self.instructs.iter_mut() {

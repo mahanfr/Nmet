@@ -39,7 +39,7 @@ pub fn insert_variable(
     cc: &mut CompilerContext,
     var: &VariableDeclare,
 ) -> Result<(), CompilationError> {
-    let ident = format!("{}%{}", var.ident, cc.block_id);
+    let ident = format!("{}%{}", var.ident, cc.scoped_blocks.last().unwrap().id);
     let mut vtype = match var.v_type.as_ref() {
         Some(vt) => vt.clone(),
         None => VariableType::Any,

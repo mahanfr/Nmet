@@ -28,7 +28,7 @@ use crate::{
     parser::{block::Block, types::type_def},
 };
 
-use super::{block::block, types::VariableType};
+use super::{block::{BlockType, parse_block}, types::VariableType};
 
 /// Function Definition Arguments
 /// * ident - name of argument in function name space
@@ -58,20 +58,29 @@ pub fn function_def(lexer: &mut Lexer, has_block: bool) -> Function {
     lexer.match_token(TokenType::Func);
     let function_ident_token = lexer.get_token();
     let mut ret_type = VariableType::Void;
-    if function_ident_token.is_empty() {
-        error("Function defenition without identifier", loc);
-    }
+    let fn_ident = match function_ident_token.is_empty() {
+        true => error("Function defenition without identifier", loc),
+        false => function_ident_token.literal,
+    };
     lexer.match_token(TokenType::Identifier);
     let args = function_def_args(lexer);
     if lexer.get_token_type() == TokenType::ATSign {
         ret_type = type_def(lexer);
     }
     let block = match has_block {
-        true => block(lexer),
-        false => Block { stmts: Vec::new() },
+        true => Block::new(
+            fn_ident.clone(),
+            BlockType::Function,
+            parse_block(lexer, &fn_ident),
+        ),
+        false => Block::new(
+            fn_ident.clone(),
+            BlockType::Empty,
+            Vec::new(),
+        ),
     };
     Function {
-        ident: function_ident_token.literal,
+        ident: fn_ident.clone(),
         ret_type,
         args,
         block,

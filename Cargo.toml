@@ -8,3 +8,4 @@ license = "MIT"
 description = "A general purpose statically typed and compiled programming language"
 
 [dependencies]
+rand = "0.8.5"

@@ -54,3 +54,19 @@ pub fn padding_right(str: &str) -> String {
 pub fn get_output_path_from_input(input: PathBuf) -> PathBuf {
     std::path::PathBuf::from("./build/out").with_file_name(input.file_name().unwrap())
 }
+
+/// i64 to 32 based String
+pub fn long2base32(x: i64) -> String {
+    let x_vec = x.to_le_bytes();
+    let mut res = String::new();
+    for i in x_vec {
+        let c = i / 8;
+        if c < 10 {
+            res.push((c + 48) as char);
+        } else {
+            res.push(((c - 10) + 65) as char);
+        }
+    }
+    res
+}
+

@@ -39,6 +39,7 @@ pub enum CompilationError {
     InvalidInlineAsm(String),
     ImmutableVariable(String),
     UnmatchingTypes(VariableType, VariableType),
+    NotLoopBlock,
 }
 impl Display for CompilationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -54,6 +55,7 @@ impl Display for CompilationError {
             Self::InvalidInlineAsm(i) => write!(f,"Invalid Identifier for Inline asm instruct ({i})"),
             Self::ImmutableVariable(v) => write!(f,"Variable ({v}) is not mutable. Did you forgot to define it with '=' insted of ':=' ?" ),
             Self::UnmatchingTypes(a, b) => write!(f, "Expected type ({a}), found type ({b})"),
+            Self::NotLoopBlock => write!(f, "Can not break or continue out of non-loop blocks!"),
         }
     }
 }

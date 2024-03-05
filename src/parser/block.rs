@@ -1,3 +1,5 @@
+use rand::random;
+
 /**********************************************************************************************
 *
 *   parser/block: parse blocks syntax (e.g: if/while block)
@@ -23,9 +25,8 @@
 *
 **********************************************************************************************/
 use crate::{
-    compiler::BLocation,
     lexer::{Lexer, TokenType},
-    parser::stmt::Stmt,
+    parser::stmt::Stmt, utils::long2base32,
 };
 
 use super::{
@@ -35,25 +36,61 @@ use super::{
     variable_decl::variable_declare,
 };
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy,  PartialEq)]
 pub enum BlockType {
     Condition,
-    Loop(BLocation),
-    Function(String),
+    Loop,
+    Function,
+    Empty,
 }
 
 /// Block Stmt
 /// Holds a list of stmt in a block of code
 #[derive(Debug, Clone)]
 pub struct Block {
+    pub master: String,
     pub stmts: Vec<Stmt>,
+    pub btype: BlockType,
+    pub id: i64,
+}
+
+impl Block {
+    pub fn new(master: String, btype: BlockType, stmts: Vec<Stmt>) -> Self {
+        let id = random();
+        Self {
+            master,
+            stmts,
+            btype,
+            id,
+        }
+    }
+
+    pub fn start_name(&self) -> String {
+        if self.btype == BlockType::Function {
+            self.master.clone()
+        } else {
+            format!("{}.BS__{}",self.master,long2base32(self.id))
+        }
+    }
+
+    pub fn end_name(&self) -> String {
+        if self.btype == BlockType::Function {
+            format!("{}.Defer", self.master)
+        } else {
+            format!("{}.BE__{}",self.master,long2base32(self.id))
+        }
+    }
+
+    pub fn name_with_prefix(&self, prefix: &str) -> String {
+        format!("{}.{prefix}__{}",self.master,long2base32(self.id))
+    }
 }
 
 /// Parse Blocks
 /// # Argumenrs
 /// * lexer - address of mutable lexer
-/// Returns a Block
-pub fn block(lexer: &mut Lexer) -> Block {
+/// Returns a vec of stmts
+pub fn parse_block(lexer: &mut Lexer, master: &String) -> Vec<Stmt> {
     lexer.match_token(TokenType::OCurly);
     let mut stmts = Vec::<Stmt>::new();
     loop {
@@ -100,14 +137,14 @@ pub fn block(lexer: &mut Lexer) -> Block {
             TokenType::If => {
                 let loc = lexer.get_token_loc();
                 stmts.push(Stmt {
-                    stype: StmtType::If(if_stmt(lexer)),
+                    stype: StmtType::If(if_stmt(lexer, &master)),
                     loc,
                 });
             }
             TokenType::While => {
                 let loc = lexer.get_token_loc();
                 stmts.push(Stmt {
-                    stype: StmtType::While(while_stmt(lexer)),
+                    stype: StmtType::While(while_stmt(lexer, &master)),
                     loc,
                 });
             }
@@ -145,5 +182,5 @@ pub fn block(lexer: &mut Lexer) -> Block {
         }
     }
     lexer.match_token(TokenType::CCurly);
-    Block { stmts }
+    stmts
 }

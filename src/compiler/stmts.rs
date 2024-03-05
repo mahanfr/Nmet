@@ -32,10 +32,9 @@ use crate::{
     log_cerror, log_warn, mem,
     parser::{
         assign::{Assign, AssignOp},
-        block::BlockType,
         expr::{Expr, ExprType},
         stmt::{ElseBlock, IFStmt, Stmt, StmtType, WhileStmt},
-        types::VariableType,
+        types::VariableType, block::BlockType,
     },
 };
 
@@ -50,39 +49,36 @@ use super::{
 fn compile_if_stmt(
     cc: &mut CompilerContext,
     ifs: &IFStmt,
-    exit_tag: usize,
+    exit_tag: String,
 ) -> Result<(), CompilationError> {
     let condition_eo = compile_expr(cc, &ifs.condition)?;
-    let last_label = cc.last_main_label();
     VariableType::Bool.cast(&condition_eo.vtype)?;
 
-    let next_tag = match ifs.else_block.as_ref() {
-        ElseBlock::None => exit_tag,
-        _ => cc.codegen.get_id(),
+    let next_loc = match ifs.else_block.as_ref() {
+        ElseBlock::None => exit_tag.clone(),
+        _ => ifs.then_block.end_name()
     };
+
     mov_unknown_to_register(cc, RAX, condition_eo.value);
     cc.codegen.instr2(Test, RAX, RAX);
-    cc.codegen
-        .instr1(Jz, Opr::Loc(format!("{last_label}.L{next_tag}")));
+    cc.codegen.instr1(Jz, Opr::Loc(next_loc.clone()));
 
-    compile_block(cc, &ifs.then_block, BlockType::Condition);
+    compile_block(cc, &ifs.then_block);
     match ifs.else_block.as_ref() {
         ElseBlock::None => {
-            cc.codegen.set_lable(format!("{last_label}.L{next_tag}"));
+            cc.codegen.set_lable(next_loc);
             Ok(())
-        }
+        },
         ElseBlock::Else(b) => {
-            cc.codegen
-                .instr1(Jmp, Opr::Loc(format!("{last_label}.L{exit_tag}")));
-            cc.codegen.set_lable(format!("{last_label}.L{next_tag}"));
-            compile_block(cc, b, BlockType::Condition);
-            cc.codegen.set_lable(format!("{last_label}.L{exit_tag}"));
+            cc.codegen.instr1(Jmp, Opr::Loc(exit_tag.clone()));
+            cc.codegen.set_lable(next_loc);
+            compile_block(cc, b);
+            cc.codegen.set_lable(exit_tag);
             Ok(())
         }
         ElseBlock::Elif(iff) => {
-            cc.codegen
-                .instr1(Jmp, Opr::Loc(format!("{last_label}.L{exit_tag}")));
-            cc.codegen.set_lable(format!("{last_label}.L{next_tag}"));
+            cc.codegen.instr1(Jmp, Opr::Loc(exit_tag.clone()));
+            cc.codegen.set_lable(next_loc);
             compile_if_stmt(cc, iff, exit_tag)?;
             Ok(())
         }
@@ -113,7 +109,7 @@ pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) -> Result<(), Compila
         StmtType::VariableDecl(v) => insert_variable(cc, v),
         StmtType::Print(e) => compile_print(cc, e),
         StmtType::If(ifs) => {
-            let exit_tag = cc.codegen.get_id();
+            let exit_tag = ifs.then_block.name_with_prefix("IFE");
             compile_if_stmt(cc, ifs, exit_tag)
         }
         StmtType::Assign(a) => compile_assgin(cc, a),
@@ -154,10 +150,32 @@ pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) -> Result<(), Compila
             }
             Ok(())
         }
-        _ => {
-            todo!();
+        StmtType::Break => compile_break_coninue(cc, true),
+        StmtType::Continue => compile_break_coninue(cc, false),
+    }
+}
+
+fn compile_break_coninue(cc: &mut CompilerContext, is_break: bool) -> Result<(), CompilationError> {
+    let mut did_break: bool = false;
+    for s_block in cc.scoped_blocks.iter().rev() {
+        if let BlockType::Loop = s_block.btype {
+            let exit_loc = if is_break {
+                s_block.end_name()
+            } else {
+                s_block.start_name()
+            };
+            cc.codegen.instr1(
+                crate::codegen::mnemonic::Mnemonic::Jmp,
+                Opr::Loc(exit_loc),
+                );
+            did_break = true;
+            break;
         }
     }
+    if !did_break {
+        return Err(CompilationError::NotLoopBlock);
+    }
+    Ok(())
 }
 
 fn compile_inline_asm(cc: &mut CompilerContext, instr: &String) -> Result<(), CompilationError> {
@@ -201,30 +219,17 @@ fn compile_inline_asm(cc: &mut CompilerContext, instr: &String) -> Result<(), Co
 }
 
 fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) -> Result<(), CompilationError> {
-    let cond_tag = cc.codegen.get_id();
-    cc.codegen.instr1(
-        Jmp,
-        Opr::Loc(format!("{}.L{cond_tag}", cc.last_main_label())),
-    );
-    let block_tag = cond_tag + 1;
-    cc.codegen
-        .set_lable(format!("{}.L{block_tag}", cc.last_main_label()));
-    compile_block(cc, &w_stmt.block, BlockType::Loop((cond_tag, block_tag)));
-    cc.codegen
-        .set_lable(format!("{}.L{cond_tag}", cc.last_main_label()));
+    cc.codegen.instr1(Jmp, Opr::Loc(w_stmt.block.name_with_prefix("CND")));
+    cc.codegen.set_lable(w_stmt.block.start_name());
+    compile_block(cc, &w_stmt.block);
+    cc.codegen.set_lable(w_stmt.block.name_with_prefix("CND"));
     // Jump after a compare
     let condition_eo = compile_expr(cc, &w_stmt.condition)?;
     VariableType::Bool.cast(&condition_eo.vtype)?;
     mov_unknown_to_register(cc, RAX, condition_eo.value);
     cc.codegen.instr2(Test, RAX, RAX);
-    // assert!(false, "Not implemented yet!");
-    // TODO: MAKE Sure this works!
-    cc.codegen.instr1(
-        Jne,
-        Opr::Loc(format!("{}.L{block_tag}", cc.last_main_label())),
-    );
-    cc.codegen
-        .set_lable(format!("{}.LE{block_tag}", cc.last_main_label()));
+    cc.codegen.instr1(Jne, Opr::Loc(w_stmt.block.start_name()));
+    cc.codegen.set_lable(w_stmt.block.end_name());
     Ok(())
 }
 
