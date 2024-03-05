@@ -1,6 +1,5 @@
-~ cargo run -- -nasm -keep-obj -keep-asm ./examples/game.nmt
-~ld -o ./build/game ./build/game.o -dynamic-linker 
-~ /usr/lib64/ld-linux-x86-64.so.2 -lc -lm -L./examples/ -lraylib
+~ nmet -nasm -keep-asm -use-libc -L./examples -lraylib -lm -lc ./examples/game.nmt
+
 ffi "InitWindow" func init_window(width @int, height @int, title @str) @void
 ffi "WindowShouldClose" func window_should_close() @bool
 ffi "CloseWindow" func close_window() @void

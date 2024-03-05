@@ -1,7 +1,7 @@
 func syscall_read(fd @int, buf @ptr, size @u64) @ptr {
     asm {
         "mov rax, 0"
-        "mov rdi, %fd"
+        "mov edi, %fd"
         "mov rsi, %buf"
         "mov rdx, %size"
         "syscall"
@@ -43,10 +43,10 @@ func syscall_close(fd @int) {
     }
 }
 
-func syscall_rename(oldName @str, newName @string) {
+func syscall_rename(oldName @str, newName @str) {
     asm {
         "mov rax, 82"
-        "mov rid, %oldName"
+        "mov rdi, %oldName"
         "mov rsi, %newName"
         "syscall"
     }
@@ -55,8 +55,8 @@ func syscall_rename(oldName @str, newName @string) {
 func syscall_mkdir(pathName @str, mode @int) {
     asm {
         "mov rax, 83"
-        "mov rid, %pathName"
-        "mov rsi, %mode"
+        "mov rdi, %pathName"
+        "mov esi, %mode"
         "syscall"
     }
 }
@@ -64,7 +64,7 @@ func syscall_mkdir(pathName @str, mode @int) {
 func syscall_rmdir(pathName @str) {
     asm {
         "mov rax, 84"
-        "mov rid, %pathName"
+        "mov rdi, %pathName"
         "syscall"
     }
 }
@@ -72,16 +72,16 @@ func syscall_rmdir(pathName @str) {
 func syscall_create(pathName @str, mode @int) {
     asm {
         "mov rax, 85"
-        "mov rid, %pathName"
-        "mov rsi, %mode"
+        "mov rdi, %pathName"
+        "mov esi, %mode"
         "syscall"
     }
 }
 
-func syscall_access(fileName @char, mode @int) {
+func syscall_access(fileName @str, mode @int) {
     asm {
         "mov rax, 21"
         "mov rdi, %fileName"
-        "mov rsi, %mode"
+        "mov esi, %mode"
     }
 }

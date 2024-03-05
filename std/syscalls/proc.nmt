@@ -9,7 +9,7 @@ func syscall_exit(code @int) {
 func syscall_alarm(secound @u32) {
     asm {
         "mov rax, 37"
-        "mov rid, %secound"
+        "mov edi, %secound"
         "syscall"
     }
 }
@@ -17,8 +17,8 @@ func syscall_alarm(secound @u32) {
 func syscall_kill(pid @int, intSig @int) {
     asm {
         "mov rax, 62"
-        "mov rdi, %pid"
-        "mov rdi, %intSig"
+        "mov edi, %pid"
+        "mov edi, %intSig"
         "syscall"
     }
 }
