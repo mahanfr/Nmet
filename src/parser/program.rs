@@ -23,14 +23,16 @@
 *
 **********************************************************************************************/
 use crate::{
+    compiler::CompilerContext,
     error_handeling::error,
     lexer::{Lexer, TokenType},
-    compiler::CompilerContext,
 };
 
 use super::{
+    function::{parse_function_declaration, parse_function_definition, FunctionDecl, FunctionDef},
+    parse_file,
     structs::{struct_def, StructDef},
-    variable_decl::{variable_declare, VariableDeclare}, parse_file, function::{FunctionDecl, FunctionDef, parse_function_declaration, parse_function_definition},
+    variable_decl::{variable_declare, VariableDeclare},
 };
 
 /// Program file information
@@ -74,19 +76,23 @@ pub fn parse_source_file(cc: &mut CompilerContext, lexer: &mut Lexer) -> Program
         match lexer.get_token_type() {
             TokenType::Struct => {
                 let struct_def = struct_def(lexer);
-                cc.structs_map.insert(struct_def.ident.clone(), struct_def.clone());
+                cc.structs_map
+                    .insert(struct_def.ident.clone(), struct_def.clone());
                 items.push(ProgramItem::Struct(struct_def));
             }
             TokenType::Ffi => {
                 let ffi_function = parse_ffi_function_mapping(lexer);
-                cc.codegen.ffi_map.insert(ffi_function.1.ident.clone(), ffi_function.0.clone());
-                cc.functions_map.insert(ffi_function.1.ident.clone(), ffi_function.1.clone());
+                cc.codegen
+                    .ffi_map
+                    .insert(ffi_function.1.ident.clone(), ffi_function.0.clone());
+                cc.functions_map
+                    .insert(ffi_function.1.ident.clone(), ffi_function.1.clone());
                 items.push(ProgramItem::FFI(ffi_function.0, ffi_function.1));
             }
             TokenType::Func => {
                 let function_def = parse_function_definition(lexer);
-                cc.functions_map.insert(function_def.decl.ident.clone(), function_def.decl.clone());
-                cc.compilation_blocks.push(function_def.clone());
+                cc.functions_map
+                    .insert(function_def.decl.ident.clone(), function_def.decl.clone());
                 items.push(ProgramItem::Func(function_def));
             }
             TokenType::Var => {
@@ -94,10 +100,10 @@ pub fn parse_source_file(cc: &mut CompilerContext, lexer: &mut Lexer) -> Program
             }
             TokenType::Import => {
                 let import = parse_mod_import(lexer);
-                let mut new_path = String::from(import.0);
+                let mut new_path = import.0;
                 new_path.push_str(".nmt");
                 parse_file(cc, new_path);
-            },
+            }
             _ => error(
                 format!(
                     "Unexpected Token ({}) for the top level program",

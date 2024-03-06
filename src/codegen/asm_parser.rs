@@ -65,7 +65,11 @@ fn parse_op(lexer: &mut Lexer) -> Opr {
                     lexer.match_token(TokenType::Identifier);
                     parse_mem(lexer, 1)
                 }
-                _ => panic!("[{}] Unexpected Asm Operation ({})!", lexer.get_token_loc(), lexer.get_token().literal),
+                _ => panic!(
+                    "[{}] Unexpected Asm Operation ({})!",
+                    lexer.get_token_loc(),
+                    lexer.get_token().literal
+                ),
             }
         }
         TokenType::OBracket => parse_mem(lexer, 0),

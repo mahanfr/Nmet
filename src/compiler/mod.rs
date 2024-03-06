@@ -36,11 +36,9 @@ use crate::compiler::{bif::Bif, function::compile_function};
 
 use crate::log_error;
 use crate::parser::block::Block;
-use crate::parser::function::{FunctionDecl, FunctionDef};
-use crate::parser::{
-    parse_file, structs::StructDef,
-    types::VariableType,
-};
+use crate::parser::function::FunctionDecl;
+use crate::parser::program::ProgramItem;
+use crate::parser::{parse_file, structs::StructDef, types::VariableType};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::process::exit;
 
@@ -65,7 +63,6 @@ pub struct CompilerContext {
     pub variables_map: HashMap<String, VariableMap>,
     pub functions_map: BTreeMap<String, FunctionDecl>,
     pub structs_map: HashMap<String, StructDef>,
-    pub compilation_blocks: Vec<FunctionDef>,
     pub bif_set: HashSet<Bif>,
     pub mem_offset: usize,
     pub program_file: String,
@@ -82,7 +79,6 @@ impl CompilerContext {
             variables_map: HashMap::new(),
             functions_map: BTreeMap::new(),
             structs_map: HashMap::new(),
-            compilation_blocks: Vec::new(),
             mem_offset: 0,
             errors: 0,
         }
@@ -128,10 +124,12 @@ fn _frame_size(mem_offset: usize) -> usize {
 
 // TODO: Handle Compilation Error
 pub fn compile(cc: &mut CompilerContext, path: String) {
-    let _program = parse_file(cc, path);
+    let program = parse_file(cc, path);
     compile_init_function(cc);
-    for f in cc.compilation_blocks.to_owned() {
-        compile_function(cc, &f);
+    for item in program.items.iter() {
+        if let ProgramItem::Func(f) = item {
+            compile_function(cc, f);
+        }
     }
     if cc.errors > 0 {
         log_error!("Compilation Failed due to {} previous errors!", cc.errors);
@@ -152,9 +150,9 @@ fn compile_init_function(cc: &mut CompilerContext) {
         log_error!("Executable programs should have an entry point");
         exit(-1);
     }
-    cc.codegen.instr1(Mnemonic::Call, Opr::Loc("main".to_owned()));
+    cc.codegen
+        .instr1(Mnemonic::Call, Opr::Loc("main".to_owned()));
     cc.codegen.instr2(Mnemonic::Mov, Reg::RAX, 60);
     cc.codegen.instr2(Mnemonic::Mov, Reg::RDI, 0);
     cc.codegen.instr0(Mnemonic::Syscall);
 }
-

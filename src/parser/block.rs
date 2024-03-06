@@ -26,7 +26,8 @@ use rand::random;
 **********************************************************************************************/
 use crate::{
     lexer::{Lexer, TokenType},
-    parser::stmt::Stmt, utils::long2base32,
+    parser::stmt::Stmt,
+    utils::long2base32,
 };
 
 use super::{
@@ -36,12 +37,11 @@ use super::{
     variable_decl::variable_declare,
 };
 
-#[derive(Debug, Clone, Copy,  PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BlockType {
     Condition,
     Loop,
     Function,
-    Empty,
 }
 
 /// Block Stmt
@@ -69,7 +69,7 @@ impl Block {
         if self.btype == BlockType::Function {
             self.master.clone()
         } else {
-            format!("{}.BS__{}",self.master,long2base32(self.id))
+            format!("{}.BS__{}", self.master, long2base32(self.id))
         }
     }
 
@@ -77,12 +77,12 @@ impl Block {
         if self.btype == BlockType::Function {
             format!("{}.Defer", self.master)
         } else {
-            format!("{}.BE__{}",self.master,long2base32(self.id))
+            format!("{}.BE__{}", self.master, long2base32(self.id))
         }
     }
 
     pub fn name_with_prefix(&self, prefix: &str) -> String {
-        format!("{}.{prefix}__{}",self.master,long2base32(self.id))
+        format!("{}.{prefix}__{}", self.master, long2base32(self.id))
     }
 }
 
@@ -137,14 +137,14 @@ pub fn parse_block(lexer: &mut Lexer, master: &String) -> Vec<Stmt> {
             TokenType::If => {
                 let loc = lexer.get_token_loc();
                 stmts.push(Stmt {
-                    stype: StmtType::If(if_stmt(lexer, &master)),
+                    stype: StmtType::If(if_stmt(lexer, master)),
                     loc,
                 });
             }
             TokenType::While => {
                 let loc = lexer.get_token_loc();
                 stmts.push(Stmt {
-                    stype: StmtType::While(while_stmt(lexer, &master)),
+                    stype: StmtType::While(while_stmt(lexer, master)),
                     loc,
                 });
             }

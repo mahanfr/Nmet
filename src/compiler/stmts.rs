@@ -24,17 +24,22 @@
 **********************************************************************************************/
 use crate::{
     codegen::{
-        asm_parser::parse_asm, instructions::Opr, memory::MemAddr, mnemonic::Mnemonic::*,
-        utils::{mov_unknown_to_register, save_temp_value, restore_last_temp_value}, register::Reg::*,
+        asm_parser::parse_asm,
+        instructions::Opr,
+        memory::MemAddr,
+        mnemonic::Mnemonic::*,
+        register::Reg::*,
+        utils::{mov_unknown_to_register, restore_last_temp_value, save_temp_value},
     },
     compiler::VariableMap,
     error_handeling::CompilationError,
     log_cerror, log_warn, mem,
     parser::{
         assign::{Assign, AssignOp},
+        block::BlockType,
         expr::{Expr, ExprType},
         stmt::{ElseBlock, IFStmt, Stmt, StmtType, WhileStmt},
-        types::VariableType, block::BlockType,
+        types::VariableType,
     },
 };
 
@@ -56,7 +61,7 @@ fn compile_if_stmt(
 
     let next_loc = match ifs.else_block.as_ref() {
         ElseBlock::None => exit_tag.clone(),
-        _ => ifs.then_block.end_name()
+        _ => ifs.then_block.end_name(),
     };
 
     mov_unknown_to_register(cc, RAX, condition_eo.value);
@@ -68,7 +73,7 @@ fn compile_if_stmt(
         ElseBlock::None => {
             cc.codegen.set_lable(next_loc);
             Ok(())
-        },
+        }
         ElseBlock::Else(b) => {
             cc.codegen.instr1(Jmp, Opr::Loc(exit_tag.clone()));
             cc.codegen.set_lable(next_loc);
@@ -164,10 +169,8 @@ fn compile_break_coninue(cc: &mut CompilerContext, is_break: bool) -> Result<(),
             } else {
                 s_block.start_name()
             };
-            cc.codegen.instr1(
-                crate::codegen::mnemonic::Mnemonic::Jmp,
-                Opr::Loc(exit_loc),
-                );
+            cc.codegen
+                .instr1(crate::codegen::mnemonic::Mnemonic::Jmp, Opr::Loc(exit_loc));
             did_break = true;
             break;
         }
@@ -219,7 +222,8 @@ fn compile_inline_asm(cc: &mut CompilerContext, instr: &String) -> Result<(), Co
 }
 
 fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) -> Result<(), CompilationError> {
-    cc.codegen.instr1(Jmp, Opr::Loc(w_stmt.block.name_with_prefix("CND")));
+    cc.codegen
+        .instr1(Jmp, Opr::Loc(w_stmt.block.name_with_prefix("CND")));
     cc.codegen.set_lable(w_stmt.block.start_name());
     compile_block(cc, &w_stmt.block);
     cc.codegen.set_lable(w_stmt.block.name_with_prefix("CND"));

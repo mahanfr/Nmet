@@ -24,8 +24,11 @@
 **********************************************************************************************/
 use crate::{
     codegen::{
-        instructions::Opr, memory::MemAddr, mnemonic::Mnemonic::*,
-        utils::{mov_unknown_to_register, save_temp_value, restore_last_temp_value}, register::Reg::*,
+        instructions::Opr,
+        memory::MemAddr,
+        mnemonic::Mnemonic::*,
+        register::Reg::*,
+        utils::{mov_unknown_to_register, restore_last_temp_value, save_temp_value},
     },
     error_handeling::CompilationError,
     mem, memq,

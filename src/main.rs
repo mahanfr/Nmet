@@ -41,6 +41,7 @@ mod lexer;
 mod macros;
 mod optim;
 mod parser;
+mod terms;
 #[cfg(test)]
 mod tests;
 mod utils;

@@ -24,8 +24,8 @@
 **********************************************************************************************/
 use crate::{
     codegen::{
-        instructions::Opr, memory::MemAddr, mnemonic::Mnemonic::*,
-        utils::mov_unknown_to_register, register::Reg::*,
+        instructions::Opr, memory::MemAddr, mnemonic::Mnemonic::*, register::Reg::*,
+        utils::mov_unknown_to_register,
     },
     compiler::VariableMap,
     error_handeling::{error, CompilationError},

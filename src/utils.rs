@@ -69,4 +69,3 @@ pub fn long2base32(x: i64) -> String {
     }
     res
 }
-

@@ -28,7 +28,7 @@ use crate::parser::block::Block;
 use crate::parser::expr::Expr;
 
 use super::assign::Assign;
-use super::block::{BlockType, parse_block};
+use super::block::{parse_block, BlockType};
 use super::expr::expr;
 use super::variable_decl::VariableDeclare;
 
@@ -104,22 +104,26 @@ pub struct WhileStmt {
 pub fn if_stmt(lexer: &mut Lexer, master: &String) -> IFStmt {
     lexer.match_token(TokenType::If);
     let condition = expr(lexer);
-    let then_block = Block::new(master.to_owned(), BlockType::Condition, parse_block(lexer, master));
+    let then_block = Block::new(
+        master.to_owned(),
+        BlockType::Condition,
+        parse_block(lexer, master),
+    );
     if lexer.get_token_type() == TokenType::Else {
         lexer.match_token(TokenType::Else);
         if lexer.get_token_type() == TokenType::If {
-            let else_block = Box::new(ElseBlock::Elif(if_stmt(lexer,master)));
+            let else_block = Box::new(ElseBlock::Elif(if_stmt(lexer, master)));
             IFStmt {
                 condition,
                 then_block,
                 else_block,
             }
         } else {
-            let else_block = Box::new(
-                ElseBlock::Else(
-                    Block::new(master.to_owned(), BlockType::Condition, parse_block(lexer, master))
-                )
-            );
+            let else_block = Box::new(ElseBlock::Else(Block::new(
+                master.to_owned(),
+                BlockType::Condition,
+                parse_block(lexer, master),
+            )));
             IFStmt {
                 condition,
                 then_block,
@@ -139,6 +143,10 @@ pub fn if_stmt(lexer: &mut Lexer, master: &String) -> IFStmt {
 pub fn while_stmt(lexer: &mut Lexer, master: &String) -> WhileStmt {
     lexer.match_token(TokenType::While);
     let condition = expr(lexer);
-    let block = Block::new(master.to_owned(), BlockType::Loop, parse_block(lexer, master));
+    let block = Block::new(
+        master.to_owned(),
+        BlockType::Loop,
+        parse_block(lexer, master),
+    );
     WhileStmt { condition, block }
 }

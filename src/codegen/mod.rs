@@ -6,9 +6,9 @@ pub mod instructions;
 pub mod memory;
 pub mod mnemonic;
 pub mod opcodes;
-pub mod utils;
 pub mod register;
 pub mod text;
+pub mod utils;
 use std::{collections::BTreeMap, fmt::Display};
 
 use crate::{parser::types::VariableType, utils::IBytes};

@@ -28,7 +28,7 @@ use crate::{
     codegen::{memory::MemAddr, mnemonic::Mnemonic::*, register::Reg::*},
     compiler::VariableMap,
     parser::{
-        function::{FunctionDecl, FunctionArg, FunctionDef},
+        function::{FunctionArg, FunctionDef},
         types::VariableType,
     },
 };
