@@ -28,7 +28,7 @@ use crate::{
     codegen::{memory::MemAddr, mnemonic::Mnemonic::*, register::Reg::*},
     compiler::VariableMap,
     parser::{
-        function::{Function, FunctionArg},
+        function::{FunctionDecl, FunctionArg, FunctionDef},
         types::VariableType,
     },
 };
@@ -58,7 +58,7 @@ pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
     }
 }
 
-pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
+pub fn compile_function(cc: &mut CompilerContext, f: &FunctionDef) {
     cc.scoped_blocks = Vec::new();
     cc.scoped_blocks.push(f.block.clone());
     cc.mem_offset = 0;
@@ -67,7 +67,7 @@ pub fn compile_function(cc: &mut CompilerContext, f: &Function) {
 
     cc.codegen.instr1(Push, RBP);
     cc.codegen.instr2(Mov, RBP, RSP);
-    function_args(cc, &f.args);
+    function_args(cc, &f.decl.args);
     compile_block(cc, &f.block);
     cc.scoped_blocks.pop();
     // revert rbp

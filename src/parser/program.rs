@@ -25,13 +25,12 @@
 use crate::{
     error_handeling::error,
     lexer::{Lexer, TokenType},
-    parser::function::Function, compiler::CompilerContext,
+    compiler::CompilerContext,
 };
 
 use super::{
-    function::function_def,
     structs::{struct_def, StructDef},
-    variable_decl::{variable_declare, VariableDeclare}, parse_file,
+    variable_decl::{variable_declare, VariableDeclare}, parse_file, function::{FunctionDecl, FunctionDef, parse_function_declaration, parse_function_definition},
 };
 
 /// Program file information
@@ -55,11 +54,11 @@ pub enum ProgramItem {
     /// Struct Defenition
     Struct(StructDef),
     /// Function Definitions
-    Func(Function),
+    Func(FunctionDef),
     /// Static Variables
     StaticVar(VariableDeclare),
     /// Foregin Function interface
-    FFI(String, Function),
+    FFI(String, FunctionDecl),
 }
 
 /// Parse Program
@@ -79,14 +78,15 @@ pub fn parse_source_file(cc: &mut CompilerContext, lexer: &mut Lexer) -> Program
                 items.push(ProgramItem::Struct(struct_def));
             }
             TokenType::Ffi => {
-                let ffi_function = ffi_function_mapping(lexer);
+                let ffi_function = parse_ffi_function_mapping(lexer);
                 cc.codegen.ffi_map.insert(ffi_function.1.ident.clone(), ffi_function.0.clone());
                 cc.functions_map.insert(ffi_function.1.ident.clone(), ffi_function.1.clone());
                 items.push(ProgramItem::FFI(ffi_function.0, ffi_function.1));
             }
             TokenType::Func => {
-                let function_def = function_def(lexer, true);
-                cc.functions_map.insert(function_def.ident.clone(), function_def.clone());
+                let function_def = parse_function_definition(lexer);
+                cc.functions_map.insert(function_def.decl.ident.clone(), function_def.decl.clone());
+                cc.compilation_blocks.push(function_def.clone());
                 items.push(ProgramItem::Func(function_def));
             }
             TokenType::Var => {
@@ -118,11 +118,11 @@ pub fn parse_source_file(cc: &mut CompilerContext, lexer: &mut Lexer) -> Program
 ///
 /// Syntax:
 /// ffi "fopen" func nmt_fopen(pathname @str, mode @str) @FILE
-pub fn ffi_function_mapping(lexer: &mut Lexer) -> (String, Function) {
+pub fn parse_ffi_function_mapping(lexer: &mut Lexer) -> (String, FunctionDecl) {
     lexer.match_token(TokenType::Ffi);
     let module_name = lexer.get_token().literal;
     lexer.match_token(TokenType::String);
-    let function = function_def(lexer, false);
+    let function = parse_function_declaration(lexer);
     (module_name, function)
 }
 

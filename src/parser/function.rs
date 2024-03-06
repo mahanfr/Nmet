@@ -45,15 +45,20 @@ pub struct FunctionArg {
 /// * block - function block
 /// * typedef - type of acceptable
 #[derive(Debug, Clone)]
-pub struct Function {
+pub struct FunctionDef {
+    pub decl: FunctionDecl,
+    pub block: Block,
+    pub refrence: usize,
+}
+
+#[derive(Debug, Clone)]
+pub struct FunctionDecl {
     pub ident: String,
     pub args: Vec<FunctionArg>,
-    pub block: Block,
     pub ret_type: VariableType,
 }
 
-/// Parsing Function definition
-pub fn function_def(lexer: &mut Lexer, has_block: bool) -> Function {
+pub fn parse_function_declaration(lexer: &mut Lexer) -> FunctionDecl {
     let loc = lexer.get_current_loc();
     lexer.match_token(TokenType::Func);
     let function_ident_token = lexer.get_token();
@@ -67,23 +72,25 @@ pub fn function_def(lexer: &mut Lexer, has_block: bool) -> Function {
     if lexer.get_token_type() == TokenType::ATSign {
         ret_type = type_def(lexer);
     }
-    let block = match has_block {
-        true => Block::new(
-            fn_ident.clone(),
-            BlockType::Function,
-            parse_block(lexer, &fn_ident),
-        ),
-        false => Block::new(
-            fn_ident.clone(),
-            BlockType::Empty,
-            Vec::new(),
-        ),
-    };
-    Function {
-        ident: fn_ident.clone(),
-        ret_type,
+    FunctionDecl {
+        ident: fn_ident,
         args,
+        ret_type,
+    }
+}
+
+/// Parsing Function definition
+pub fn parse_function_definition(lexer: &mut Lexer) -> FunctionDef {
+    let decl = parse_function_declaration(lexer);
+    let block = Block::new(
+        decl.ident.clone(),
+        BlockType::Function,
+        parse_block(lexer, &decl.ident)
+    );
+    FunctionDef {
+        decl,
         block,
+        refrence: 0,
     }
 }
 
