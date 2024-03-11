@@ -23,16 +23,14 @@
 *
 **********************************************************************************************/
 use crate::{
-    compiler::CompilerContext,
     error_handeling::error,
     lexer::{Lexer, TokenType},
 };
 
 use super::{
     function::{parse_function_declaration, parse_function_definition, FunctionDecl, FunctionDef},
-    parse_file,
     structs::{struct_def, StructDef},
-    variable_decl::{variable_declare, VariableDeclare},
+    variable_decl::{variable_declare, VariableDeclare}, parse_source_file,
 };
 
 /// Program file information
@@ -65,7 +63,7 @@ pub enum ProgramItem {
 
 /// Parse Program
 /// Returns Programfile wich is the ast root
-pub fn parse_source_file(cc: &mut CompilerContext, lexer: &mut Lexer) -> ProgramFile {
+pub fn generate_ast(lexer: &mut Lexer) -> ProgramFile {
     lexer.next_token();
     let mut items = Vec::<ProgramItem>::new();
     loop {
@@ -76,23 +74,14 @@ pub fn parse_source_file(cc: &mut CompilerContext, lexer: &mut Lexer) -> Program
         match lexer.get_token_type() {
             TokenType::Struct => {
                 let struct_def = struct_def(lexer);
-                cc.structs_map
-                    .insert(struct_def.ident.clone(), struct_def.clone());
                 items.push(ProgramItem::Struct(struct_def));
             }
             TokenType::Ffi => {
                 let ffi_function = parse_ffi_function_mapping(lexer);
-                cc.codegen
-                    .ffi_map
-                    .insert(ffi_function.1.ident.clone(), ffi_function.0.clone());
-                cc.functions_map
-                    .insert(ffi_function.1.ident.clone(), ffi_function.1.clone());
                 items.push(ProgramItem::FFI(ffi_function.0, ffi_function.1));
             }
             TokenType::Func => {
                 let function_def = parse_function_definition(lexer);
-                cc.functions_map
-                    .insert(function_def.decl.ident.clone(), function_def.decl.clone());
                 items.push(ProgramItem::Func(function_def));
             }
             TokenType::Var => {
@@ -102,7 +91,7 @@ pub fn parse_source_file(cc: &mut CompilerContext, lexer: &mut Lexer) -> Program
                 let import = parse_mod_import(lexer);
                 let mut new_path = import.0;
                 new_path.push_str(".nmt");
-                parse_file(cc, new_path);
+                items.extend(parse_source_file(new_path).items);
             }
             _ => error(
                 format!(

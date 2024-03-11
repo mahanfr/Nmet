@@ -37,8 +37,9 @@ use crate::compiler::{bif::Bif, function::compile_function};
 use crate::log_error;
 use crate::parser::block::Block;
 use crate::parser::function::FunctionDecl;
-use crate::parser::program::ProgramItem;
-use crate::parser::{parse_file, structs::StructDef, types::VariableType};
+use crate::parser::parse_source_file;
+use crate::parser::program::{ProgramItem, ProgramFile};
+use crate::parser::{structs::StructDef, types::VariableType};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::process::exit;
 
@@ -122,9 +123,9 @@ fn _frame_size(mem_offset: usize) -> usize {
     2 << mem_offset.ilog2() as usize
 }
 
-// TODO: Handle Compilation Error
 pub fn compile(cc: &mut CompilerContext, path: String) {
-    let program = parse_file(cc, path);
+    let program = parse_source_file(path);
+    collect_types(cc, &program);
     compile_init_function(cc);
     for item in program.items.iter() {
         if let ProgramItem::Func(f) = item {
@@ -139,6 +140,29 @@ pub fn compile(cc: &mut CompilerContext, path: String) {
         cc.scoped_blocks.is_empty(),
         "Somting went wrong: Scope has not been cleared"
     );
+}
+
+fn collect_types(cc: &mut CompilerContext, program: &ProgramFile) {
+    for item in program.items.iter() {
+        match item {
+            ProgramItem::Func(f) => {
+                cc.functions_map
+                    .insert(f.decl.ident.clone(), f.decl.clone());
+            },
+            ProgramItem::FFI(ff, f) => {
+                cc.codegen
+                    .ffi_map
+                    .insert(f.ident.clone(), ff.clone());
+                cc.functions_map
+                    .insert(f.ident.clone(), f.clone());
+            },
+            ProgramItem::Struct(s) => {
+                cc.structs_map
+                    .insert(s.ident.clone(), s.clone());
+            },
+            ProgramItem::StaticVar(_) => (),
+        } 
+    }
 }
 
 fn compile_init_function(cc: &mut CompilerContext) {
