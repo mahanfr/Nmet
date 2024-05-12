@@ -26,6 +26,7 @@ use crate::error_handeling::Loc;
 use crate::lexer::{Lexer, TokenType};
 use crate::parser::block::Block;
 use crate::parser::expr::Expr;
+use crate::parser::variable_decl::{inline_variable_declare, variable_declare};
 
 use super::assign::Assign;
 use super::block::{parse_block, BlockType};
@@ -55,6 +56,8 @@ pub enum StmtType {
     Print(Expr),
     /// While loops
     While(WhileStmt),
+    /// For Loop
+    ForLoop(ForLoop),
     /// If Stmts
     If(IFStmt),
     /// Return Stmts
@@ -89,6 +92,17 @@ pub enum ElseBlock {
     Else(Block),
     /// If Stmt with no else block
     None,
+}
+
+/// for loop statment information
+/// * variable - a variable to iterate over range and lists
+/// * end_expr - last expretion
+/// * block - for loop body
+#[derive(Debug, Clone)]
+pub struct ForLoop {
+    pub iterator: VariableDeclare,
+    pub end_expr: Expr,
+    pub block: Block,
 }
 
 /// While Statment Information
@@ -136,6 +150,24 @@ pub fn if_stmt(lexer: &mut Lexer, master: &String) -> IFStmt {
             then_block,
             else_block: Box::new(ElseBlock::None),
         }
+    }
+}
+
+/// parse For Loops
+pub fn for_loop(lexer: &mut Lexer, master: &String) -> ForLoop {
+    lexer.match_token(TokenType::For);
+    let iterator = inline_variable_declare(lexer);
+    lexer.match_token(TokenType::To);
+    let end_expr = expr(lexer);
+    let block = Block::new(
+        master.to_owned(),
+        BlockType::Loop,
+        parse_block(lexer, master),
+    );
+    ForLoop {
+        iterator,
+        end_expr,
+        block
     }
 }
 

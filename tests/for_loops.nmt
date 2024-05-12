@@ -1,0 +1,14 @@
+
+func main() {
+    var sum1 = 0;
+    var sum2 = 0;
+    for i to 10 {
+        sum1 = sum1 + i;
+    }
+
+    for i=2 to 10 {
+        sum2 = sum2 + i;
+    }
+
+    print sum1 - sum2;
+}

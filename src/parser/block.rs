@@ -33,7 +33,7 @@ use crate::{
 use super::{
     assign::assign,
     expr::expr,
-    stmt::{if_stmt, while_stmt, StmtType},
+    stmt::{for_loop, if_stmt, while_stmt, StmtType},
     variable_decl::variable_declare,
 };
 
@@ -145,6 +145,13 @@ pub fn parse_block(lexer: &mut Lexer, master: &String) -> Vec<Stmt> {
                 let loc = lexer.get_token_loc();
                 stmts.push(Stmt {
                     stype: StmtType::While(while_stmt(lexer, master)),
+                    loc,
+                });
+            }
+            TokenType::For => {
+                let loc = lexer.get_token_loc();
+                stmts.push(Stmt {
+                    stype: StmtType::ForLoop(for_loop(lexer, master)),
                     loc,
                 });
             }

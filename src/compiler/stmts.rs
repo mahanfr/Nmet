@@ -119,6 +119,7 @@ pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) -> Result<(), Compila
         }
         StmtType::Assign(a) => compile_assgin(cc, a),
         StmtType::While(w) => compile_while(cc, w),
+        StmtType::ForLoop(_) => todo!(),
         StmtType::Expr(e) => match &e.etype {
             ExprType::FunctionCall(fc) => {
                 let eo = compile_expr(cc, e)?;

@@ -48,9 +48,8 @@ pub struct VariableDeclare {
     pub init_value: Option<Expr>,
 }
 
-/// Parse Variable Declaration
-pub fn variable_declare(lexer: &mut Lexer) -> VariableDeclare {
-    lexer.match_token(TokenType::Var);
+/// parse variable declare
+pub fn inline_variable_declare(lexer: &mut Lexer) -> VariableDeclare {
     let ident_token = lexer.get_token();
     lexer.match_token(TokenType::Identifier);
     let mut is_mutable: bool = true;
@@ -78,7 +77,7 @@ pub fn variable_declare(lexer: &mut Lexer) -> VariableDeclare {
             lexer.match_token(TokenType::Eq);
             init_value = Some(expr(lexer));
         }
-        TokenType::SemiColon => {}
+        TokenType::SemiColon | TokenType::To => (),
         _ => {
             error(
                 format!(
@@ -96,4 +95,11 @@ pub fn variable_declare(lexer: &mut Lexer) -> VariableDeclare {
         v_type,
         init_value,
     }
+}
+
+
+/// Parse Variable Declaration
+pub fn variable_declare(lexer: &mut Lexer) -> VariableDeclare {
+    lexer.match_token(TokenType::Var);
+    inline_variable_declare(lexer)
 }

@@ -157,6 +157,10 @@ pub enum TokenType {
     Import,
     // Macro Definition
     Macro,
+    // For Loop
+    For,
+    // to (range)
+    To,
 }
 
 impl TokenType {
@@ -234,6 +238,8 @@ impl Display for TokenType {
             TokenType::Macro => write!(f, "macro"),
             TokenType::DoubleOr => write!(f, "||"),
             TokenType::DoubleAnd => write!(f, "&&"),
+            TokenType::For => write!(f, "for"),
+            TokenType::To => write!(f, "to"),
         }
     }
 }
@@ -612,6 +618,8 @@ impl Lexer {
             "import" => Some(TokenType::Import),
             "macro" => Some(TokenType::Macro),
             "ffi" => Some(TokenType::Ffi),
+            "for" => Some(TokenType::For),
+            "to" => Some(TokenType::To),
             _ => None,
         }
     }
