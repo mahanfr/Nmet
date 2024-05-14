@@ -94,7 +94,7 @@ pub enum ElseBlock {
     None,
 }
 
-/// for loop statment information
+/// For loop statment information
 /// * variable - a variable to iterate over range and lists
 /// * end_expr - last expretion
 /// * block - for loop body
@@ -156,7 +156,13 @@ pub fn if_stmt(lexer: &mut Lexer, master: &String) -> IFStmt {
 /// parse For Loops
 pub fn for_loop(lexer: &mut Lexer, master: &String) -> ForLoop {
     lexer.match_token(TokenType::For);
-    let iterator = inline_variable_declare(lexer);
+    let mut iterator = inline_variable_declare(lexer);
+    if iterator.init_value.is_none() {
+        iterator.init_value = Some(Expr {
+            loc: iterator.loc.clone(),
+            etype: super::expr::ExprType::Int(0),
+        });
+    }
     lexer.match_token(TokenType::To);
     let end_expr = expr(lexer);
     let block = Block::new(

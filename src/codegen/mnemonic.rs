@@ -38,6 +38,7 @@ pub enum Mnemonic {
     Leave,
     Ret,
     Lable,
+    Inc,
 }
 
 impl Mnemonic {
@@ -97,6 +98,7 @@ impl Display for Mnemonic {
             Self::Ret => write!(f, "ret"),
             Self::Nop => write!(f, "nop"),
             Self::Lable => write!(f, ""),
+            Self::Inc => write!(f, "inc"),
         }
     }
 }
@@ -138,6 +140,7 @@ impl FromStr for Mnemonic {
             "jne" => Ok(Self::Jne),
             "syscall" => Ok(Self::Syscall),
             "call" => Ok(Self::Call),
+            "inc" => Ok(Self::Inc),
             "leave" => Ok(Self::Leave),
             "ret" => Ok(Self::Ret),
             _ => Err(format!("Undifiend Mnemonic {clean_s}!")),

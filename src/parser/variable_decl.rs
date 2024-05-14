@@ -23,7 +23,7 @@
 *
 **********************************************************************************************/
 use crate::{
-    error_handeling::error,
+    error_handeling::{error, Loc},
     lexer::{Lexer, TokenType},
     parser::types::type_def,
 };
@@ -46,11 +46,13 @@ pub struct VariableDeclare {
     pub ident: String,
     pub v_type: Option<VariableType>,
     pub init_value: Option<Expr>,
+    pub loc: Loc,
 }
 
 /// parse variable declare
 pub fn inline_variable_declare(lexer: &mut Lexer) -> VariableDeclare {
     let ident_token = lexer.get_token();
+    let loc = lexer.get_token_loc();
     lexer.match_token(TokenType::Identifier);
     let mut is_mutable: bool = true;
     let mut is_static: bool = false;
@@ -94,6 +96,7 @@ pub fn inline_variable_declare(lexer: &mut Lexer) -> VariableDeclare {
         ident: ident_token.literal,
         v_type,
         init_value,
+        loc,
     }
 }
 

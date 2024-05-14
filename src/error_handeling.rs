@@ -40,6 +40,7 @@ pub enum CompilationError {
     ImmutableVariable(String),
     UnmatchingTypes(VariableType, VariableType),
     NotLoopBlock,
+    Err(String),
 }
 impl Display for CompilationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -56,6 +57,7 @@ impl Display for CompilationError {
             Self::ImmutableVariable(v) => write!(f,"Variable ({v}) is not mutable. Did you forgot to define it with '=' insted of ':=' ?" ),
             Self::UnmatchingTypes(a, b) => write!(f, "Expected type ({a}), found type ({b})"),
             Self::NotLoopBlock => write!(f, "Can not break or continue out of non-loop blocks!"),
+            Self::Err(e) => write!(f, "{e}"),
         }
     }
 }

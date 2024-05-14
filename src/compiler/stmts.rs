@@ -26,7 +26,7 @@ use crate::{
     codegen::{
         asm_parser::parse_asm,
         instructions::Opr,
-        memory::MemAddr,
+        memory::{MemAddr, MemAddrType},
         mnemonic::Mnemonic::*,
         register::Reg::*,
         utils::{mov_unknown_to_register, restore_last_temp_value, save_temp_value},
@@ -37,8 +37,8 @@ use crate::{
     parser::{
         assign::{Assign, AssignOp},
         block::BlockType,
-        expr::{Expr, ExprType},
-        stmt::{ElseBlock, IFStmt, Stmt, StmtType, WhileStmt},
+        expr::{CompareExpr, CompareOp, Expr, ExprType},
+        stmt::{ElseBlock, ForLoop, IFStmt, Stmt, StmtType, WhileStmt},
         types::VariableType,
     },
 };
@@ -46,7 +46,7 @@ use crate::{
 use super::{
     bif::Bif,
     block::compile_block,
-    expr::compile_expr,
+    expr::{compile_compare_expr, compile_expr},
     variables::{get_vriable_map, insert_variable},
     CompilerContext,
 };
@@ -119,7 +119,7 @@ pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) -> Result<(), Compila
         }
         StmtType::Assign(a) => compile_assgin(cc, a),
         StmtType::While(w) => compile_while(cc, w),
-        StmtType::ForLoop(_) => todo!(),
+        StmtType::ForLoop(f) => compile_for_loop(cc, f),
         StmtType::Expr(e) => match &e.etype {
             ExprType::FunctionCall(fc) => {
                 let eo = compile_expr(cc, e)?;
@@ -219,6 +219,40 @@ fn compile_inline_asm(cc: &mut CompilerContext, instr: &String) -> Result<(), Co
     } else {
         cc.codegen.new_instr(parse_asm(instr.into()));
     }
+    Ok(())
+}
+
+fn compile_for_loop(cc: &mut CompilerContext, for_stmt: &ForLoop) -> Result<(), CompilationError> {
+    insert_variable(cc, &for_stmt.iterator)?;
+    if !matches!(for_stmt.end_expr.etype, ExprType::Int(_)) {
+        return Err(CompilationError::Err(format!(
+                "Unsupported iterator type (must be type integer insted of ({:?}))",
+                for_stmt.end_expr.etype)));
+    }
+    cc.codegen
+        .instr1(Jmp, Opr::Loc(for_stmt.block.name_with_prefix("CND")));
+    cc.codegen.set_lable(for_stmt.block.start_name());
+    compile_block(cc, &for_stmt.block);
+
+    let v_map = get_vriable_map(cc, &for_stmt.iterator.ident)?;
+    let mem_acss = MemAddr::new_disp_s(v_map.vtype.item_size(), RBP, v_map.stack_offset());
+    cc.codegen.instr1(Inc, mem_acss);
+
+    cc.codegen.set_lable(for_stmt.block.name_with_prefix("CND"));
+    let cmp = CompareExpr {
+        left: Box::new(Expr {
+            loc: for_stmt.iterator.loc.clone(),
+            etype: ExprType::Variable(for_stmt.iterator.ident.clone())
+        }),
+        op: CompareOp::Smaller,
+        right: Box::new(for_stmt.end_expr.to_owned()),
+    };
+    let condition_eo = compile_compare_expr(cc, &cmp)?;
+    VariableType::Bool.cast(&condition_eo.vtype)?;
+    mov_unknown_to_register(cc, RAX, condition_eo.value);
+    cc.codegen.instr2(Test, RAX, RAX);
+    cc.codegen.instr1(Jne, Opr::Loc(for_stmt.block.start_name()));
+    cc.codegen.set_lable(for_stmt.block.end_name());
     Ok(())
 }
 

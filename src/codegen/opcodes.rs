@@ -93,6 +93,7 @@ pub fn opcode(instr: &Instr) -> (u16, ModrmType) {
         (Test, Two(rm_16_64!(), r_16_64!())) => (0x85, Modrm),
         (Cqo, Oprs::None) => (0x4899, ModrmType::None),
         (Ret, Oprs::None) => (0xc3, ModrmType::None),
+        (Inc, One(rm_16_64!())) => (0xff, Ext(0)),
         _ => unimplemented!("{instr}"),
     }
 }

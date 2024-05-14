@@ -75,7 +75,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> Result<ExprOpr, Co
     }
 }
 
-fn compile_compare_expr(
+pub fn compile_compare_expr(
     cc: &mut CompilerContext,
     cexpr: &CompareExpr,
 ) -> Result<ExprOpr, CompilationError> {
