@@ -52,7 +52,7 @@ pub struct VariableDeclare {
 /// parse variable declare
 pub fn inline_variable_declare(lexer: &mut Lexer) -> VariableDeclare {
     let ident_token = lexer.get_token();
-    let loc = lexer.get_token_loc();
+    let _loc = lexer.get_token_loc();
     lexer.match_token(TokenType::Identifier);
     let mut is_mutable: bool = true;
     let mut is_static: bool = false;
@@ -99,7 +99,6 @@ pub fn inline_variable_declare(lexer: &mut Lexer) -> VariableDeclare {
         loc,
     }
 }
-
 
 /// Parse Variable Declaration
 pub fn variable_declare(lexer: &mut Lexer) -> VariableDeclare {

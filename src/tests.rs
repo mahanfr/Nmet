@@ -97,11 +97,7 @@ macro_rules! test_asm {
 mod asm {
     use super::*;
 
-    test_asm!(
-        for_loops,
-        "./tests/for_loops.nmt",
-        "./tests/for_loops.txt"
-    );
+    test_asm!(for_loops, "./tests/for_loops.nmt", "./tests/for_loops.txt");
     test_asm!(
         binary_expr,
         "./tests/binary_expr.nmt",
@@ -144,11 +140,7 @@ mod asm {
 mod elf {
     use super::*;
 
-    test_elf!(
-        for_loops,
-        "./tests/for_loops.nmt",
-        "./tests/for_loops.txt"
-    );
+    test_elf!(for_loops, "./tests/for_loops.nmt", "./tests/for_loops.txt");
     test_elf!(
         ffi,
         "./tests/ffi.nmt",

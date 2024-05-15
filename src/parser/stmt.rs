@@ -26,7 +26,7 @@ use crate::error_handeling::Loc;
 use crate::lexer::{Lexer, TokenType};
 use crate::parser::block::Block;
 use crate::parser::expr::Expr;
-use crate::parser::variable_decl::{inline_variable_declare, variable_declare};
+use crate::parser::variable_decl::inline_variable_declare;
 
 use super::assign::Assign;
 use super::block::{parse_block, BlockType};
@@ -173,7 +173,7 @@ pub fn for_loop(lexer: &mut Lexer, master: &String) -> ForLoop {
     ForLoop {
         iterator,
         end_expr,
-        block
+        block,
     }
 }
 

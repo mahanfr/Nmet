@@ -26,7 +26,7 @@ use crate::{
     codegen::{
         asm_parser::parse_asm,
         instructions::Opr,
-        memory::{MemAddr, MemAddrType},
+        memory::MemAddr,
         mnemonic::Mnemonic::*,
         register::Reg::*,
         utils::{mov_unknown_to_register, restore_last_temp_value, save_temp_value},
@@ -226,8 +226,9 @@ fn compile_for_loop(cc: &mut CompilerContext, for_stmt: &ForLoop) -> Result<(), 
     insert_variable(cc, &for_stmt.iterator)?;
     if !matches!(for_stmt.end_expr.etype, ExprType::Int(_)) {
         return Err(CompilationError::Err(format!(
-                "Unsupported iterator type (must be type integer insted of ({:?}))",
-                for_stmt.end_expr.etype)));
+            "Unsupported iterator type (must be type integer insted of ({:?}))",
+            for_stmt.end_expr.etype
+        )));
     }
     cc.codegen
         .instr1(Jmp, Opr::Loc(for_stmt.block.name_with_prefix("CND")));
@@ -242,7 +243,7 @@ fn compile_for_loop(cc: &mut CompilerContext, for_stmt: &ForLoop) -> Result<(), 
     let cmp = CompareExpr {
         left: Box::new(Expr {
             loc: for_stmt.iterator.loc.clone(),
-            etype: ExprType::Variable(for_stmt.iterator.ident.clone())
+            etype: ExprType::Variable(for_stmt.iterator.ident.clone()),
         }),
         op: CompareOp::Smaller,
         right: Box::new(for_stmt.end_expr.to_owned()),
@@ -251,7 +252,8 @@ fn compile_for_loop(cc: &mut CompilerContext, for_stmt: &ForLoop) -> Result<(), 
     VariableType::Bool.cast(&condition_eo.vtype)?;
     mov_unknown_to_register(cc, RAX, condition_eo.value);
     cc.codegen.instr2(Test, RAX, RAX);
-    cc.codegen.instr1(Jne, Opr::Loc(for_stmt.block.start_name()));
+    cc.codegen
+        .instr1(Jne, Opr::Loc(for_stmt.block.start_name()));
     cc.codegen.set_lable(for_stmt.block.end_name());
     Ok(())
 }

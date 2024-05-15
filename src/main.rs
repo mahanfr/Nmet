@@ -192,9 +192,13 @@ pub fn setup_compiler(input: String, co: &CompilerOptions) {
         log_info!("Generating asm text file...");
         x86_64_nasm_generator(out_path.as_path(), &compiler_context).unwrap();
         log_success!("Nasm Text file Generated!");
-        if co.no_assembling { return; }
+        if co.no_assembling {
+            return;
+        }
         assemble_with_nasm(out_path.clone());
-        if co.no_linking { return; }
+        if co.no_linking {
+            return;
+        }
         link_to_exc(out_path.clone(), co);
     } else {
         if co.create_bin {
@@ -205,7 +209,9 @@ pub fn setup_compiler(input: String, co: &CompilerOptions) {
         log_info!("Generating elf object file...");
         crate::codegen::elf::generate_elf(out_path.as_path(), &mut compiler_context);
         log_success!("Elf object file Generated!");
-        if co.no_linking { return; }
+        if co.no_linking {
+            return;
+        }
         link_to_exc(out_path.clone(), co);
     }
     if !co.keep_asm && remove_file(out_path.with_extension("asm")).is_ok() {

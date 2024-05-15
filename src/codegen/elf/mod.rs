@@ -25,7 +25,6 @@ use self::{
 
 use super::SymbolType;
 
-
 pub fn generate_bin(out_path: &Path, cc: &mut CompilerContext) {
     let file_content = cc.codegen.text_section_bytes();
     let stream = File::create(out_path.with_extension("bin")).unwrap();

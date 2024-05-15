@@ -29,8 +29,9 @@ use crate::{
 
 use super::{
     function::{parse_function_declaration, parse_function_definition, FunctionDecl, FunctionDef},
+    parse_source_file,
     structs::{struct_def, StructDef},
-    variable_decl::{variable_declare, VariableDeclare}, parse_source_file,
+    variable_decl::{variable_declare, VariableDeclare},
 };
 
 /// Program file information

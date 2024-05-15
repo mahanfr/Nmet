@@ -38,7 +38,7 @@ use crate::log_error;
 use crate::parser::block::Block;
 use crate::parser::function::FunctionDecl;
 use crate::parser::parse_source_file;
-use crate::parser::program::{ProgramItem, ProgramFile};
+use crate::parser::program::{ProgramFile, ProgramItem};
 use crate::parser::{structs::StructDef, types::VariableType};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::process::exit;
@@ -148,20 +148,16 @@ fn collect_types(cc: &mut CompilerContext, program: &ProgramFile) {
             ProgramItem::Func(f) => {
                 cc.functions_map
                     .insert(f.decl.ident.clone(), f.decl.clone());
-            },
+            }
             ProgramItem::FFI(ff, f) => {
-                cc.codegen
-                    .ffi_map
-                    .insert(f.ident.clone(), ff.clone());
-                cc.functions_map
-                    .insert(f.ident.clone(), f.clone());
-            },
+                cc.codegen.ffi_map.insert(f.ident.clone(), ff.clone());
+                cc.functions_map.insert(f.ident.clone(), f.clone());
+            }
             ProgramItem::Struct(s) => {
-                cc.structs_map
-                    .insert(s.ident.clone(), s.clone());
-            },
+                cc.structs_map.insert(s.ident.clone(), s.clone());
+            }
             ProgramItem::StaticVar(_) => (),
-        } 
+        }
     }
 }
 
