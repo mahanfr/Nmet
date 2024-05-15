@@ -79,6 +79,7 @@ pub struct CompilerOptions {
     pub keep_obj: bool,
     pub linker_flags: Vec<String>,
     pub use_libc: bool,
+    pub create_bin: bool,
 }
 
 fn copywrite() {
@@ -95,6 +96,10 @@ pub fn help_command(program_name: &str) {
     println!(
         "  {} Specify output path (default: \"./build/input_file\")",
         padding_right("-o <output_path>")
+    );
+    println!(
+        "  {} dump instructions in a binary file",
+        padding_right("-bin")
     );
     println!(
         "  {} use Nasm Assembler to assemble generated code",
@@ -183,22 +188,27 @@ pub fn setup_compiler(input: String, co: &CompilerOptions) {
     impl_bifs(&mut compiler_context);
     let prefix = out_path.parent().unwrap();
     std::fs::create_dir_all(prefix).unwrap();
-    if co.use_nasm || co.no_assembling {
+    if co.use_nasm {
         log_info!("Generating asm text file...");
         x86_64_nasm_generator(out_path.as_path(), &compiler_context).unwrap();
         log_success!("Nasm Text file Generated!");
+        if co.no_assembling { return; }
+        assemble_with_nasm(out_path.clone());
+        if co.no_linking { return; }
+        link_to_exc(out_path.clone(), co);
     } else {
+        if co.create_bin {
+            log_info!("Generating binary file...");
+            crate::codegen::elf::generate_bin(out_path.as_path(), &mut compiler_context);
+            log_success!("Instructions Binary file Generated!");
+        }
         log_info!("Generating elf object file...");
         crate::codegen::elf::generate_elf(out_path.as_path(), &mut compiler_context);
         log_success!("Elf object file Generated!");
+        if co.no_linking { return; }
+        link_to_exc(out_path.clone(), co);
     }
-    if co.use_nasm && !co.no_assembling {
-        assemble_with_nasm(out_path.clone());
-    }
-    if !co.no_linking && !co.no_assembling {
-        link_to_exc(out_path.clone(), co)
-    }
-    if !co.keep_asm && !co.no_assembling && remove_file(out_path.with_extension("asm")).is_ok() {
+    if !co.keep_asm && remove_file(out_path.with_extension("asm")).is_ok() {
         log_info!("Removing asm files")
     }
     if !co.keep_obj && remove_file(out_path.with_extension("o")).is_ok() {
@@ -233,6 +243,7 @@ fn collect_compiler_options(args: &mut Args) -> (String, CompilerOptions) {
             "-keep-asm" => co.keep_asm = true,
             "-keep-obj" => co.keep_obj = true,
             "-use-libc" => co.use_libc = true,
+            "-bin" => co.create_bin = true,
             "-o" => {
                 let Some(path) = args.next() else {
                     log_error!("No output path after -o option!");

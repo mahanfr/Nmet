@@ -25,6 +25,15 @@ use self::{
 
 use super::SymbolType;
 
+
+pub fn generate_bin(out_path: &Path, cc: &mut CompilerContext) {
+    let file_content = cc.codegen.text_section_bytes();
+    let stream = File::create(out_path.with_extension("bin")).unwrap();
+    let mut file = BufWriter::new(stream);
+    file.write_all(&file_content).unwrap();
+    file.flush().unwrap();
+}
+
 pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
     let mut elf_object = Elf::new();
     elf_object.add_section(&TextSec::new(cc.codegen.text_section_bytes()));
