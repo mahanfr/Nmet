@@ -242,6 +242,7 @@ fn collect_compiler_options(args: &mut Args) -> (String, CompilerOptions) {
             }
             "-v" => {
                 copywrite();
+                exit(0);
             }
             "-no-link" => co.no_linking = true,
             "-no-assemble" => co.no_assembling = true,
@@ -267,7 +268,7 @@ fn collect_compiler_options(args: &mut Args) -> (String, CompilerOptions) {
                     input_path = arg;
                 }
             }
-        }
+        } 
     }
     if input_path.is_empty() {
         log_error!("No file has been provided!");
