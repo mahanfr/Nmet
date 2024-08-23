@@ -122,7 +122,7 @@ pub enum TokenType {
     /// "|" Bitwise or
     Or,
     /// "#" NOT DEFINED YET
-    Log,
+    Hash,
     /// "?" Question Mark
     QMark,
     /// ";" End of stmt
@@ -218,7 +218,7 @@ impl Display for TokenType {
             TokenType::Rsh => write!(f, ">>"),
             TokenType::And => write!(f, "&"),
             TokenType::Or => write!(f, "|"),
-            TokenType::Log => write!(f, "#"),
+            TokenType::Hash => write!(f, "#"),
             TokenType::QMark => write!(f, "?"),
             TokenType::SemiColon => write!(f, ";"),
             TokenType::Colon => write!(f, ":"),
@@ -642,7 +642,7 @@ impl Lexer {
             '+' => Some(TokenType::Plus),
             '*' => Some(TokenType::Multi),
             '/' => Some(TokenType::Devide),
-            '#' => Some(TokenType::Log),
+            '#' => Some(TokenType::Hash),
             '$' => Some(TokenType::Dollar),
             '?' => Some(TokenType::QMark),
             ':' => Some(TokenType::Colon),

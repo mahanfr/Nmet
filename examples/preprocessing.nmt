@@ -1,0 +1,10 @@
+
+func main() {
+    #if LINUX
+        print("Hello World form linux!\n");
+    #else if WINDOWS
+        print("Hello World form windows!\n");
+    #else
+        print("Hello World from an unknown os!\n");
+    #end
+}

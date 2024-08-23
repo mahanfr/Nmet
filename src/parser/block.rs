@@ -31,10 +31,7 @@ use crate::{
 };
 
 use super::{
-    assign::assign,
-    expr::expr,
-    stmt::{for_loop, if_stmt, while_stmt, StmtType},
-    variable_decl::variable_declare,
+    assign::assign, expr::expr, preprocessing::parse_pre_functions, stmt::{for_loop, if_stmt, while_stmt, StmtType}, variable_decl::variable_declare
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -86,6 +83,108 @@ impl Block {
     }
 }
 
+pub fn parse_stmt(lexer: &mut Lexer, master: &String) -> Vec<Stmt> {
+    match lexer.get_token_type() {
+        TokenType::Hash => {
+            let loc = lexer.get_token_loc();
+            parse_pre_functions(lexer, loc, master)
+        }
+        TokenType::Var => {
+            let loc = lexer.get_token_loc();
+            let stmt = vec![Stmt {
+                stype: StmtType::VariableDecl(variable_declare(lexer)),
+                loc,
+            }];
+            lexer.match_token(TokenType::SemiColon);
+            stmt
+        }
+        TokenType::Print => {
+            let loc = lexer.get_token_loc();
+            lexer.match_token(TokenType::Print);
+            let expr = expr(lexer);
+            let stmt = vec![Stmt {
+                stype: StmtType::Print(expr),
+                loc,
+            }];
+            lexer.match_token(TokenType::SemiColon);
+            stmt
+        }
+        TokenType::Break => {
+            let loc = lexer.get_token_loc();
+            lexer.match_token(TokenType::Break);
+            let stmt = vec![Stmt {
+                stype: StmtType::Break,
+                loc,
+            }];
+            lexer.match_token(TokenType::SemiColon);
+            stmt
+        }
+        TokenType::Continue => {
+            let loc = lexer.get_token_loc();
+            lexer.match_token(TokenType::Continue);
+            let stmt = vec![Stmt {
+                stype: StmtType::Continue,
+                loc,
+            }];
+            lexer.match_token(TokenType::SemiColon);
+            stmt
+        }
+        TokenType::If => {
+            let loc = lexer.get_token_loc();
+            vec![Stmt {
+                stype: StmtType::If(if_stmt(lexer, master)),
+                loc,
+            }]
+        }
+        TokenType::While => {
+            let loc = lexer.get_token_loc();
+            vec![Stmt {
+                stype: StmtType::While(while_stmt(lexer, master)),
+                loc,
+            }]
+        }
+        TokenType::For => {
+            let loc = lexer.get_token_loc();
+            vec![Stmt {
+                stype: StmtType::ForLoop(for_loop(lexer, master)),
+                loc,
+            }]
+        }
+        TokenType::Return => {
+            let loc = lexer.get_token_loc();
+            lexer.match_token(TokenType::Return);
+            let stmt = vec![Stmt {
+                stype: StmtType::Return(expr(lexer)),
+                loc,
+            }];
+            lexer.match_token(TokenType::SemiColon);
+            stmt
+        }
+        TokenType::Identifier => {
+            //Assgin Op
+            vec![assign(lexer)]
+        }
+        TokenType::Asm => {
+            let loc = lexer.get_token_loc();
+            lexer.match_token(TokenType::Asm);
+            lexer.match_token(TokenType::OCurly);
+            let mut instructs = Vec::<String>::new();
+            while lexer.get_token_type() == TokenType::String {
+                instructs.push(lexer.get_token().literal);
+                lexer.match_token(TokenType::String);
+            }
+            lexer.match_token(TokenType::CCurly);
+            vec![Stmt {
+                stype: StmtType::InlineAsm(instructs),
+                loc,
+            }]
+        }
+        _ => {
+            todo!();
+        }
+    }
+}
+
 /// Parse Blocks
 /// # Argumenrs
 /// * lexer - address of mutable lexer
@@ -97,96 +196,7 @@ pub fn parse_block(lexer: &mut Lexer, master: &String) -> Vec<Stmt> {
         if lexer.get_token_type() == TokenType::CCurly {
             break;
         }
-        match lexer.get_token_type() {
-            TokenType::Var => {
-                let loc = lexer.get_token_loc();
-                stmts.push(Stmt {
-                    stype: StmtType::VariableDecl(variable_declare(lexer)),
-                    loc,
-                });
-                lexer.match_token(TokenType::SemiColon);
-            }
-            TokenType::Print => {
-                let loc = lexer.get_token_loc();
-                lexer.match_token(TokenType::Print);
-                let expr = expr(lexer);
-                stmts.push(Stmt {
-                    stype: StmtType::Print(expr),
-                    loc,
-                });
-                lexer.match_token(TokenType::SemiColon);
-            }
-            TokenType::Break => {
-                let loc = lexer.get_token_loc();
-                lexer.match_token(TokenType::Break);
-                stmts.push(Stmt {
-                    stype: StmtType::Break,
-                    loc,
-                });
-                lexer.match_token(TokenType::SemiColon);
-            }
-            TokenType::Continue => {
-                let loc = lexer.get_token_loc();
-                lexer.match_token(TokenType::Continue);
-                stmts.push(Stmt {
-                    stype: StmtType::Continue,
-                    loc,
-                });
-                lexer.match_token(TokenType::SemiColon);
-            }
-            TokenType::If => {
-                let loc = lexer.get_token_loc();
-                stmts.push(Stmt {
-                    stype: StmtType::If(if_stmt(lexer, master)),
-                    loc,
-                });
-            }
-            TokenType::While => {
-                let loc = lexer.get_token_loc();
-                stmts.push(Stmt {
-                    stype: StmtType::While(while_stmt(lexer, master)),
-                    loc,
-                });
-            }
-            TokenType::For => {
-                let loc = lexer.get_token_loc();
-                stmts.push(Stmt {
-                    stype: StmtType::ForLoop(for_loop(lexer, master)),
-                    loc,
-                });
-            }
-            TokenType::Return => {
-                let loc = lexer.get_token_loc();
-                lexer.match_token(TokenType::Return);
-                stmts.push(Stmt {
-                    stype: StmtType::Return(expr(lexer)),
-                    loc,
-                });
-                lexer.match_token(TokenType::SemiColon);
-            }
-            TokenType::Identifier => {
-                //Assgin Op
-                stmts.push(assign(lexer));
-            }
-            TokenType::Asm => {
-                let loc = lexer.get_token_loc();
-                lexer.match_token(TokenType::Asm);
-                lexer.match_token(TokenType::OCurly);
-                let mut instructs = Vec::<String>::new();
-                while lexer.get_token_type() == TokenType::String {
-                    instructs.push(lexer.get_token().literal);
-                    lexer.match_token(TokenType::String);
-                }
-                lexer.match_token(TokenType::CCurly);
-                stmts.push(Stmt {
-                    stype: StmtType::InlineAsm(instructs),
-                    loc,
-                });
-            }
-            _ => {
-                todo!();
-            }
-        }
+        stmts.append(&mut parse_stmt(lexer, master));
     }
     lexer.match_token(TokenType::CCurly);
     stmts

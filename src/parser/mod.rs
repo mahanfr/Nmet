@@ -31,6 +31,7 @@ pub mod stmt;
 pub mod structs;
 pub mod types;
 pub mod variable_decl;
+pub mod preprocessing;
 use std::fs;
 
 use crate::lexer::Lexer;
