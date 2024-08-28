@@ -42,6 +42,7 @@ fn skip_to_next_tag(lexer: &mut Lexer) {
             lexer.match_token(TokenType::Hash);
             break;
         }
+        lexer.next_token();
     }
 }
 
@@ -125,6 +126,5 @@ fn compile_pre_expr(expr : &Expr) -> bool {
             eprintln!("{}: Unsupported expression for the pre-processing function", expr.loc);
             exit(-1);
         }
-    };
-    false
+    }
 }
