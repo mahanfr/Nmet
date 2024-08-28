@@ -1,6 +1,6 @@
 use std::process::exit;
 
-use crate::{error_handeling::Loc, lexer::{Lexer, TokenType}, parser::{block::parse_stmt, expr::ExprType}};
+use crate::{error_handeling::Loc, lexer::{Lexer, TokenType}, parser::{block::parse_stmt, expr::ExprType}, target_string_to_number, TARGET_PLATFORM};
 
 use super::{expr::{expr, CompareOp, Expr, Op}, stmt::Stmt};
 
@@ -98,7 +98,8 @@ fn compile_pre_expr(expr : &Expr) -> bool {
     match &expr.etype {
         ExprType::Bool(b) => !(b == &0u8),
         ExprType::Variable(v) => {
-            PLATFORMS.contains(&v.as_str())
+            PLATFORMS.contains(&v.as_str()) &&
+                target_string_to_number(v) == *TARGET_PLATFORM.lock().unwrap()
         },
         ExprType::Unary(ub) => {
             if ub.op == Op::Not {

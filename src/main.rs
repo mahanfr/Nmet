@@ -32,6 +32,7 @@ use std::fs::remove_file;
 use std::path::PathBuf;
 use std::process::Command;
 use std::str::FromStr;
+use std::sync::Mutex;
 use std::{env::args, process::exit};
 
 mod codegen;
@@ -69,6 +70,7 @@ fn assembler_target() -> &'static str {
 // -o outputpath
 // -l<mod_name>
 // -L<mod_path>
+// -T <Target>
 #[derive(Debug, Default)]
 pub struct CompilerOptions {
     pub output_path: Option<PathBuf>,
@@ -80,6 +82,7 @@ pub struct CompilerOptions {
     pub linker_flags: Vec<String>,
     pub use_libc: bool,
     pub create_bin: bool,
+    pub target_platform: u8,
 }
 
 fn copywrite() {
@@ -224,6 +227,9 @@ pub fn setup_compiler(input: String, co: &CompilerOptions) {
 
 fn collect_compiler_options(args: &mut Args) -> (String, CompilerOptions) {
     let mut co = CompilerOptions::default();
+    if cfg!(windows) {
+        co.target_platform = 1;
+    }
     let compiler_path = args.next().unwrap();
     let mut input_path = String::new();
     loop {
@@ -251,6 +257,14 @@ fn collect_compiler_options(args: &mut Args) -> (String, CompilerOptions) {
             "-keep-obj" => co.keep_obj = true,
             "-use-libc" => co.use_libc = true,
             "-bin" => co.create_bin = true,
+            "-T" => {
+                let Some(target) = args.next() else {
+                    log_error!("No target specified!");
+                    help_command(&compiler_path);
+                    exit(-1);
+                };
+                co.target_platform = target_string_to_number(&target);
+            }
             "-o" => {
                 let Some(path) = args.next() else {
                     log_error!("No output path after -o option!");
@@ -278,9 +292,20 @@ fn collect_compiler_options(args: &mut Args) -> (String, CompilerOptions) {
     (input_path, co)
 }
 
+static TARGET_PLATFORM : Mutex<u8> = Mutex::new(0);
+
+pub fn target_string_to_number(target: &String) -> u8 {
+    match target.as_str() {
+        "LINUX" | "linux" => 0,
+        "WINDOWS" | "WIN" | "windows" | "win" => 1,
+        _ => u8::MAX
+    }
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let mut args = args();
     let (ipath, co) = collect_compiler_options(&mut args);
+    *TARGET_PLATFORM.lock().unwrap() = co.target_platform;
     setup_compiler(ipath, &co);
     Ok(())
 }
