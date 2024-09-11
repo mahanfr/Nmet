@@ -2,6 +2,7 @@ pub mod asm_parser;
 pub mod assemble;
 pub mod data_bss;
 pub mod elf;
+pub mod pe;
 pub mod instructions;
 pub mod memory;
 pub mod mnemonic;
