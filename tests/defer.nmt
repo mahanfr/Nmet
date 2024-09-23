@@ -1,0 +1,11 @@
+
+func get_deferred() @int {
+    var x = 1;
+    defer x = 1;
+    x = 2;
+    return x;
+}
+
+func main() {
+    print get_deferred();
+}

@@ -158,6 +158,7 @@ pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) -> Result<(), Compila
         }
         StmtType::Break => compile_break_coninue(cc, true),
         StmtType::Continue => compile_break_coninue(cc, false),
+        StmtType::Defer(_) => todo!(),
     }
 }
 

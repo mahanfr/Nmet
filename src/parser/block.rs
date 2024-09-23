@@ -41,6 +41,7 @@ pub enum BlockType {
     Function,
 }
 
+
 /// Block Stmt
 /// Holds a list of stmt in a block of code
 #[derive(Debug, Clone)]
@@ -179,6 +180,15 @@ pub fn parse_stmt(lexer: &mut Lexer, master: &String) -> Vec<Stmt> {
                 loc,
             }]
         }
+        TokenType::Defer => {
+            lexer.match_token(TokenType::Defer);
+            if lexer.get_token_type() == TokenType::OCurly {
+                 return parse_block(lexer, master);
+            } else {
+                let stmts = parse_stmt(lexer, master);
+                return stmts;
+            }
+        },
         _ => {
             todo!();
         }

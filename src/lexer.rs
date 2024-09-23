@@ -161,6 +161,8 @@ pub enum TokenType {
     For,
     // to (range)
     To,
+    // Defer
+    Defer
 }
 
 impl TokenType {
@@ -240,6 +242,7 @@ impl Display for TokenType {
             TokenType::DoubleAnd => write!(f, "&&"),
             TokenType::For => write!(f, "for"),
             TokenType::To => write!(f, "to"),
+            TokenType::Defer => write!(f, "defer"),
         }
     }
 }
@@ -620,6 +623,7 @@ impl Lexer {
             "ffi" => Some(TokenType::Ffi),
             "for" => Some(TokenType::For),
             "to" => Some(TokenType::To),
+            "defer" => Some(TokenType::Defer),
             _ => None,
         }
     }

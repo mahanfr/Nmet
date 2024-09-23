@@ -65,11 +65,11 @@ pub enum StmtType {
     /// Inline Assembly
     InlineAsm(Vec<String>),
     /// Break Stmts
-    /// NOT IMPLEMENTED YET
     Break,
     /// CONTINUE Stmts
-    /// NOT IMPLEMENTED YET
     Continue,
+    /// Defer Stmt
+    Defer(Vec<Stmt>),
 }
 
 /// If Stmt Information
