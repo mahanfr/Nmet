@@ -162,7 +162,7 @@ pub enum TokenType {
     // to (range)
     To,
     // Defer
-    Defer
+    Defer,
 }
 
 impl TokenType {

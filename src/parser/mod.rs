@@ -26,12 +26,12 @@ pub mod assign;
 pub mod block;
 pub mod expr;
 pub mod function;
+pub mod preprocessing;
 pub mod program;
 pub mod stmt;
 pub mod structs;
 pub mod types;
 pub mod variable_decl;
-pub mod preprocessing;
 use std::fs;
 
 use crate::lexer::Lexer;

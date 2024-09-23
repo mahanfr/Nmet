@@ -31,7 +31,11 @@ use crate::{
 };
 
 use super::{
-    assign::assign, expr::expr, preprocessing::parse_pre_functions, stmt::{for_loop, if_stmt, while_stmt, StmtType}, variable_decl::variable_declare
+    assign::assign,
+    expr::expr,
+    preprocessing::parse_pre_functions,
+    stmt::{for_loop, if_stmt, while_stmt, StmtType},
+    variable_decl::variable_declare,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -40,7 +44,6 @@ pub enum BlockType {
     Loop,
     Function,
 }
-
 
 /// Block Stmt
 /// Holds a list of stmt in a block of code
@@ -183,12 +186,12 @@ pub fn parse_stmt(lexer: &mut Lexer, master: &String) -> Vec<Stmt> {
         TokenType::Defer => {
             lexer.match_token(TokenType::Defer);
             if lexer.get_token_type() == TokenType::OCurly {
-                 return parse_block(lexer, master);
+                return parse_block(lexer, master);
             } else {
                 let stmts = parse_stmt(lexer, master);
                 return stmts;
             }
-        },
+        }
         _ => {
             todo!();
         }

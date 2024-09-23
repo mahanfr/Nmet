@@ -15,12 +15,14 @@ impl Header {
         Self {
             machine: 0x8664,
             number_of_sections: num_sections,
-            time_date_stamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as u32,
+            time_date_stamp: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as u32,
             pointer_to_symtable: symtab_pointer,
             number_of_symbols: sym_entries,
             size_of_optional_header: 0,
             characteristics: 0x0004,
-
         }
     }
 

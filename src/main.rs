@@ -282,7 +282,7 @@ fn collect_compiler_options(args: &mut Args) -> (String, CompilerOptions) {
                     input_path = arg;
                 }
             }
-        } 
+        }
     }
     if input_path.is_empty() {
         log_error!("No file has been provided!");
@@ -292,13 +292,13 @@ fn collect_compiler_options(args: &mut Args) -> (String, CompilerOptions) {
     (input_path, co)
 }
 
-static TARGET_PLATFORM : Mutex<u8> = Mutex::new(0);
+static TARGET_PLATFORM: Mutex<u8> = Mutex::new(0);
 
 pub fn target_string_to_number(target: &String) -> u8 {
     match target.as_str() {
         "LINUX" | "linux" => 0,
         "WINDOWS" | "WIN" | "windows" | "win" => 1,
-        _ => u8::MAX
+        _ => u8::MAX,
     }
 }
 
