@@ -26,7 +26,7 @@ impl Header {
         }
     }
 
-    pub fn to_bytes(self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
         bytes.extend(self.machine.to_le_bytes());
         bytes.extend(self.number_of_sections.to_le_bytes());

@@ -294,8 +294,8 @@ fn collect_compiler_options(args: &mut Args) -> (String, CompilerOptions) {
 
 static TARGET_PLATFORM: Mutex<u8> = Mutex::new(0);
 
-pub fn target_string_to_number(target: &String) -> u8 {
-    match target.as_str() {
+pub fn target_string_to_number(target: &str) -> u8 {
+    match target {
         "LINUX" | "linux" => 0,
         "WINDOWS" | "WIN" | "windows" | "win" => 1,
         _ => u8::MAX,

@@ -12,7 +12,7 @@ use super::{
     stmt::Stmt,
 };
 
-pub static PLATFORMS: &'static [&'static str] = &["LINUX", "WINDOWS", "UNKNOWN"];
+pub static PLATFORMS: &[&str] = &["LINUX", "WINDOWS", "UNKNOWN"];
 
 pub fn parse_pre_functions(lexer: &mut Lexer, loc: Loc, master: &String) -> Vec<Stmt> {
     lexer.match_token(TokenType::Hash);
@@ -63,10 +63,10 @@ fn parse_pre_condition(lexer: &mut Lexer, loc: Loc, master: &String) -> Vec<Stmt
         lexer.match_token(TokenType::Hash);
         if lexer.get_token().literal == "end" {
             lexer.match_token(TokenType::Identifier);
-            return stmts;
+            stmts
         } else {
             skip_to_end(lexer);
-            return stmts;
+            stmts
         }
     } else {
         skip_to_next_tag(lexer);
@@ -91,20 +91,20 @@ fn parse_pre_condition(lexer: &mut Lexer, loc: Loc, master: &String) -> Vec<Stmt
             exit(-1);
         }
         lexer.match_token(TokenType::Identifier);
-        return stmts;
+        stmts
     }
 }
 
 fn compile_pre_expr(expr: &Expr) -> bool {
     match &expr.etype {
-        ExprType::Bool(b) => !(b == &0u8),
+        ExprType::Bool(b) => b != &0u8,
         ExprType::Variable(v) => {
             PLATFORMS.contains(&v.as_str())
                 && target_string_to_number(v) == *TARGET_PLATFORM.lock().unwrap()
         }
         ExprType::Unary(ub) => {
             if ub.op == Op::Not {
-                return !compile_pre_expr(&ub.right);
+                !compile_pre_expr(&ub.right)
             } else {
                 eprintln!("{}: Unsupported operand for this expression", expr.loc);
                 exit(-1);

@@ -186,10 +186,10 @@ pub fn parse_stmt(lexer: &mut Lexer, master: &String) -> Vec<Stmt> {
         TokenType::Defer => {
             lexer.match_token(TokenType::Defer);
             if lexer.get_token_type() == TokenType::OCurly {
-                return parse_block(lexer, master);
+                parse_block(lexer, master)
             } else {
-                let stmts = parse_stmt(lexer, master);
-                return stmts;
+                
+                parse_stmt(lexer, master)
             }
         }
         _ => {
