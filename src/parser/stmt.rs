@@ -29,7 +29,7 @@ use crate::parser::expr::Expr;
 use crate::parser::variable_decl::inline_variable_declare;
 
 use super::assign::Assign;
-use super::block::{parse_block, BlockType};
+use super::block::BlockType;
 use super::expr::expr;
 use super::variable_decl::VariableDeclare;
 
@@ -118,11 +118,11 @@ pub struct WhileStmt {
 pub fn if_stmt(lexer: &mut Lexer, master: &String) -> IFStmt {
     lexer.match_token(TokenType::If);
     let condition = expr(lexer);
-    let then_block = Block::new(
+    let mut then_block = Block::new(
         master.to_owned(),
-        BlockType::Condition,
-        parse_block(lexer, master),
+        BlockType::Condition
     );
+    then_block.parse_block(lexer);
     if lexer.get_token_type() == TokenType::Else {
         lexer.match_token(TokenType::Else);
         if lexer.get_token_type() == TokenType::If {
@@ -133,15 +133,15 @@ pub fn if_stmt(lexer: &mut Lexer, master: &String) -> IFStmt {
                 else_block,
             }
         } else {
-            let else_block = Box::new(ElseBlock::Else(Block::new(
+            let mut else_block = Block::new(
                 master.to_owned(),
                 BlockType::Condition,
-                parse_block(lexer, master),
-            )));
+            );
+            else_block.parse_block(lexer);
             IFStmt {
                 condition,
                 then_block,
-                else_block,
+                else_block: Box::new(ElseBlock::Else(else_block)),
             }
         }
     } else {
@@ -165,11 +165,11 @@ pub fn for_loop(lexer: &mut Lexer, master: &String) -> ForLoop {
     }
     lexer.match_token(TokenType::To);
     let end_expr = expr(lexer);
-    let block = Block::new(
+    let mut block = Block::new(
         master.to_owned(),
         BlockType::Loop,
-        parse_block(lexer, master),
     );
+    block.parse_block(lexer);
     ForLoop {
         iterator,
         end_expr,
@@ -181,10 +181,10 @@ pub fn for_loop(lexer: &mut Lexer, master: &String) -> ForLoop {
 pub fn while_stmt(lexer: &mut Lexer, master: &String) -> WhileStmt {
     lexer.match_token(TokenType::While);
     let condition = expr(lexer);
-    let block = Block::new(
+    let mut block = Block::new(
         master.to_owned(),
         BlockType::Loop,
-        parse_block(lexer, master),
     );
+    block.parse_block(lexer);
     WhileStmt { condition, block }
 }

@@ -43,6 +43,13 @@ pub enum BlockType {
     Condition,
     Loop,
     Function,
+    UnScoped,
+}
+
+
+pub fn parse_statement_outside_of_block(lexer: &mut Lexer, master: &String) -> Vec<Stmt> {
+    let mut block = Block::new(master.to_string(), BlockType::UnScoped);
+    block.parse_stmt(lexer)
 }
 
 /// Block Stmt
@@ -52,15 +59,17 @@ pub struct Block {
     pub master: String,
     pub stmts: Vec<Stmt>,
     pub btype: BlockType,
+    pub defer_stmts: Vec<Stmt>,
     pub id: i64,
 }
 
 impl Block {
-    pub fn new(master: String, btype: BlockType, stmts: Vec<Stmt>) -> Self {
+    pub fn new(master: String, btype: BlockType) -> Self {
         let id = random();
         Self {
             master,
-            stmts,
+            stmts: Vec::new(),
+            defer_stmts: Vec::new(),
             btype,
             id,
         }
@@ -85,132 +94,143 @@ impl Block {
     pub fn name_with_prefix(&self, prefix: &str) -> String {
         format!("{}.{prefix}__{}", self.master, long2base32(self.id))
     }
-}
 
-pub fn parse_stmt(lexer: &mut Lexer, master: &String) -> Vec<Stmt> {
-    match lexer.get_token_type() {
-        TokenType::Hash => {
-            let loc = lexer.get_token_loc();
-            parse_pre_functions(lexer, loc, master)
-        }
-        TokenType::Var => {
-            let loc = lexer.get_token_loc();
-            let stmt = vec![Stmt {
-                stype: StmtType::VariableDecl(variable_declare(lexer)),
-                loc,
-            }];
-            lexer.match_token(TokenType::SemiColon);
-            stmt
-        }
-        TokenType::Print => {
-            let loc = lexer.get_token_loc();
-            lexer.match_token(TokenType::Print);
-            let expr = expr(lexer);
-            let stmt = vec![Stmt {
-                stype: StmtType::Print(expr),
-                loc,
-            }];
-            lexer.match_token(TokenType::SemiColon);
-            stmt
-        }
-        TokenType::Break => {
-            let loc = lexer.get_token_loc();
-            lexer.match_token(TokenType::Break);
-            let stmt = vec![Stmt {
-                stype: StmtType::Break,
-                loc,
-            }];
-            lexer.match_token(TokenType::SemiColon);
-            stmt
-        }
-        TokenType::Continue => {
-            let loc = lexer.get_token_loc();
-            lexer.match_token(TokenType::Continue);
-            let stmt = vec![Stmt {
-                stype: StmtType::Continue,
-                loc,
-            }];
-            lexer.match_token(TokenType::SemiColon);
-            stmt
-        }
-        TokenType::If => {
-            let loc = lexer.get_token_loc();
-            vec![Stmt {
-                stype: StmtType::If(if_stmt(lexer, master)),
-                loc,
-            }]
-        }
-        TokenType::While => {
-            let loc = lexer.get_token_loc();
-            vec![Stmt {
-                stype: StmtType::While(while_stmt(lexer, master)),
-                loc,
-            }]
-        }
-        TokenType::For => {
-            let loc = lexer.get_token_loc();
-            vec![Stmt {
-                stype: StmtType::ForLoop(for_loop(lexer, master)),
-                loc,
-            }]
-        }
-        TokenType::Return => {
-            let loc = lexer.get_token_loc();
-            lexer.match_token(TokenType::Return);
-            let stmt = vec![Stmt {
-                stype: StmtType::Return(expr(lexer)),
-                loc,
-            }];
-            lexer.match_token(TokenType::SemiColon);
-            stmt
-        }
-        TokenType::Identifier => {
-            //Assgin Op
-            vec![assign(lexer)]
-        }
-        TokenType::Asm => {
-            let loc = lexer.get_token_loc();
-            lexer.match_token(TokenType::Asm);
-            lexer.match_token(TokenType::OCurly);
-            let mut instructs = Vec::<String>::new();
-            while lexer.get_token_type() == TokenType::String {
-                instructs.push(lexer.get_token().literal);
-                lexer.match_token(TokenType::String);
+    pub fn parse_stmt(&mut self, lexer: &mut Lexer) -> Vec<Stmt> {
+        match lexer.get_token_type() {
+            TokenType::Hash => {
+                let loc = lexer.get_token_loc();
+                parse_pre_functions(lexer, loc, &self.master)
             }
-            lexer.match_token(TokenType::CCurly);
-            vec![Stmt {
-                stype: StmtType::InlineAsm(instructs),
-                loc,
-            }]
-        }
-        TokenType::Defer => {
-            lexer.match_token(TokenType::Defer);
-            if lexer.get_token_type() == TokenType::OCurly {
-                parse_block(lexer, master)
-            } else {
-                
-                parse_stmt(lexer, master)
+            TokenType::Var => {
+                let loc = lexer.get_token_loc();
+                let stmt = vec![Stmt {
+                    stype: StmtType::VariableDecl(variable_declare(lexer)),
+                    loc,
+                }];
+                lexer.match_token(TokenType::SemiColon);
+                stmt
             }
-        }
-        _ => {
-            todo!();
+            TokenType::Print => {
+                let loc = lexer.get_token_loc();
+                lexer.match_token(TokenType::Print);
+                let expr = expr(lexer);
+                let stmt = vec![Stmt {
+                    stype: StmtType::Print(expr),
+                    loc,
+                }];
+                lexer.match_token(TokenType::SemiColon);
+                stmt
+            }
+            TokenType::Break => {
+                let loc = lexer.get_token_loc();
+                lexer.match_token(TokenType::Break);
+                let stmt = vec![Stmt {
+                    stype: StmtType::Break,
+                    loc,
+                }];
+                lexer.match_token(TokenType::SemiColon);
+                stmt
+            }
+            TokenType::Continue => {
+                let loc = lexer.get_token_loc();
+                lexer.match_token(TokenType::Continue);
+                let stmt = vec![Stmt {
+                    stype: StmtType::Continue,
+                    loc,
+                }];
+                lexer.match_token(TokenType::SemiColon);
+                stmt
+            }
+            TokenType::If => {
+                let loc = lexer.get_token_loc();
+                vec![Stmt {
+                    stype: StmtType::If(if_stmt(lexer, &self.master)),
+                    loc,
+                }]
+            }
+            TokenType::While => {
+                let loc = lexer.get_token_loc();
+                vec![Stmt {
+                    stype: StmtType::While(while_stmt(lexer, &self.master)),
+                    loc,
+                }]
+            }
+            TokenType::For => {
+                let loc = lexer.get_token_loc();
+                vec![Stmt {
+                    stype: StmtType::ForLoop(for_loop(lexer, &self.master)),
+                    loc,
+                }]
+            }
+            TokenType::Return => {
+                let loc = lexer.get_token_loc();
+                lexer.match_token(TokenType::Return);
+                let stmt = vec![Stmt {
+                    stype: StmtType::Return(expr(lexer)),
+                    loc,
+                }];
+                lexer.match_token(TokenType::SemiColon);
+                stmt
+            }
+            TokenType::Identifier => {
+                //Assgin Op
+                vec![assign(lexer)]
+            }
+            TokenType::Asm => {
+                let loc = lexer.get_token_loc();
+                lexer.match_token(TokenType::Asm);
+                lexer.match_token(TokenType::OCurly);
+                let mut instructs = Vec::<String>::new();
+                while lexer.get_token_type() == TokenType::String {
+                    instructs.push(lexer.get_token().literal);
+                    lexer.match_token(TokenType::String);
+                }
+                lexer.match_token(TokenType::CCurly);
+                vec![Stmt {
+                    stype: StmtType::InlineAsm(instructs),
+                    loc,
+                }]
+            }
+            TokenType::Defer => {
+                lexer.match_token(TokenType::Defer);
+                if lexer.get_token_type() == TokenType::OCurly {
+                    lexer.match_token(TokenType::OCurly);
+                    let mut stmts = Vec::<Stmt>::new();
+                    loop {
+                        if lexer.get_token_type() == TokenType::CCurly {
+                            break;
+                        }
+                        stmts.append(&mut self.parse_stmt(lexer));
+                    }
+                    lexer.match_token(TokenType::CCurly);
+                    self.defer_stmts.append(&mut stmts);
+                    vec![]
+                } else {
+                    let mut stmt = self.parse_stmt(lexer);
+                    self.defer_stmts.append(&mut stmt);
+                    vec![]
+                }
+            }
+            _ => {
+                todo!();
+            }
         }
     }
-}
 
-/// Parse Blocks
-/// # Argumenrs
-/// * lexer - address of mutable lexer
-/// Returns a vec of stmts
-pub fn parse_block(lexer: &mut Lexer, master: &String) -> Vec<Stmt> {
-    lexer.match_token(TokenType::OCurly);
-    let mut stmts = Vec::<Stmt>::new();
-    loop {
-        if lexer.get_token_type() == TokenType::CCurly {
-            break;
+    /// Parse Blocks
+    /// # Argumenrs
+    /// * lexer - address of mutable lexer
+    ///     Returns a vec of stmts
+    pub fn parse_block(&mut self, lexer: &mut Lexer) {
+        lexer.match_token(TokenType::OCurly);
+        let mut stmts = Vec::<Stmt>::new();
+        loop {
+            if lexer.get_token_type() == TokenType::CCurly {
+                break;
+            }
+            stmts.append(&mut self.parse_stmt(lexer));
         }
-        stmts.append(&mut parse_stmt(lexer, master));
+        lexer.match_token(TokenType::CCurly);
+        self.stmts.append(&mut stmts);
     }
-    lexer.match_token(TokenType::CCurly);
-    stmts
 }

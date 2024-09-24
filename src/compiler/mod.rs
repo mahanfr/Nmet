@@ -166,7 +166,7 @@ fn compile_init_function(cc: &mut CompilerContext) {
     cc.codegen.instr1(Mnemonic::Push, Reg::RBP);
     cc.codegen.instr2(Mnemonic::Mov, Reg::RBP, Reg::RSP);
     // TODO: Add a condition for compiling libraries
-    if cc.functions_map.get("main").is_none() {
+    if !cc.functions_map.contains_key("main") {
         log_error!("Executable programs should have an entry point");
         exit(-1);
     }

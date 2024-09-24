@@ -45,7 +45,7 @@ use crate::{
 
 use super::{
     bif::Bif,
-    block::compile_block,
+    block::{self, compile_block},
     expr::{compile_compare_expr, compile_expr},
     variables::{get_vriable_map, insert_variable},
     CompilerContext,
@@ -140,8 +140,9 @@ pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) -> Result<(), Compila
         StmtType::Return(e) => {
             let ret_expr = compile_expr(cc, e)?;
             mov_unknown_to_register(cc, RAX, ret_expr.value);
-            cc.codegen.instr0(Leave);
-            cc.codegen.instr0(Ret);
+            // cc.codegen.instr0(Leave);
+            // cc.codegen.instr0(Ret);
+            cc.codegen.instr1(Jmp, Opr::Loc(cc.scoped_blocks.first().unwrap().end_name()));
             Ok(())
         }
         StmtType::InlineAsm(instructs) => {
@@ -172,7 +173,7 @@ fn compile_break_coninue(cc: &mut CompilerContext, is_break: bool) -> Result<(),
                 s_block.start_name()
             };
             cc.codegen
-                .instr1(crate::codegen::mnemonic::Mnemonic::Jmp, Opr::Loc(exit_loc));
+                .instr1(Jmp, Opr::Loc(exit_loc));
             did_break = true;
             break;
         }

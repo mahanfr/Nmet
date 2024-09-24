@@ -33,7 +33,7 @@ use crate::{
     },
 };
 
-use super::{block::compile_block, function_args_register_sized, CompilerContext};
+use super::{block::{compile_block, compile_function_block_alrady_scoped}, function_args_register_sized, CompilerContext};
 
 pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
     for (args_count, arg) in args.iter().enumerate() {
@@ -68,9 +68,20 @@ pub fn compile_function(cc: &mut CompilerContext, f: &FunctionDef) {
     cc.codegen.instr1(Push, RBP);
     cc.codegen.instr2(Mov, RBP, RSP);
     function_args(cc, &f.decl.args);
-    compile_block(cc, &f.block);
+    /*--- Scoping function variables ---*/
+    cc.scoped_blocks.push(f.block.clone());
+    compile_function_block_alrady_scoped(cc, &f.block);
+    //compile_block(cc, &f.block);
     cc.scoped_blocks.pop();
     // revert rbp
+    cc.codegen.set_lable(f.block.end_name());
+    cc.codegen.instr1(Push, RAX);
+    // TODO: Issue a warning for assgigning variables in defer block
+    compile_function_block_alrady_scoped(cc, &f.defer_block);
+    cc.scoped_blocks.pop().unwrap();
+    /*--- Unscoping function variables ---*/
+    cc.codegen.instr1(Pop, RAX);
+    
     cc.codegen.instr0(Leave);
     cc.codegen.instr0(Ret);
 }

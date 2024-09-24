@@ -3,7 +3,7 @@ use std::process::exit;
 use crate::{
     error_handeling::Loc,
     lexer::{Lexer, TokenType},
-    parser::{block::parse_stmt, expr::ExprType},
+    parser::{block::parse_statement_outside_of_block, expr::ExprType},
     target_string_to_number, TARGET_PLATFORM,
 };
 
@@ -58,7 +58,7 @@ fn parse_pre_condition(lexer: &mut Lexer, loc: Loc, master: &String) -> Vec<Stmt
             if lexer.get_token_type() == TokenType::Hash {
                 break;
             }
-            stmts.append(&mut parse_stmt(lexer, master));
+            stmts.append(&mut parse_statement_outside_of_block(lexer, master));
         }
         lexer.match_token(TokenType::Hash);
         if lexer.get_token().literal == "end" {
@@ -83,7 +83,7 @@ fn parse_pre_condition(lexer: &mut Lexer, loc: Loc, master: &String) -> Vec<Stmt
             if lexer.get_token_type() == TokenType::Hash {
                 break;
             }
-            stmts.append(&mut parse_stmt(lexer, master));
+            stmts.append(&mut parse_statement_outside_of_block(lexer, master));
         }
         lexer.match_token(TokenType::Hash);
         if lexer.get_token().literal != "end" {
