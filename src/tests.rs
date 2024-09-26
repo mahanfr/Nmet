@@ -135,6 +135,7 @@ mod asm {
     test_asm!(functions, "./tests/functions.nmt", "./tests/functions.txt");
     test_asm!(assign, "./tests/assign.nmt", "./tests/assign.txt");
     test_asm!(arrays, "./tests/arrays.nmt", "./tests/arrays.txt");
+    test_asm!(defer, "./tests/defer.nmt", "./tests/defer.txt");
 }
 
 mod elf {
@@ -178,4 +179,5 @@ mod elf {
     test_elf!(functions, "./tests/functions.nmt", "./tests/functions.txt");
     test_elf!(assign, "./tests/assign.nmt", "./tests/assign.txt");
     test_elf!(arrays, "./tests/arrays.nmt", "./tests/arrays.txt");
+    test_elf!(defer, "./tests/defer.nmt", "./tests/defer.txt");
 }
