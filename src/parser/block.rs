@@ -1,3 +1,5 @@
+use std::hash::{DefaultHasher, Hash, Hasher};
+
 use rand::random;
 
 /**********************************************************************************************
@@ -40,6 +42,7 @@ use super::{
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BlockType {
+    Global,
     Condition,
     Loop,
     Function,
@@ -72,6 +75,18 @@ impl Block {
             defer_stmts: Vec::new(),
             btype,
             id,
+        }
+    }
+
+    pub fn new_global(path: String) -> Self {
+        let mut hasher = DefaultHasher::new();
+        path.hash(&mut hasher);
+        Self {
+            master: path,
+            stmts: Vec::new(),
+            defer_stmts: Vec::new(),
+            btype: BlockType::Global,
+            id : hasher.finish() as i64,
         }
     }
 

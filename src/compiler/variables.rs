@@ -26,14 +26,40 @@ use crate::{
     codegen::{
         instructions::Opr, memory::MemAddr, mnemonic::Mnemonic::*, register::Reg::*,
         utils::mov_unknown_to_register,
-    },
-    compiler::VariableMap,
-    error_handeling::{error, CompilationError},
-    memq,
-    parser::{types::VariableType, variable_decl::VariableDeclare},
+    }, compiler::VariableMap, error_handeling::{error, CompilationError}, memq, optim::ExprOpr, parser::{types::VariableType, variable_decl::VariableDeclare}
 };
 
 use super::{expr::compile_expr, CompilerContext};
+
+pub fn insert_variable_global(
+    cc: &mut CompilerContext,
+    var: &VariableDeclare,
+) -> Result<(), CompilationError> {
+    let ident = format!("{}%{}", var.ident, cc.scoped_blocks[0].id);
+    let vtype = match var.v_type.as_ref() {
+        Some(vt) => vt.clone(),
+        None => {
+            return Err(CompilationError::UnknownType(var.ident.clone()));
+        },
+    };
+    let init_value = var.init_value.clone().unwrap();
+    let expro = compile_expr(cc, &init_value)?;
+    if !expro.value.is_literal() {
+        return Err(CompilationError::Err("Invalid Value: Value must be known at compile Time".to_string()));
+    }
+    let name = cc.codegen.add_data(expro.value.get_literal_value().to_le_bytes().to_vec(), expro.vtype);
+    
+    let var_map = VariableMap {
+        vtype: vtype.clone(),
+        vtype_inner: VariableType::Any,
+        offset: 0,
+        is_mut: false,
+        offset_inner: 0,
+        static_data_id: Some(name)
+    };
+    cc.variables_map.insert(ident, var_map);
+    Ok(())
+}
 
 pub fn insert_variable(
     cc: &mut CompilerContext,
@@ -93,11 +119,20 @@ pub fn insert_variable(
         offset: cc.mem_offset,
         is_mut: var.mutable,
         offset_inner: 0,
+        static_data_id: None
     };
     cc.codegen.instr2(Sub, RSP, vtype.size());
     cc.mem_offset += vtype.size();
     cc.variables_map.insert(ident, var_map);
     Ok(())
+}
+
+pub fn get_vmap_opr(vmap: &VariableMap, vtype: &VariableType) -> Opr {
+    if vmap.static_data_id.is_some() {
+        return Opr::Rela(vmap.static_data_id.clone().unwrap());
+    }
+    let mem_acss = MemAddr::new_disp_s(vtype.item_size(), RBP, -((vmap.offset + vtype.size()) as i32));
+    Opr::Mem(mem_acss)
 }
 
 pub fn get_vriable_map(

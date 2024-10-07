@@ -33,7 +33,7 @@ use crate::{
     },
 };
 
-use super::{block::{compile_block, compile_function_block_alrady_scoped}, function_args_register_sized, CompilerContext};
+use super::{block::compile_function_block_alrady_scoped, function_args_register_sized, CompilerContext};
 
 pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
     for (args_count, arg) in args.iter().enumerate() {
@@ -44,6 +44,7 @@ pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
             is_mut: false,
             vtype: arg.typedef.clone(),
             vtype_inner: VariableType::Any,
+            static_data_id: None
         };
         if args_count < 6 {
             let mem_acss = MemAddr::new_disp_s(map.vtype.item_size(), RBP, map.stack_offset());
@@ -81,7 +82,7 @@ pub fn compile_function(cc: &mut CompilerContext, f: &FunctionDef) {
     cc.scoped_blocks.pop().unwrap();
     /*--- Unscoping function variables ---*/
     cc.codegen.instr1(Pop, RAX);
-    
+
     cc.codegen.instr0(Leave);
     cc.codegen.instr0(Ret);
 }

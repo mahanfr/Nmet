@@ -43,6 +43,8 @@ use crate::parser::{structs::StructDef, types::VariableType};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::process::exit;
 
+use self::variables::insert_variable;
+
 #[derive(Debug, Clone)]
 pub struct VariableMap {
     pub offset_inner: usize,
@@ -50,6 +52,7 @@ pub struct VariableMap {
     pub vtype: VariableType,
     pub vtype_inner: VariableType,
     pub is_mut: bool,
+    pub static_data_id: Option<String>,
 }
 
 impl VariableMap {
@@ -124,7 +127,10 @@ fn _frame_size(mem_offset: usize) -> usize {
 }
 
 pub fn compile(cc: &mut CompilerContext, path: String) {
-    let program = parse_source_file(path);
+    let program = parse_source_file(path.clone());
+    if cc.scoped_blocks.is_empty() {
+        cc.scoped_blocks.push(Block::new_global(path));
+    }
     collect_types(cc, &program);
     compile_init_function(cc);
     for item in program.items.iter() {
@@ -156,7 +162,9 @@ fn collect_types(cc: &mut CompilerContext, program: &ProgramFile) {
             ProgramItem::Struct(s) => {
                 cc.structs_map.insert(s.ident.clone(), s.clone());
             }
-            ProgramItem::StaticVar(_) => (),
+            ProgramItem::StaticVar(sv) => {
+                insert_variable(cc, sv);
+            },
         }
     }
 }
