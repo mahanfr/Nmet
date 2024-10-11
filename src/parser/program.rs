@@ -28,7 +28,11 @@ use crate::{
 };
 
 use super::{
-    function::{parse_function_declaration, parse_function_definition, FunctionDecl, FunctionDef}, parse_source_file, structs::struct_def, types::StructType, variable_decl::{variable_declare, VariableDeclare}
+    function::{parse_function_declaration, parse_function_definition, FunctionDecl, FunctionDef},
+    parse_source_file,
+    structs::struct_def,
+    types::StructType,
+    variable_decl::{variable_declare, VariableDeclare},
 };
 
 /// Program file information
@@ -99,9 +103,7 @@ pub fn generate_ast(lexer: &mut Lexer) -> ProgramFile {
             ),
         }
     }
-    ProgramFile {
-        items,
-    }
+    ProgramFile { items }
 }
 /// Include FFI
 /// Returns FFI Program Item

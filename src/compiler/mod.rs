@@ -43,12 +43,10 @@ use crate::parser::types::StructType;
 use crate::parser::types::VariableType;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::process::exit;
-use std::usize;
 
 use self::variables::insert_variable;
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub enum NameSpaceType {
     Variable(VariableMap),
     Function(FunctionDecl),
@@ -57,7 +55,6 @@ pub enum NameSpaceType {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct NameSpace {
     block_id: i64,
     nstype: NameSpaceType,
@@ -65,16 +62,12 @@ pub struct NameSpace {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub enum VariableMapBase {
     Stack(i64),
     Global(String),
-    Index(Reg),
-    Inner(i32),
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct VariableMap {
     pub base: VariableMapBase,
     pub offset: i32,
@@ -83,7 +76,7 @@ pub struct VariableMap {
 }
 
 impl VariableMap {
-    pub fn new(base: VariableMapBase, offset: usize, vtype:VariableType, is_mut: bool) -> Self {
+    pub fn new(base: VariableMapBase, offset: usize, vtype: VariableType, is_mut: bool) -> Self {
         let new_offset = Self::get_stack_offset(offset, &vtype);
         Self {
             base,
@@ -97,7 +90,7 @@ impl VariableMap {
         MemAddr::new_sib_s(
             self.vtype.item_size(),
             Reg::RBP,
-            self.offset as i32,
+            self.offset,
             offset_reg,
             self.vtype.item_size(),
         )
@@ -105,13 +98,20 @@ impl VariableMap {
 
     pub fn mem(&self) -> MemAddr {
         match &self.vtype {
-            VariableType::Int | VariableType::UInt => MemAddr::new_disp_s(4, Reg::RBP, self.offset as i32),
-            VariableType::Long | VariableType::ULong | VariableType::Custom(_) |
-                VariableType::Pointer | VariableType::String => MemAddr::new_disp_s(8, Reg::RBP, self.offset as i32),
-            VariableType::Bool | VariableType::Char => MemAddr::new_disp_s(1, Reg::RBP, self.offset as i32),
+            VariableType::Int | VariableType::UInt => MemAddr::new_disp_s(4, Reg::RBP, self.offset),
+            VariableType::Long
+            | VariableType::ULong
+            | VariableType::Custom(_)
+            | VariableType::Pointer
+            | VariableType::String => MemAddr::new_disp_s(8, Reg::RBP, self.offset),
+            VariableType::Bool | VariableType::Char => {
+                MemAddr::new_disp_s(1, Reg::RBP, self.offset)
+            }
             VariableType::Any | VariableType::Void => unreachable!(),
-            VariableType::Array(item_vtype, _) => MemAddr::new_disp_s(item_vtype.item_size(), Reg::RBP, self.offset as i32),
-            VariableType::Struct(_) => MemAddr::new_disp_s(8, Reg::RBP, self.offset as i32),
+            VariableType::Array(item_vtype, _) => {
+                MemAddr::new_disp_s(item_vtype.item_size(), Reg::RBP, self.offset)
+            }
+            VariableType::Struct(_) => MemAddr::new_disp_s(8, Reg::RBP, self.offset),
             VariableType::Float => todo!(),
         }
     }
@@ -224,7 +224,7 @@ fn collect_types(cc: &mut CompilerContext, program: &ProgramFile) {
             }
             ProgramItem::StaticVar(sv) => {
                 let _ = insert_variable(cc, sv, 0);
-            },
+            }
         }
     }
 }

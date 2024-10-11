@@ -45,7 +45,10 @@ pub fn struct_def(lexer: &mut Lexer) -> StructType {
         if lexer.get_token_type() == TokenType::ATSign {
             let ttype = type_def(lexer);
             offset += ttype.item_size();
-            items.insert(ident.clone(), StructItemType::new(ident.clone(), offset as i32, ttype));
+            items.insert(
+                ident.clone(),
+                StructItemType::new(ident.clone(), offset as i32, ttype),
+            );
         }
         if lexer.get_token_type() != TokenType::CCurly {
             lexer.match_token(TokenType::Comma);

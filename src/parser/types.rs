@@ -49,7 +49,7 @@ impl StructType {
 pub struct StructItemType {
     pub ident: String,
     pub offset: i32,
-    pub vtype: VariableType
+    pub vtype: VariableType,
 }
 
 impl StructItemType {
@@ -57,7 +57,7 @@ impl StructItemType {
         Self {
             ident,
             offset,
-            vtype
+            vtype,
         }
     }
 }
@@ -226,7 +226,7 @@ impl Display for VariableType {
             VariableType::Char => write!(f, "@char"),
             VariableType::Void => write!(f, "@void"),
             VariableType::Float => write!(f, "@float"),
-            VariableType::Struct(s) => write!(f, "@{}", s.ident)
+            VariableType::Struct(s) => write!(f, "@{}", s.ident),
         }
     }
 }

@@ -26,7 +26,11 @@ use crate::{
     codegen::{
         instructions::Opr, memory::MemAddr, mnemonic::Mnemonic::*, register::Reg::*,
         utils::mov_unknown_to_register,
-    }, compiler::VariableMap, error_handeling::{error, CompilationError}, memq, optim::ExprOpr, parser::{types::VariableType, variable_decl::VariableDeclare}
+    },
+    compiler::VariableMap,
+    error_handeling::{error, CompilationError},
+    memq,
+    parser::{types::VariableType, variable_decl::VariableDeclare},
 };
 
 use super::{expr::compile_expr, CompilerContext, VariableMapBase};
@@ -43,17 +47,14 @@ pub fn insert_variable(
     };
     // Declare variable memory
     // No need to do any thing if variable is on the stack
-    match &vtype {
-        VariableType::Custom(s) => {
-            let Some(struct_map) = cc.structs_map.get(s) else {
-                return Err(CompilationError::UnknownType(s.to_owned()));
-            };
-            let struct_tag = cc.codegen.add_bss_seg(struct_map.size());
-            let mem_acss = memq!(RBP, -(cc.mem_offset as i32 + 8));
-            cc.codegen.instr2(Mov, mem_acss, Opr::Rela(struct_tag));
-            vtype = VariableType::Struct(struct_map.clone());
-        }
-        _ => (),
+    if let VariableType::Custom(s) = &vtype {
+        let Some(struct_map) = cc.structs_map.get(s) else {
+            return Err(CompilationError::UnknownType(s.to_owned()));
+        };
+        let struct_tag = cc.codegen.add_bss_seg(struct_map.size());
+        let mem_acss = memq!(RBP, -(cc.mem_offset as i32 + 8));
+        cc.codegen.instr2(Mov, mem_acss, Opr::Rela(struct_tag));
+        vtype = VariableType::Struct(struct_map.clone());
     }
     // compile initial value
     if var.init_value.is_some() {
@@ -67,7 +68,8 @@ pub fn insert_variable(
                     cc.codegen.instr2(Mov, mem_acss, expro.value.sized(&vt));
                 } else {
                     mov_unknown_to_register(cc, RAX, expro.value);
-                    cc.codegen.instr2(Mov, mem_acss, RAX.convert(vt.item_size()));
+                    cc.codegen
+                        .instr2(Mov, mem_acss, RAX.convert(vt.item_size()));
                 }
                 vtype = vt;
             }
@@ -80,7 +82,12 @@ pub fn insert_variable(
     if vtype == VariableType::Any {
         return Err(CompilationError::UnknownType(var.ident.to_owned()));
     }
-    let var_map = VariableMap::new(VariableMapBase::Stack(block_id), cc.mem_offset, vtype.clone(), var.mutable);
+    let var_map = VariableMap::new(
+        VariableMapBase::Stack(block_id),
+        cc.mem_offset,
+        vtype.clone(),
+        var.mutable,
+    );
     cc.codegen.instr2(Sub, RSP, vtype.size());
     cc.mem_offset += vtype.size();
     cc.variables_map.insert(ident, var_map);

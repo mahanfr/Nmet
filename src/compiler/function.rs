@@ -30,12 +30,20 @@ use crate::{
     parser::function::{FunctionArg, FunctionDef},
 };
 
-use super::{block::compile_function_block_alrady_scoped, function_args_register_sized, CompilerContext, VariableMapBase};
+use super::{
+    block::compile_function_block_alrady_scoped, function_args_register_sized, CompilerContext,
+    VariableMapBase,
+};
 
 pub fn function_args(cc: &mut CompilerContext, block_id: i64, args: &[FunctionArg]) {
     for (args_count, arg) in args.iter().enumerate() {
         let ident = format!("{}%{}", arg.ident, cc.scoped_blocks.last().unwrap().id);
-        let map = VariableMap::new(VariableMapBase::Stack(block_id), cc.mem_offset, arg.typedef.clone(), false);
+        let map = VariableMap::new(
+            VariableMapBase::Stack(block_id),
+            cc.mem_offset,
+            arg.typedef.clone(),
+            false,
+        );
         if args_count < 6 {
             let mem_acss = map.mem();
             let reg = function_args_register_sized(args_count, &map.vtype);

@@ -49,7 +49,6 @@ pub enum BlockType {
     UnScoped,
 }
 
-
 pub fn parse_statement_outside_of_block(lexer: &mut Lexer, master: &String) -> Vec<Stmt> {
     let mut block = Block::new(master.to_string(), BlockType::UnScoped);
     block.parse_stmt(lexer)
@@ -86,7 +85,7 @@ impl Block {
             stmts: Vec::new(),
             defer_stmts: Vec::new(),
             btype: BlockType::Global,
-            id : hasher.finish() as i64,
+            id: hasher.finish() as i64,
         }
     }
 

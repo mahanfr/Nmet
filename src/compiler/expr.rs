@@ -255,9 +255,7 @@ fn compile_access(
         return Err(CompilationError::UnexpectedType(v_map.vtype.to_string()));
     };
     let acv = match &expr.etype {
-        ExprType::Variable(v) => {
-            struc.items.get(v).unwrap()
-        }
+        ExprType::Variable(v) => struc.items.get(v).unwrap(),
         _ => todo!(),
     };
     mov_unknown_to_register(cc, RDX, mem!(RBP, v_map.offset).into());
@@ -277,8 +275,7 @@ fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) -> Result<ExprOpr, Compila
                 }
                 _ => {
                     cc.codegen.instr2(Mov, RAX, RBP);
-                    cc.codegen
-                        .instr2(Sub, RAX, -(v_map.offset));
+                    cc.codegen.instr2(Sub, RAX, -(v_map.offset));
                     Ok(ExprOpr::new(RAX, VariableType::Pointer))
                 }
             }

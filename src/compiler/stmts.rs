@@ -30,13 +30,16 @@ use crate::{
         mnemonic::Mnemonic::*,
         register::Reg::*,
         utils::{mov_unknown_to_register, restore_last_temp_value, save_temp_value},
-    }, compiler::VariableMap, error_handeling::CompilationError, log_cerror, log_warn, mem, parser::{
+    },
+    error_handeling::CompilationError,
+    log_cerror, log_warn, mem,
+    parser::{
         assign::{Assign, AssignOp},
         block::BlockType,
         expr::{CompareExpr, CompareOp, Expr, ExprType},
         stmt::{ElseBlock, ForLoop, IFStmt, Stmt, StmtType, WhileStmt},
         types::VariableType,
-    }
+    },
 };
 
 use super::{
@@ -44,7 +47,7 @@ use super::{
     block::compile_block,
     expr::{compile_compare_expr, compile_expr},
     variables::{get_vriable_map, insert_variable},
-    CompilerContext, VariableMapBase,
+    CompilerContext,
 };
 
 fn compile_if_stmt(
@@ -105,7 +108,11 @@ fn compile_print(cc: &mut CompilerContext, expr: &Expr) -> Result<(), Compilatio
     Ok(())
 }
 
-pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt, block_id: i64) -> Result<(), CompilationError> {
+pub fn compile_stmt(
+    cc: &mut CompilerContext,
+    stmt: &Stmt,
+    block_id: i64,
+) -> Result<(), CompilationError> {
     match &stmt.stype {
         StmtType::VariableDecl(v) => insert_variable(cc, v, block_id),
         StmtType::Print(e) => compile_print(cc, e),
@@ -138,7 +145,8 @@ pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt, block_id: i64) -> Res
             mov_unknown_to_register(cc, RAX, ret_expr.value);
             // cc.codegen.instr0(Leave);
             // cc.codegen.instr0(Ret);
-            cc.codegen.instr1(Jmp, Opr::Loc(cc.scoped_blocks.first().unwrap().end_name()));
+            cc.codegen
+                .instr1(Jmp, Opr::Loc(cc.scoped_blocks.first().unwrap().end_name()));
             Ok(())
         }
         StmtType::InlineAsm(instructs) => {
@@ -168,8 +176,7 @@ fn compile_break_coninue(cc: &mut CompilerContext, is_break: bool) -> Result<(),
             } else {
                 s_block.start_name()
             };
-            cc.codegen
-                .instr1(Jmp, Opr::Loc(exit_loc));
+            cc.codegen.instr1(Jmp, Opr::Loc(exit_loc));
             did_break = true;
             break;
         }
@@ -344,7 +351,12 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Compi
             let indexer = compile_expr(cc, &ai.indexer)?;
             mov_unknown_to_register(cc, RBX, indexer.value);
             let mem = MemAddr::new_sib_s(
-                v_map.vtype.item_size(), RBP, v_map.offset, RBX, v_map.vtype.item_size());
+                v_map.vtype.item_size(),
+                RBP,
+                v_map.offset,
+                RBX,
+                v_map.vtype.item_size(),
+            );
             if right_eo.is_temp() {
                 restore_last_temp_value(cc, RAX);
                 assgin_op(cc, &assign.op, RAX.into(), mem)?;
