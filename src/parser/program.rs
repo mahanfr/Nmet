@@ -28,10 +28,7 @@ use crate::{
 };
 
 use super::{
-    function::{parse_function_declaration, parse_function_definition, FunctionDecl, FunctionDef},
-    parse_source_file,
-    structs::{struct_def, StructDef},
-    variable_decl::{variable_declare, VariableDeclare},
+    function::{parse_function_declaration, parse_function_definition, FunctionDecl, FunctionDef}, parse_source_file, structs::struct_def, types::StructType, variable_decl::{variable_declare, VariableDeclare}
 };
 
 /// Program file information
@@ -41,8 +38,6 @@ use super::{
 /// * items: All supported top level Items
 #[derive(Debug, Clone)]
 pub struct ProgramFile {
-    pub shebang: String,
-    pub file_path: String,
     // pub attrs: Vec<Attr>
     pub items: Vec<ProgramItem>,
 }
@@ -53,7 +48,7 @@ pub struct ProgramFile {
 #[allow(clippy::upper_case_acronyms)]
 pub enum ProgramItem {
     /// Struct Defenition
-    Struct(StructDef),
+    Struct(StructType),
     /// Function Definitions
     Func(FunctionDef),
     /// Static Variables
@@ -87,6 +82,7 @@ pub fn generate_ast(lexer: &mut Lexer) -> ProgramFile {
             }
             TokenType::Var => {
                 items.push(ProgramItem::StaticVar(variable_declare(lexer)));
+                lexer.match_token(TokenType::SemiColon);
             }
             TokenType::Import => {
                 let import = parse_mod_import(lexer);
@@ -104,8 +100,6 @@ pub fn generate_ast(lexer: &mut Lexer) -> ProgramFile {
         }
     }
     ProgramFile {
-        shebang: String::new(),
-        file_path: lexer.file_path.clone(),
         items,
     }
 }

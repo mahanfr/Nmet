@@ -1,0 +1,6 @@
+
+var cat @int = 10;
+
+func main() {
+    print cat;        
+}

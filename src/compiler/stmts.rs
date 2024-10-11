@@ -30,25 +30,21 @@ use crate::{
         mnemonic::Mnemonic::*,
         register::Reg::*,
         utils::{mov_unknown_to_register, restore_last_temp_value, save_temp_value},
-    },
-    compiler::VariableMap,
-    error_handeling::CompilationError,
-    log_cerror, log_warn, mem,
-    parser::{
+    }, compiler::VariableMap, error_handeling::CompilationError, log_cerror, log_warn, mem, parser::{
         assign::{Assign, AssignOp},
         block::BlockType,
         expr::{CompareExpr, CompareOp, Expr, ExprType},
         stmt::{ElseBlock, ForLoop, IFStmt, Stmt, StmtType, WhileStmt},
         types::VariableType,
-    },
+    }
 };
 
 use super::{
     bif::Bif,
-    block::{self, compile_block},
+    block::compile_block,
     expr::{compile_compare_expr, compile_expr},
     variables::{get_vriable_map, insert_variable},
-    CompilerContext,
+    CompilerContext, VariableMapBase,
 };
 
 fn compile_if_stmt(
@@ -109,9 +105,9 @@ fn compile_print(cc: &mut CompilerContext, expr: &Expr) -> Result<(), Compilatio
     Ok(())
 }
 
-pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt) -> Result<(), CompilationError> {
+pub fn compile_stmt(cc: &mut CompilerContext, stmt: &Stmt, block_id: i64) -> Result<(), CompilationError> {
     match &stmt.stype {
-        StmtType::VariableDecl(v) => insert_variable(cc, v),
+        StmtType::VariableDecl(v) => insert_variable(cc, v, block_id),
         StmtType::Print(e) => compile_print(cc, e),
         StmtType::If(ifs) => {
             let exit_tag = ifs.then_block.name_with_prefix("IFE");
@@ -201,9 +197,7 @@ fn compile_inline_asm(cc: &mut CompilerContext, instr: &String) -> Result<(), Co
                 }
                 if !ident.is_empty() {
                     let v_map = get_vriable_map(cc, &ident)?;
-                    let mem_acss =
-                        MemAddr::new_disp_s(v_map.vtype.item_size(), RBP, v_map.stack_offset())
-                            .to_string();
+                    let mem_acss = v_map.mem().to_string();
                     let mut temp = String::new();
                     temp.push_str(chars[0..(first_index)].iter().collect::<String>().as_str());
                     temp.push_str(mem_acss.as_str());
@@ -225,7 +219,7 @@ fn compile_inline_asm(cc: &mut CompilerContext, instr: &String) -> Result<(), Co
 }
 
 fn compile_for_loop(cc: &mut CompilerContext, for_stmt: &ForLoop) -> Result<(), CompilationError> {
-    insert_variable(cc, &for_stmt.iterator)?;
+    insert_variable(cc, &for_stmt.iterator, for_stmt.block.id)?;
     if !matches!(for_stmt.end_expr.etype, ExprType::Int(_)) {
         return Err(CompilationError::Err(format!(
             "Unsupported iterator type (must be type integer insted of ({:?}))",
@@ -238,7 +232,7 @@ fn compile_for_loop(cc: &mut CompilerContext, for_stmt: &ForLoop) -> Result<(), 
     compile_block(cc, &for_stmt.block);
 
     let v_map = get_vriable_map(cc, &for_stmt.iterator.ident)?;
-    let mem_acss = MemAddr::new_disp_s(v_map.vtype.item_size(), RBP, v_map.stack_offset());
+    let mem_acss = v_map.mem();
     cc.codegen.instr1(Inc, mem_acss);
 
     cc.codegen.set_lable(for_stmt.block.name_with_prefix("CND"));
@@ -280,27 +274,10 @@ fn assgin_op(
     cc: &mut CompilerContext,
     op: &AssignOp,
     opr: Opr,
-    v_map: &VariableMap,
+    mem_acss: MemAddr,
 ) -> Result<(), CompilationError> {
-    let mut reg_size = v_map.vtype.item_size();
-    let mem_acss = match &v_map.vtype {
-        VariableType::Array(_, _) => MemAddr::new_sib_s(
-            v_map.vtype.item_size(),
-            RBP,
-            v_map.stack_offset(),
-            RBX,
-            v_map.vtype.item_size(),
-        ),
-        VariableType::Custom(_) => {
-            cc.codegen
-                .instr2(Mov, RDX, mem!(RBP, -(v_map.offset as i32 + 8)));
-            cc.codegen.instr2(Add, RDX, v_map.offset_inner);
-            reg_size = v_map.vtype_inner.item_size();
-            MemAddr::new_s(v_map.vtype_inner.item_size(), RDX)
-        }
-        _ => MemAddr::new_disp_s(v_map.vtype.item_size(), RBP, v_map.stack_offset()),
-    };
     mov_unknown_to_register(cc, RAX, opr);
+    let reg_size = mem_acss.size;
     match op {
         AssignOp::Eq => {
             cc.codegen.instr2(Mov, mem_acss, RAX.convert(reg_size));
@@ -348,7 +325,7 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Compi
             }
             let right_eo = compile_expr(cc, &assign.right)?;
             v_map.vtype.cast(&right_eo.vtype)?;
-            assgin_op(cc, &assign.op, right_eo.value, &v_map)?;
+            assgin_op(cc, &assign.op, right_eo.value, v_map.mem())?;
             Ok(())
         }
         ExprType::ArrayIndex(ai) => {
@@ -366,47 +343,35 @@ fn compile_assgin(cc: &mut CompilerContext, assign: &Assign) -> Result<(), Compi
             };
             let indexer = compile_expr(cc, &ai.indexer)?;
             mov_unknown_to_register(cc, RBX, indexer.value);
+            let mem = MemAddr::new_sib_s(
+                v_map.vtype.item_size(), RBP, v_map.offset, RBX, v_map.vtype.item_size());
             if right_eo.is_temp() {
                 restore_last_temp_value(cc, RAX);
-                assgin_op(cc, &assign.op, RAX.into(), &v_map)?;
+                assgin_op(cc, &assign.op, RAX.into(), mem)?;
             } else {
-                assgin_op(cc, &assign.op, right_eo.value, &v_map)?;
+                assgin_op(cc, &assign.op, right_eo.value, mem)?;
             }
             Ok(())
         }
         ExprType::Access(ident, expr) => {
             let v_map = get_vriable_map(cc, ident)?;
-            let VariableType::Custom(struct_ident) = v_map.vtype.clone() else {
+            let VariableType::Struct(struc) = v_map.vtype.clone() else {
                 unreachable!();
-            };
-            let Some(struc) = cc.structs_map.get(&struct_ident) else {
-                return Err(CompilationError::UndifiendStruct(struct_ident));
             };
             match &expr.etype {
                 ExprType::Variable(i) => {
-                    let mut vtype = VariableType::Any;
-                    let mut offset_inner = 0;
-                    for item in struc.items.iter() {
-                        offset_inner += item.1.size();
-                        if &item.0 == i {
-                            vtype = item.1.clone();
-                            break;
-                        }
-                    }
-                    if vtype.is_any() {
-                        return Err(CompilationError::UnknownRefrence);
-                    }
+                    let inner_var = struc.items.get(i).unwrap();
                     let right_eo = compile_expr(cc, &assign.right)?;
-                    vtype.cast(&right_eo.vtype)?;
-                    let mut item_map = v_map.clone();
-                    item_map.offset_inner = offset_inner;
-                    item_map.vtype_inner = vtype;
-                    assgin_op(cc, &assign.op, right_eo.value, &item_map)?;
+                    inner_var.vtype.cast(&right_eo.vtype)?;
+                    cc.codegen.instr2(Mov, RDX, mem!(RBP, v_map.offset));
+                    cc.codegen.instr2(Add, RDX, inner_var.offset);
+                    let mem = MemAddr::new_s(inner_var.vtype.item_size(), RDX);
+                    assgin_op(cc, &assign.op, right_eo.value, mem)?;
                 }
                 ExprType::ArrayIndex(_) => todo!(),
                 ExprType::Access(_, _) => todo!(),
                 _ => {
-                    return Err(CompilationError::UnexpectedType(struct_ident));
+                    return Err(CompilationError::UnexpectedType(struc.ident));
                 }
             }
 

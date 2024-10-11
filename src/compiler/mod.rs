@@ -30,34 +30,94 @@ mod stmts;
 mod variables;
 
 use crate::codegen::instructions::Opr;
+use crate::codegen::memory::MemAddr;
 use crate::codegen::mnemonic::Mnemonic;
 use crate::codegen::{register::Reg, Codegen};
 use crate::compiler::{bif::Bif, function::compile_function};
-
 use crate::log_error;
 use crate::parser::block::Block;
 use crate::parser::function::FunctionDecl;
 use crate::parser::parse_source_file;
 use crate::parser::program::{ProgramFile, ProgramItem};
-use crate::parser::{structs::StructDef, types::VariableType};
+use crate::parser::types::StructType;
+use crate::parser::types::VariableType;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::process::exit;
+use std::usize;
 
 use self::variables::insert_variable;
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub enum NameSpaceType {
+    Variable(VariableMap),
+    Function(FunctionDecl),
+    Struct(StructType),
+    Unit(String),
+}
+
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub struct NameSpace {
+    block_id: i64,
+    nstype: NameSpaceType,
+    children: HashMap<String, NameSpace>,
+}
+
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub enum VariableMapBase {
+    Stack(i64),
+    Global(String),
+    Index(Reg),
+    Inner(i32),
+}
+
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct VariableMap {
-    pub offset_inner: usize,
-    pub offset: usize,
+    pub base: VariableMapBase,
+    pub offset: i32,
     pub vtype: VariableType,
-    pub vtype_inner: VariableType,
     pub is_mut: bool,
-    pub static_data_id: Option<String>,
 }
 
 impl VariableMap {
-    pub fn stack_offset(&self) -> i32 {
-        -((self.offset + self.vtype.size()) as i32)
+    pub fn new(base: VariableMapBase, offset: usize, vtype:VariableType, is_mut: bool) -> Self {
+        let new_offset = Self::get_stack_offset(offset, &vtype);
+        Self {
+            base,
+            is_mut,
+            offset: new_offset,
+            vtype,
+        }
+    }
+
+    pub fn mem_with_offset_reg(&self, offset_reg: Reg) -> MemAddr {
+        MemAddr::new_sib_s(
+            self.vtype.item_size(),
+            Reg::RBP,
+            self.offset as i32,
+            offset_reg,
+            self.vtype.item_size(),
+        )
+    }
+
+    pub fn mem(&self) -> MemAddr {
+        match &self.vtype {
+            VariableType::Int | VariableType::UInt => MemAddr::new_disp_s(4, Reg::RBP, self.offset as i32),
+            VariableType::Long | VariableType::ULong | VariableType::Custom(_) |
+                VariableType::Pointer | VariableType::String => MemAddr::new_disp_s(8, Reg::RBP, self.offset as i32),
+            VariableType::Bool | VariableType::Char => MemAddr::new_disp_s(1, Reg::RBP, self.offset as i32),
+            VariableType::Any | VariableType::Void => unreachable!(),
+            VariableType::Array(item_vtype, _) => MemAddr::new_disp_s(item_vtype.item_size(), Reg::RBP, self.offset as i32),
+            VariableType::Struct(_) => MemAddr::new_disp_s(8, Reg::RBP, self.offset as i32),
+            VariableType::Float => todo!(),
+        }
+    }
+
+    pub fn get_stack_offset(offset: usize, vtype: &VariableType) -> i32 {
+        -((offset + vtype.size()) as i32)
     }
 }
 
@@ -66,7 +126,7 @@ pub struct CompilerContext {
     pub scoped_blocks: Vec<Block>,
     pub variables_map: HashMap<String, VariableMap>,
     pub functions_map: BTreeMap<String, FunctionDecl>,
-    pub structs_map: HashMap<String, StructDef>,
+    pub structs_map: HashMap<String, StructType>,
     pub bif_set: HashSet<Bif>,
     pub mem_offset: usize,
     pub program_file: String,
@@ -163,7 +223,7 @@ fn collect_types(cc: &mut CompilerContext, program: &ProgramFile) {
                 cc.structs_map.insert(s.ident.clone(), s.clone());
             }
             ProgramItem::StaticVar(sv) => {
-                insert_variable(cc, sv);
+                let _ = insert_variable(cc, sv, 0);
             },
         }
     }

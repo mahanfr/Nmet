@@ -25,29 +25,19 @@
 use std::collections::HashMap;
 
 use crate::{
-    codegen::{memory::MemAddr, mnemonic::Mnemonic::*, register::Reg::*},
+    codegen::{mnemonic::Mnemonic::*, register::Reg::*},
     compiler::VariableMap,
-    parser::{
-        function::{FunctionArg, FunctionDef},
-        types::VariableType,
-    },
+    parser::function::{FunctionArg, FunctionDef},
 };
 
-use super::{block::compile_function_block_alrady_scoped, function_args_register_sized, CompilerContext};
+use super::{block::compile_function_block_alrady_scoped, function_args_register_sized, CompilerContext, VariableMapBase};
 
-pub fn function_args(cc: &mut CompilerContext, args: &[FunctionArg]) {
+pub fn function_args(cc: &mut CompilerContext, block_id: i64, args: &[FunctionArg]) {
     for (args_count, arg) in args.iter().enumerate() {
         let ident = format!("{}%{}", arg.ident, cc.scoped_blocks.last().unwrap().id);
-        let map = VariableMap {
-            offset: cc.mem_offset,
-            offset_inner: 0,
-            is_mut: false,
-            vtype: arg.typedef.clone(),
-            vtype_inner: VariableType::Any,
-            static_data_id: None
-        };
+        let map = VariableMap::new(VariableMapBase::Stack(block_id), cc.mem_offset, arg.typedef.clone(), false);
         if args_count < 6 {
-            let mem_acss = MemAddr::new_disp_s(map.vtype.item_size(), RBP, map.stack_offset());
+            let mem_acss = map.mem();
             let reg = function_args_register_sized(args_count, &map.vtype);
             cc.codegen.instr2(Mov, mem_acss, reg);
         } else {
@@ -68,7 +58,7 @@ pub fn compile_function(cc: &mut CompilerContext, f: &FunctionDef) {
 
     cc.codegen.instr1(Push, RBP);
     cc.codegen.instr2(Mov, RBP, RSP);
-    function_args(cc, &f.decl.args);
+    function_args(cc, f.block.id, &f.decl.args);
     /*--- Scoping function variables ---*/
     cc.scoped_blocks.push(f.block.clone());
     compile_function_block_alrady_scoped(cc, &f.block);

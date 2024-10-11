@@ -27,7 +27,7 @@ use crate::{
         instructions::Opr,
         memory::MemAddr,
         mnemonic::Mnemonic::*,
-        register::Reg::*,
+        register::Reg::{self, *},
         utils::{mov_unknown_to_register, restore_last_temp_value, save_temp_value},
     },
     error_handeling::CompilationError,
@@ -59,7 +59,7 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> Result<ExprOpr, Co
         ExprType::ArrayIndex(ai) => compile_array_index(cc, ai),
         ExprType::Variable(v) => {
             let v_map = get_vriable_map(cc, v)?;
-            let mem_acss = MemAddr::new_disp_s(v_map.vtype.item_size(), RBP, v_map.stack_offset());
+            let mem_acss = v_map.mem();
             Ok(ExprOpr::new(mem_acss, v_map.vtype))
         }
         ExprType::Bool(b) => Ok(ExprOpr::new(*b as i32, VariableType::Bool)),
@@ -206,13 +206,7 @@ fn compile_array_index(
     let v_map = get_vriable_map(cc, &ai.ident)?;
     let indexer = compile_expr(cc, &ai.indexer)?;
     mov_unknown_to_register(cc, RBX, indexer.value);
-    let mem_acss = MemAddr::new_sib_s(
-        v_map.vtype.item_size(),
-        RBP,
-        v_map.stack_offset(),
-        RBX,
-        v_map.vtype.item_size(),
-    );
+    let mem_acss = v_map.mem_with_offset_reg(Reg::RBX);
     match v_map.vtype {
         VariableType::Array(t, _) => Ok(ExprOpr::new(mem_acss, t.as_ref().clone())),
         _ => unreachable!(),
@@ -257,33 +251,19 @@ fn compile_access(
     expr: &Expr,
 ) -> Result<ExprOpr, CompilationError> {
     let v_map = get_vriable_map(cc, ident)?;
-    let VariableType::Custom(struct_ident) = v_map.vtype.clone() else {
+    let VariableType::Struct(struc) = v_map.vtype.clone() else {
         return Err(CompilationError::UnexpectedType(v_map.vtype.to_string()));
     };
-    let Some(struc) = cc.structs_map.get(&struct_ident) else {
-        return Err(CompilationError::UndifiendStruct(struct_ident));
-    };
-    let mut offset: usize = 0;
-    let mut actype = VariableType::Any;
-    match &expr.etype {
+    let acv = match &expr.etype {
         ExprType::Variable(v) => {
-            for item in struc.items.iter() {
-                offset += item.1.size();
-                if &item.0 == v {
-                    actype = item.1.clone();
-                    break;
-                }
-            }
+            struc.items.get(v).unwrap()
         }
         _ => todo!(),
-    }
-    if actype.is_any() {
-        return Err(CompilationError::UnknownRefrence);
-    }
-    mov_unknown_to_register(cc, RDX, mem!(RBP, v_map.stack_offset()).into());
-    cc.codegen.instr2(Add, RDX, offset);
-    mov_unknown_to_register(cc, RAX, MemAddr::new_s(actype.item_size(), RDX).into());
-    Ok(ExprOpr::new(RAX, actype))
+    };
+    mov_unknown_to_register(cc, RDX, mem!(RBP, v_map.offset).into());
+    cc.codegen.instr2(Add, RDX, acv.offset);
+    mov_unknown_to_register(cc, RAX, MemAddr::new_s(acv.vtype.item_size(), RDX).into());
+    Ok(ExprOpr::new(RAX, acv.vtype.clone()))
 }
 
 fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) -> Result<ExprOpr, CompilationError> {
@@ -292,13 +272,13 @@ fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) -> Result<ExprOpr, Compila
             let v_map = get_vriable_map(cc, v)?;
             match v_map.vtype {
                 VariableType::Array(_, _) => {
-                    cc.codegen.instr2(Lea, RAX, mem!(RBP, v_map.stack_offset()));
+                    cc.codegen.instr2(Lea, RAX, mem!(RBP, v_map.offset));
                     Ok(ExprOpr::new(RAX, VariableType::Pointer))
                 }
                 _ => {
                     cc.codegen.instr2(Mov, RAX, RBP);
                     cc.codegen
-                        .instr2(Sub, RAX, v_map.offset + v_map.vtype.size());
+                        .instr2(Sub, RAX, -(v_map.offset));
                     Ok(ExprOpr::new(RAX, VariableType::Pointer))
                 }
             }

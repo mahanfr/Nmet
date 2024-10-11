@@ -29,41 +29,12 @@ use crate::{
     }, compiler::VariableMap, error_handeling::{error, CompilationError}, memq, optim::ExprOpr, parser::{types::VariableType, variable_decl::VariableDeclare}
 };
 
-use super::{expr::compile_expr, CompilerContext};
-
-pub fn insert_variable_global(
-    cc: &mut CompilerContext,
-    var: &VariableDeclare,
-) -> Result<(), CompilationError> {
-    let ident = format!("{}%{}", var.ident, cc.scoped_blocks[0].id);
-    let vtype = match var.v_type.as_ref() {
-        Some(vt) => vt.clone(),
-        None => {
-            return Err(CompilationError::UnknownType(var.ident.clone()));
-        },
-    };
-    let init_value = var.init_value.clone().unwrap();
-    let expro = compile_expr(cc, &init_value)?;
-    if !expro.value.is_literal() {
-        return Err(CompilationError::Err("Invalid Value: Value must be known at compile Time".to_string()));
-    }
-    let name = cc.codegen.add_data(expro.value.get_literal_value().to_le_bytes().to_vec(), expro.vtype);
-    
-    let var_map = VariableMap {
-        vtype: vtype.clone(),
-        vtype_inner: VariableType::Any,
-        offset: 0,
-        is_mut: false,
-        offset_inner: 0,
-        static_data_id: Some(name)
-    };
-    cc.variables_map.insert(ident, var_map);
-    Ok(())
-}
+use super::{expr::compile_expr, CompilerContext, VariableMapBase};
 
 pub fn insert_variable(
     cc: &mut CompilerContext,
     var: &VariableDeclare,
+    block_id: i64,
 ) -> Result<(), CompilationError> {
     let ident = format!("{}%{}", var.ident, cc.scoped_blocks.last().unwrap().id);
     let mut vtype = match var.v_type.as_ref() {
@@ -73,18 +44,15 @@ pub fn insert_variable(
     // Declare variable memory
     // No need to do any thing if variable is on the stack
     match &vtype {
-        VariableType::Array(_, _) => (),
         VariableType::Custom(s) => {
             let Some(struct_map) = cc.structs_map.get(s) else {
                 return Err(CompilationError::UnknownType(s.to_owned()));
             };
-            let size: usize = struct_map.items.iter().map(|(_, v)| v.size()).sum();
-            let struct_tag = cc.codegen.add_bss_seg(size);
+            let struct_tag = cc.codegen.add_bss_seg(struct_map.size());
             let mem_acss = memq!(RBP, -(cc.mem_offset as i32 + 8));
-            // assert!(false, "Not Implemented yet!");
             cc.codegen.instr2(Mov, mem_acss, Opr::Rela(struct_tag));
+            vtype = VariableType::Struct(struct_map.clone());
         }
-        VariableType::String => {}
         _ => (),
     }
     // compile initial value
@@ -99,8 +67,7 @@ pub fn insert_variable(
                     cc.codegen.instr2(Mov, mem_acss, expro.value.sized(&vt));
                 } else {
                     mov_unknown_to_register(cc, RAX, expro.value);
-                    cc.codegen
-                        .instr2(Mov, mem_acss, RAX.convert(vt.item_size()));
+                    cc.codegen.instr2(Mov, mem_acss, RAX.convert(vt.item_size()));
                 }
                 vtype = vt;
             }
@@ -113,26 +80,11 @@ pub fn insert_variable(
     if vtype == VariableType::Any {
         return Err(CompilationError::UnknownType(var.ident.to_owned()));
     }
-    let var_map = VariableMap {
-        vtype: vtype.clone(),
-        vtype_inner: VariableType::Any,
-        offset: cc.mem_offset,
-        is_mut: var.mutable,
-        offset_inner: 0,
-        static_data_id: None
-    };
+    let var_map = VariableMap::new(VariableMapBase::Stack(block_id), cc.mem_offset, vtype.clone(), var.mutable);
     cc.codegen.instr2(Sub, RSP, vtype.size());
     cc.mem_offset += vtype.size();
     cc.variables_map.insert(ident, var_map);
     Ok(())
-}
-
-pub fn get_vmap_opr(vmap: &VariableMap, vtype: &VariableType) -> Opr {
-    if vmap.static_data_id.is_some() {
-        return Opr::Rela(vmap.static_data_id.clone().unwrap());
-    }
-    let mem_acss = MemAddr::new_disp_s(vtype.item_size(), RBP, -((vmap.offset + vtype.size()) as i32));
-    Opr::Mem(mem_acss)
 }
 
 pub fn get_vriable_map(
