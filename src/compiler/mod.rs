@@ -56,14 +56,16 @@ pub enum NameSpaceType {
 
 #[derive(Debug, Clone)]
 pub struct NameSpace {
-    block_id: i64,
+    block_id: BlockID,
     nstype: NameSpaceType,
     children: HashMap<String, NameSpace>,
 }
 
+pub type BlockID = i64;
+
 #[derive(Debug, Clone)]
 pub enum VariableMapBase {
-    Stack(i64),
+    Stack(BlockID),
     Global(String),
 }
 
@@ -223,7 +225,7 @@ fn collect_types(cc: &mut CompilerContext, program: &ProgramFile) {
                 cc.structs_map.insert(s.ident.clone(), s.clone());
             }
             ProgramItem::StaticVar(sv) => {
-                let _ = insert_variable(cc, sv, 0);
+                let _ = insert_variable(cc, sv, VariableMapBase::Global(sv.ident.clone()));
             }
         }
     }

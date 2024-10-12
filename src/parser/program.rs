@@ -84,7 +84,8 @@ pub fn generate_ast(lexer: &mut Lexer) -> ProgramFile {
                 let function_def = parse_function_definition(lexer);
                 items.push(ProgramItem::Func(function_def));
             }
-            TokenType::Var => {
+            TokenType::Static => {
+                lexer.match_token(TokenType::Static);
                 items.push(ProgramItem::StaticVar(variable_declare(lexer)));
                 lexer.match_token(TokenType::SemiColon);
             }

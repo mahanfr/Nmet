@@ -47,7 +47,7 @@ pub fn assemble_instr(instr: &Instr) -> IBytes {
 
 fn include_imm_values(bytes: &mut IBytes, instr: &Instr) {
     if instr.mnem.needs_precision_imm() {
-        match instr.oprs {
+        match &instr.oprs {
             Oprs::Two(Opr::Mem(m), Opr::Imm8(val) | Opr::Imm32(val)) => match m.size {
                 1 => {
                     bytes.push(val.to_le_bytes()[0]);
@@ -82,7 +82,7 @@ fn include_imm_values(bytes: &mut IBytes, instr: &Instr) {
 }
 
 fn rex(instr: &Instr) -> IBytes {
-    match instr.oprs {
+    match &instr.oprs {
         Oprs::Two(Register!(r1), Register!(r2)) => {
             let mut bytes = vec![];
             let mut rex: u8 = 0x40;
@@ -109,10 +109,10 @@ fn rex(instr: &Instr) -> IBytes {
             if r1.is_extended() {
                 rex |= 0b0100;
             }
-            if mem.register.is_extended() {
+            if mem.get_register().is_extended() {
                 rex |= 0b0001;
             }
-            if let Some(s_reg) = mem.s_register {
+            if let Some(s_reg) = mem.get_s_register() {
                 if s_reg.is_extended() {
                     rex |= 0b0010;
                 }
@@ -148,10 +148,10 @@ fn rex(instr: &Instr) -> IBytes {
         Oprs::Two(Opr::Mem(mem), _) | Oprs::One(Opr::Mem(mem)) => {
             let mut bytes = vec![];
             let mut rex: u8 = 0x40;
-            if mem.register.is_extended() {
+            if mem.get_register().is_extended() {
                 rex |= 0b0100;
             }
-            if let Some(s_reg) = mem.s_register {
+            if let Some(s_reg) = mem.get_s_register() {
                 if s_reg.is_extended() {
                     rex |= 0b0010;
                 }
@@ -272,46 +272,47 @@ fn modrm_ex(ex: u8, oprs: &Oprs) -> IBytes {
 
 fn _mem_modrm(r: u8, mem: &MemAddr) -> IBytes {
     match mem.addr_type {
-        MemAddrType::Address => {
-            if mem.register.opcode() != 0x04 && mem.register.opcode() != 0x05 {
-                vec![_modrm(0b00, mem.register.opcode(), r)]
+        MemAddrType::Addr(reg) => {
+            if reg.opcode() != 0x04 && reg.opcode() != 0x05 {
+                vec![_modrm(0b00,reg.opcode(), r)]
             } else {
                 unreachable!();
             }
         }
-        MemAddrType::Disp => {
-            if mem.disp >= i8::MIN as i32 && mem.disp <= i8::MAX as i32 {
-                if mem.register.opcode() != 0x4 {
-                    let disp_byte = mem.disp.to_le_bytes()[0];
-                    vec![_modrm(0b01, mem.register.opcode(), r), disp_byte]
+        MemAddrType::Disp(reg, disp) => {
+            if disp >= i8::MIN as i32 && disp <= i8::MAX as i32 {
+                if reg.opcode() != 0x4 {
+                    let disp_byte = disp.to_le_bytes()[0];
+                    vec![_modrm(0b01, reg.opcode(), r), disp_byte]
                 } else {
                     unreachable!();
                 }
-            } else if mem.register.opcode() != 0x4 {
-                let mut bytes = vec![_modrm(0b10, mem.register.opcode(), r)];
-                bytes.extend(mem.disp.to_le_bytes());
+            } else if reg.opcode() != 0x4 {
+                let mut bytes = vec![_modrm(0b10, reg.opcode(), r)];
+                bytes.extend(disp.to_le_bytes());
                 bytes
             } else {
                 unreachable!();
             }
         }
-        MemAddrType::Sib => {
+        MemAddrType::Sib(reg1, disp, reg2, scale) => {
             let mut bytes = vec![];
-            if mem.disp == 0 {
+            if disp == 0 {
                 bytes.push(_modrm(0b00, 0x04, r));
                 bytes
-            } else if mem.disp >= i8::MIN as i32 && mem.disp <= i8::MAX as i32 {
+            } else if disp >= i8::MIN as i32 && disp <= i8::MAX as i32 {
                 bytes.push(_modrm(0b01, 0x04, r));
                 bytes.push(sib(mem));
-                bytes.push(mem.disp.to_le_bytes()[0]);
+                bytes.push(disp.to_le_bytes()[0]);
                 bytes
             } else {
                 bytes.push(_modrm(0b10, 0x04, r));
                 bytes.push(sib(mem));
-                bytes.extend(mem.disp.to_le_bytes());
+                bytes.extend(disp.to_le_bytes());
                 bytes
             }
         }
+        MemAddrType::AddrRela(_) => todo!(),
     }
 }
 
@@ -326,13 +327,13 @@ fn _modrm(modr: u8, r1: u8, r2: u8) -> u8 {
 }
 
 fn sib(mem: &MemAddr) -> u8 {
-    let mut res = (mem.scale.trailing_zeros() & 0b11) as u8;
-    res <<= 3;
-    let Some(s_reg) = mem.s_register else {
+    let MemAddrType::Sib(register, _, s_register, scale) = mem.clone().addr_type else {
         unreachable!("expected reg in sib founnd none!");
     };
-    res |= s_reg.opcode() & 0b111;
+    let mut res = (scale.trailing_zeros() & 0b11) as u8;
     res <<= 3;
-    res |= mem.register.opcode() & 0b111;
+    res |= s_register.opcode() & 0b111;
+    res <<= 3;
+    res |= register.opcode() & 0b111;
     res
 }

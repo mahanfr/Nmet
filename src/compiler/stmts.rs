@@ -47,7 +47,7 @@ use super::{
     block::compile_block,
     expr::{compile_compare_expr, compile_expr},
     variables::{get_vriable_map, insert_variable},
-    CompilerContext,
+    CompilerContext, VariableMapBase,
 };
 
 fn compile_if_stmt(
@@ -114,7 +114,7 @@ pub fn compile_stmt(
     block_id: i64,
 ) -> Result<(), CompilationError> {
     match &stmt.stype {
-        StmtType::VariableDecl(v) => insert_variable(cc, v, block_id),
+        StmtType::VariableDecl(v) => insert_variable(cc, v, VariableMapBase::Stack(block_id)),
         StmtType::Print(e) => compile_print(cc, e),
         StmtType::If(ifs) => {
             let exit_tag = ifs.then_block.name_with_prefix("IFE");
@@ -226,7 +226,7 @@ fn compile_inline_asm(cc: &mut CompilerContext, instr: &String) -> Result<(), Co
 }
 
 fn compile_for_loop(cc: &mut CompilerContext, for_stmt: &ForLoop) -> Result<(), CompilationError> {
-    insert_variable(cc, &for_stmt.iterator, for_stmt.block.id)?;
+    insert_variable(cc, &for_stmt.iterator, VariableMapBase::Stack(for_stmt.block.id))?;
     if !matches!(for_stmt.end_expr.etype, ExprType::Int(_)) {
         return Err(CompilationError::Err(format!(
             "Unsupported iterator type (must be type integer insted of ({:?}))",
@@ -299,14 +299,14 @@ fn assgin_op(
             Ok(())
         }
         AssignOp::MultiEq => {
-            mov_unknown_to_register(cc, RBX, mem_acss.into());
+            mov_unknown_to_register(cc, RBX, mem_acss.clone().into());
             cc.codegen.instr2(Imul, RAX, RBX);
             cc.codegen.instr2(Mov, mem_acss, RAX.convert(reg_size));
             Ok(())
         }
         AssignOp::DevideEq => {
             cc.codegen.instr2(Mov, RBX, RAX);
-            mov_unknown_to_register(cc, RAX, mem_acss.into());
+            mov_unknown_to_register(cc, RAX, mem_acss.clone().into());
             cc.codegen.instr0(Cqo);
             cc.codegen.instr1(Idiv, RBX);
             cc.codegen.instr2(Mov, mem_acss, RAX.convert(reg_size));
@@ -314,7 +314,7 @@ fn assgin_op(
         }
         AssignOp::ModEq => {
             cc.codegen.instr2(Mov, RBX, RAX);
-            mov_unknown_to_register(cc, RAX, mem_acss.into());
+            mov_unknown_to_register(cc, RAX, mem_acss.clone().into());
             cc.codegen.instr0(Cqo);
             cc.codegen.instr1(Idiv, RBX);
             cc.codegen.instr2(Mov, mem_acss, RDX.convert(reg_size));

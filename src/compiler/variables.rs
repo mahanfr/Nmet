@@ -33,18 +33,18 @@ use crate::{
     parser::{types::VariableType, variable_decl::VariableDeclare},
 };
 
-use super::{expr::compile_expr, CompilerContext, VariableMapBase};
+use super::{expr::compile_expr, BlockID, CompilerContext, VariableMapBase};
 
 pub fn insert_variable(
     cc: &mut CompilerContext,
     var: &VariableDeclare,
-    block_id: i64,
+    var_base: VariableMapBase,
 ) -> Result<(), CompilationError> {
-    let ident = format!("{}%{}", var.ident, cc.scoped_blocks.last().unwrap().id);
-    let mut vtype = match var.v_type.as_ref() {
-        Some(vt) => vt.clone(),
-        None => VariableType::Any,
+    let ident = match var_base {
+        VariableMapBase::Stack(_) => format!("{}%{}", var.ident, cc.scoped_blocks.last().unwrap().id),
+        VariableMapBase::Global(_) => format!("global%{}",var.ident),
     };
+    let mut vtype = var.v_type.clone();
     // Declare variable memory
     // No need to do any thing if variable is on the stack
     if let VariableType::Custom(s) = &vtype {
@@ -62,14 +62,17 @@ pub fn insert_variable(
         let expro = compile_expr(cc, &init_value)?;
         match vtype.cast(&expro.vtype) {
             Ok(vt) => {
-                let mem_acss =
-                    MemAddr::new_disp_s(vt.item_size(), RBP, -((cc.mem_offset + vt.size()) as i32));
+                let mem_acss = match &var_base {
+                    VariableMapBase::Stack(_) => 
+                        MemAddr::new_disp_s(vt.item_size(), RBP, -((cc.mem_offset + vt.size()) as i32)),
+                    VariableMapBase::Global(rela) => 
+                        MemAddr::new_rela(rela.to_string()),
+                };
                 if expro.value.is_register() {
                     cc.codegen.instr2(Mov, mem_acss, expro.value.sized(&vt));
                 } else {
                     mov_unknown_to_register(cc, RAX, expro.value);
-                    cc.codegen
-                        .instr2(Mov, mem_acss, RAX.convert(vt.item_size()));
+                    cc.codegen.instr2(Mov, mem_acss, RAX.convert(vt.item_size()));
                 }
                 vtype = vt;
             }
@@ -83,7 +86,7 @@ pub fn insert_variable(
         return Err(CompilationError::UnknownType(var.ident.to_owned()));
     }
     let var_map = VariableMap::new(
-        VariableMapBase::Stack(block_id),
+        var_base,
         cc.mem_offset,
         vtype.clone(),
         var.mutable,
