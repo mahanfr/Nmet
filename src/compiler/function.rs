@@ -27,7 +27,7 @@ use std::collections::HashMap;
 use crate::{
     codegen::{mnemonic::Mnemonic::*, register::Reg::*},
     compiler::VariableMap,
-    parser::function::{FunctionArg, FunctionDef},
+    parser::{block::Block, function::{FunctionArg, FunctionDef}},
 };
 
 use super::{
@@ -35,11 +35,11 @@ use super::{
     VariableMapBase,
 };
 
-pub fn function_args(cc: &mut CompilerContext, block_id: i64, args: &[FunctionArg]) {
+pub fn function_args(cc: &mut CompilerContext, block: &Block, args: &[FunctionArg]) {
     for (args_count, arg) in args.iter().enumerate() {
         let ident = format!("{}%{}", arg.ident, cc.scoped_blocks.last().unwrap().id);
         let map = VariableMap::new(
-            VariableMapBase::Stack(block_id),
+            VariableMapBase::Stack(block.id.to_string()),
             cc.mem_offset,
             arg.typedef.clone(),
             false,
@@ -66,7 +66,7 @@ pub fn compile_function(cc: &mut CompilerContext, f: &FunctionDef) {
 
     cc.codegen.instr1(Push, RBP);
     cc.codegen.instr2(Mov, RBP, RSP);
-    function_args(cc, f.block.id, &f.decl.args);
+    function_args(cc, &f.block, &f.decl.args);
     /*--- Scoping function variables ---*/
     cc.scoped_blocks.push(f.block.clone());
     compile_function_block_alrady_scoped(cc, &f.block);

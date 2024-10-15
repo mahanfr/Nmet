@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 /**********************************************************************************************
 *
 *   compiler/variables: Compile Variables
@@ -34,6 +36,38 @@ use crate::{
 };
 
 use super::{expr::compile_expr, BlockID, CompilerContext, VariableMapBase};
+
+pub struct NameSpaceMapping {
+    items: HashMap<String, Vec<VariableMap>>,
+}
+
+impl NameSpaceMapping {
+
+    pub fn new() -> Self {
+        Self {
+            items: HashMap::new()
+        }
+    }
+
+    pub fn insert(&mut self, ident: &str, value: VariableMap) -> Result<(), CompilationError> {
+        if value.is_global() {
+            if self.items.get(ident).is_some() {
+                CompilationError::Err(format!("Local Variable with the name ({ident}) already exists"));
+            }
+        } else {
+            if let Some(bucket) = self.items.get(ident) {
+                for item in bucket {
+                    if item.is_global() {
+                        CompilationError::Err(format!("Global Variable with the name ({ident}) already exists"));
+                    }
+                }
+            }
+        }
+        self.items.entry(ident.to_string()).or_default().push(value);
+        Ok(())
+    }
+
+}
 
 pub fn insert_variable(
     cc: &mut CompilerContext,

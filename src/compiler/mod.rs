@@ -65,7 +65,7 @@ pub type BlockID = i64;
 
 #[derive(Debug, Clone)]
 pub enum VariableMapBase {
-    Stack(BlockID),
+    Stack(String),
     Global(String),
 }
 
@@ -86,6 +86,10 @@ impl VariableMap {
             offset: new_offset,
             vtype,
         }
+    }
+
+    pub fn is_global(&self) -> bool {
+        matches!(self.base, VariableMapBase::Global(_))
     }
 
     pub fn mem_with_offset_reg(&self, offset_reg: Reg) -> MemAddr {
@@ -190,9 +194,6 @@ fn _frame_size(mem_offset: usize) -> usize {
 
 pub fn compile(cc: &mut CompilerContext, path: String) {
     let program = parse_source_file(path.clone());
-    if cc.scoped_blocks.is_empty() {
-        cc.scoped_blocks.push(Block::new_global(path));
-    }
     collect_types(cc, &program);
     compile_init_function(cc);
     for item in program.items.iter() {

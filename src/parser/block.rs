@@ -50,7 +50,7 @@ pub enum BlockType {
 }
 
 pub fn parse_statement_outside_of_block(lexer: &mut Lexer, master: &String) -> Vec<Stmt> {
-    let mut block = Block::new(master.to_string(), BlockType::UnScoped);
+    let mut block = Block::new_unscoped(master.to_string());
     block.parse_stmt(lexer)
 }
 
@@ -58,18 +58,19 @@ pub fn parse_statement_outside_of_block(lexer: &mut Lexer, master: &String) -> V
 /// Holds a list of stmt in a block of code
 #[derive(Debug, Clone)]
 pub struct Block {
-    pub master: String,
     pub stmts: Vec<Stmt>,
     pub btype: BlockType,
     pub defer_stmts: Vec<Stmt>,
-    pub id: i64,
+    pub id: String,
+    num_of_children: i32,
 }
 
 impl Block {
-    pub fn new(master: String, btype: BlockType) -> Self {
-        let id = random();
+    pub fn new(master: &mut Block, btype: BlockType) -> Self {
+        let id = format!("{}_{}",master.id, master.num_of_children);
+        master.num_of_children += 1;
         Self {
-            master,
+            num_of_children: 0,
             stmts: Vec::new(),
             defer_stmts: Vec::new(),
             btype,
@@ -77,43 +78,51 @@ impl Block {
         }
     }
 
-    pub fn new_global(path: String) -> Self {
-        let mut hasher = DefaultHasher::new();
-        path.hash(&mut hasher);
+    pub fn new_unscoped(master_id: String) -> Self {
         Self {
-            master: path,
+            id: master_id,
+            btype: BlockType::UnScoped,
+            num_of_children: 0,
             stmts: Vec::new(),
             defer_stmts: Vec::new(),
-            btype: BlockType::Global,
-            id: hasher.finish() as i64,
+        }
+    }
+
+    pub fn new_global(ident: String, btype: BlockType) -> Self {
+        Self {
+            num_of_children: 0,
+            stmts: Vec::new(),
+            defer_stmts: Vec::new(),
+            btype,
+            id: ident,
         }
     }
 
     pub fn start_name(&self) -> String {
         if self.btype == BlockType::Function {
-            self.master.clone()
+            self.id.clone()
         } else {
-            format!("{}.BS__{}", self.master, long2base32(self.id))
+            format!("{}.BS__", self.id)
         }
     }
 
     pub fn end_name(&self) -> String {
         if self.btype == BlockType::Function {
-            format!("{}.Defer", self.master)
+            format!("{}.Defer", self.id)
         } else {
-            format!("{}.BE__{}", self.master, long2base32(self.id))
+            format!("{}.BE__", self.id)
         }
     }
 
     pub fn name_with_prefix(&self, prefix: &str) -> String {
-        format!("{}.{prefix}__{}", self.master, long2base32(self.id))
+        format!("{}.{prefix}__", self.id)
     }
 
     pub fn parse_stmt(&mut self, lexer: &mut Lexer) -> Vec<Stmt> {
         match lexer.get_token_type() {
             TokenType::Hash => {
                 let loc = lexer.get_token_loc();
-                parse_pre_functions(lexer, loc, &self.master)
+                parse_pre_functions(lexer, loc, &self.id)
             }
             TokenType::Var => {
                 let loc = lexer.get_token_loc();
@@ -158,21 +167,21 @@ impl Block {
             TokenType::If => {
                 let loc = lexer.get_token_loc();
                 vec![Stmt {
-                    stype: StmtType::If(if_stmt(lexer, &self.master)),
+                    stype: StmtType::If(if_stmt(lexer, self)),
                     loc,
                 }]
             }
             TokenType::While => {
                 let loc = lexer.get_token_loc();
                 vec![Stmt {
-                    stype: StmtType::While(while_stmt(lexer, &self.master)),
+                    stype: StmtType::While(while_stmt(lexer, self)),
                     loc,
                 }]
             }
             TokenType::For => {
                 let loc = lexer.get_token_loc();
                 vec![Stmt {
-                    stype: StmtType::ForLoop(for_loop(lexer, &self.master)),
+                    stype: StmtType::ForLoop(for_loop(lexer, self)),
                     loc,
                 }]
             }

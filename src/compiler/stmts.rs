@@ -111,7 +111,7 @@ fn compile_print(cc: &mut CompilerContext, expr: &Expr) -> Result<(), Compilatio
 pub fn compile_stmt(
     cc: &mut CompilerContext,
     stmt: &Stmt,
-    block_id: i64,
+    block_id: String,
 ) -> Result<(), CompilationError> {
     match &stmt.stype {
         StmtType::VariableDecl(v) => insert_variable(cc, v, VariableMapBase::Stack(block_id)),
@@ -226,7 +226,7 @@ fn compile_inline_asm(cc: &mut CompilerContext, instr: &String) -> Result<(), Co
 }
 
 fn compile_for_loop(cc: &mut CompilerContext, for_stmt: &ForLoop) -> Result<(), CompilationError> {
-    insert_variable(cc, &for_stmt.iterator, VariableMapBase::Stack(for_stmt.block.id))?;
+    insert_variable(cc, &for_stmt.iterator, VariableMapBase::Stack(for_stmt.block.id.clone()))?;
     if !matches!(for_stmt.end_expr.etype, ExprType::Int(_)) {
         return Err(CompilationError::Err(format!(
             "Unsupported iterator type (must be type integer insted of ({:?}))",

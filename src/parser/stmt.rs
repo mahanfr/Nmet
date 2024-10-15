@@ -115,10 +115,10 @@ pub struct WhileStmt {
 }
 
 /// Parse If Stmts
-pub fn if_stmt(lexer: &mut Lexer, master: &String) -> IFStmt {
+pub fn if_stmt(lexer: &mut Lexer, master: &mut Block) -> IFStmt {
     lexer.match_token(TokenType::If);
     let condition = expr(lexer);
-    let mut then_block = Block::new(master.to_owned(), BlockType::Condition);
+    let mut then_block = Block::new(master, BlockType::Condition);
     then_block.parse_block(lexer);
     if lexer.get_token_type() == TokenType::Else {
         lexer.match_token(TokenType::Else);
@@ -130,7 +130,7 @@ pub fn if_stmt(lexer: &mut Lexer, master: &String) -> IFStmt {
                 else_block,
             }
         } else {
-            let mut else_block = Block::new(master.to_owned(), BlockType::Condition);
+            let mut else_block = Block::new(master, BlockType::Condition);
             else_block.parse_block(lexer);
             IFStmt {
                 condition,
@@ -148,7 +148,7 @@ pub fn if_stmt(lexer: &mut Lexer, master: &String) -> IFStmt {
 }
 
 /// parse For Loops
-pub fn for_loop(lexer: &mut Lexer, master: &String) -> ForLoop {
+pub fn for_loop(lexer: &mut Lexer, master: &mut Block) -> ForLoop {
     lexer.match_token(TokenType::For);
     let mut iterator = inline_variable_declare(lexer);
     if iterator.init_value.is_none() {
@@ -159,7 +159,7 @@ pub fn for_loop(lexer: &mut Lexer, master: &String) -> ForLoop {
     }
     lexer.match_token(TokenType::To);
     let end_expr = expr(lexer);
-    let mut block = Block::new(master.to_owned(), BlockType::Loop);
+    let mut block = Block::new(master, BlockType::Loop);
     block.parse_block(lexer);
     ForLoop {
         iterator,
@@ -169,10 +169,10 @@ pub fn for_loop(lexer: &mut Lexer, master: &String) -> ForLoop {
 }
 
 /// Parse While Stmts
-pub fn while_stmt(lexer: &mut Lexer, master: &String) -> WhileStmt {
+pub fn while_stmt(lexer: &mut Lexer, master: &mut Block) -> WhileStmt {
     lexer.match_token(TokenType::While);
     let condition = expr(lexer);
-    let mut block = Block::new(master.to_owned(), BlockType::Loop);
+    let mut block = Block::new(master, BlockType::Loop);
     block.parse_block(lexer);
     WhileStmt { condition, block }
 }
