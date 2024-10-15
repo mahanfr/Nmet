@@ -27,9 +27,7 @@ use rand::random;
 *
 **********************************************************************************************/
 use crate::{
-    lexer::{Lexer, TokenType},
-    parser::stmt::Stmt,
-    utils::long2base32,
+    error_handeling::CompilationError, lexer::{Lexer, TokenType}, parser::stmt::Stmt, utils::long2base32
 };
 
 use super::{
@@ -54,6 +52,39 @@ pub fn parse_statement_outside_of_block(lexer: &mut Lexer, master: &String) -> V
     block.parse_stmt(lexer)
 }
 
+pub fn get_last_loop_block_id(child_id: &str) -> Result<String, CompilationError> {
+    let mut id = String::new();
+    let mut last_index = 0;
+    let mut reached_loop = false;
+    for (i,chr) in child_id.chars().enumerate() {
+        if chr == '.' && reached_loop {last_index = i}
+        if chr == '$' {reached_loop = true;}
+    }
+    if last_index == 0 {
+        return Err(CompilationError::NotLoopBlock);
+    }
+    Ok(child_id.split_at(last_index).0.to_string())
+}
+
+pub fn get_first_block_id(child_id: &str) -> String {
+    let mut id = String::new();
+    for chr in child_id.chars() {
+        if chr == '.' {break;}
+        id.push(chr);
+    }
+    id
+}
+
+pub fn get_parent_id(child_id: &str) -> String {
+    let mut last_index = 0;
+    for (i, chr) in child_id.chars().enumerate() {
+        if chr == '.' {
+            last_index = i;
+        }
+    }
+    child_id.split_at(last_index).0.to_string()
+}
+
 /// Block Stmt
 /// Holds a list of stmt in a block of code
 #[derive(Debug, Clone)]
@@ -67,7 +98,10 @@ pub struct Block {
 
 impl Block {
     pub fn new(master: &mut Block, btype: BlockType) -> Self {
-        let id = format!("{}_{}",master.id, master.num_of_children);
+        let id = match btype {
+            BlockType::Loop => format!("{}.${}",master.id, master.num_of_children),
+            _ => format!("{}.{}",master.id, master.num_of_children)
+        };
         master.num_of_children += 1;
         Self {
             num_of_children: 0,
@@ -98,6 +132,34 @@ impl Block {
         }
     }
 
+    pub fn master_start_name(&self) -> String {
+        get_first_block_id(&self.id)
+    }
+    pub fn master_end_name(&self) -> String {
+        format!("{}.Defer", get_first_block_id(&self.id))
+    }
+    pub fn last_loop_start_name(&self) -> Result<String, CompilationError> {
+        Ok(format!("{}.BS__", get_last_loop_block_id(&self.id)?))
+    }
+    pub fn last_loop_end_name(&self) -> Result<String, CompilationError> {
+        Ok(format!("{}.BE__", get_last_loop_block_id(&self.id)?))
+    }
+    pub fn parent_start_name(&self) -> String {
+        let parn_id = get_parent_id(&self.id);
+        if parn_id.contains('.') {
+            format!("{}.BS__", get_parent_id(&self.id))
+        } else {
+            parn_id
+        }
+    }
+    pub fn parent_end_name(&self) -> String {
+        let parn_id = get_parent_id(&self.id);
+        if parn_id.contains('.') {
+            format!("{}.Defer", parn_id)
+        } else {
+            format!("{}.BE__", parn_id)
+        }
+    }
     pub fn start_name(&self) -> String {
         if self.btype == BlockType::Function {
             self.id.clone()

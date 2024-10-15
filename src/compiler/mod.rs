@@ -44,7 +44,7 @@ use crate::parser::types::VariableType;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::process::exit;
 
-use self::variables::insert_variable;
+use self::variables::{insert_variable, NameSpaceMapping};
 
 #[derive(Debug, Clone)]
 pub enum NameSpaceType {
@@ -129,8 +129,7 @@ impl VariableMap {
 
 pub struct CompilerContext {
     pub codegen: Codegen,
-    pub scoped_blocks: Vec<Block>,
-    pub variables_map: HashMap<String, VariableMap>,
+    pub variables_map: NameSpaceMapping,
     pub functions_map: BTreeMap<String, FunctionDecl>,
     pub structs_map: HashMap<String, StructType>,
     pub bif_set: HashSet<Bif>,
@@ -144,9 +143,8 @@ impl CompilerContext {
         Self {
             program_file,
             codegen: Codegen::new(),
-            scoped_blocks: Vec::new(),
             bif_set: HashSet::new(),
-            variables_map: HashMap::new(),
+            variables_map: NameSpaceMapping::new(),
             functions_map: BTreeMap::new(),
             structs_map: HashMap::new(),
             mem_offset: 0,
@@ -205,13 +203,10 @@ pub fn compile(cc: &mut CompilerContext, path: String) {
         log_error!("Compilation Failed due to {} previous errors!", cc.errors);
         exit(-1);
     }
-    assert!(
-        cc.scoped_blocks.is_empty(),
-        "Somting went wrong: Scope has not been cleared"
-    );
 }
 
 fn collect_types(cc: &mut CompilerContext, program: &ProgramFile) {
+    let global_block = Block::new_global("#".to_string(), crate::parser::block::BlockType::Global);
     for item in program.items.iter() {
         match item {
             ProgramItem::Func(f) => {
@@ -226,7 +221,7 @@ fn collect_types(cc: &mut CompilerContext, program: &ProgramFile) {
                 cc.structs_map.insert(s.ident.clone(), s.clone());
             }
             ProgramItem::StaticVar(sv) => {
-                let _ = insert_variable(cc, sv, VariableMapBase::Global(sv.ident.clone()));
+                let _ = insert_variable(cc, &global_block, sv, VariableMapBase::Global(sv.ident.clone()));
             }
         }
     }

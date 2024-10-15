@@ -32,23 +32,22 @@ use crate::{
     compiler::VariableMap,
     error_handeling::{error, CompilationError},
     memq,
-    parser::{types::VariableType, variable_decl::VariableDeclare},
+    parser::{block::Block, types::VariableType, variable_decl::VariableDeclare},
 };
 
-use super::{expr::compile_expr, BlockID, CompilerContext, VariableMapBase};
+use super::{block, expr::compile_expr, BlockID, CompilerContext, VariableMapBase};
 
+#[derive(Debug, Clone)]
 pub struct NameSpaceMapping {
     items: HashMap<String, Vec<VariableMap>>,
 }
 
 impl NameSpaceMapping {
-
     pub fn new() -> Self {
         Self {
             items: HashMap::new()
         }
     }
-
     pub fn insert(&mut self, ident: &str, value: VariableMap) -> Result<(), CompilationError> {
         if value.is_global() {
             if self.items.get(ident).is_some() {
@@ -66,18 +65,46 @@ impl NameSpaceMapping {
         self.items.entry(ident.to_string()).or_default().push(value);
         Ok(())
     }
+    pub fn get(&self, ident: &str, block: &Block) -> Result<VariableMap, CompilationError> {
+       let Some(bucket) = self.items.get(ident) else {
+           return Err(CompilationError::UndefinedVariable(ident.to_string()));
+       };
+       for item in bucket {
+           match &item.base {
+               VariableMapBase::Global(_) => {
+                   return Ok(item.clone());
+               }
+               VariableMapBase::Stack(id) => {
+                   if *id == block.id || block.id.starts_with(id) {
+                       return Ok(item.clone());
+                   }
+               }
+           }
 
+       }
+       Err(CompilationError::UndefinedVariable(ident.to_string()))
+    }
+    
+    pub fn purge(&mut self) {
+        let mut copy = self.items.clone();
+        for bucket in copy {
+            if let Some(map) = bucket.1.first() {
+                if !map.is_global() {
+                    self.items.remove(&bucket.0);
+                }
+            } else {
+                self.items.remove(&bucket.0);
+            }
+        }
+    }
 }
 
 pub fn insert_variable(
     cc: &mut CompilerContext,
+    block: &Block,
     var: &VariableDeclare,
     var_base: VariableMapBase,
 ) -> Result<(), CompilationError> {
-    let ident = match var_base {
-        VariableMapBase::Stack(_) => format!("{}%{}", var.ident, cc.scoped_blocks.last().unwrap().id),
-        VariableMapBase::Global(_) => format!("global%{}",var.ident),
-    };
     let mut vtype = var.v_type.clone();
     // Declare variable memory
     // No need to do any thing if variable is on the stack
@@ -93,7 +120,7 @@ pub fn insert_variable(
     // compile initial value
     if var.init_value.is_some() {
         let init_value = var.init_value.clone().unwrap();
-        let expro = compile_expr(cc, &init_value)?;
+        let expro = compile_expr(cc,block, &init_value)?;
         match vtype.cast(&expro.vtype) {
             Ok(vt) => {
                 let mem_acss = match &var_base {
@@ -127,19 +154,20 @@ pub fn insert_variable(
     );
     cc.codegen.instr2(Sub, RSP, vtype.size());
     cc.mem_offset += vtype.size();
-    cc.variables_map.insert(ident, var_map);
+    cc.variables_map.insert(&var.ident, var_map);
     Ok(())
 }
 
-pub fn get_vriable_map(
-    cc: &mut CompilerContext,
-    var_ident: &str,
-) -> Result<VariableMap, CompilationError> {
-    for scoped_block in &cc.scoped_blocks {
-        let map_ident = format!("{var_ident}%{}", scoped_block.id);
-        if let Some(map) = cc.variables_map.get(&map_ident) {
-            return Ok(map.clone());
-        }
-    }
-    Err(CompilationError::UndefinedVariable(var_ident.to_owned()))
-}
+//pub fn get_vriable_map(
+//    cc: &mut CompilerContext,
+//    block: &Block,
+//    var_ident: &str,
+//) -> Result<VariableMap, CompilationError> {
+//    for scoped_block in &cc.scoped_blocks {
+//        let map_ident = format!("{var_ident}%{}", scoped_block.id);
+//        if let Some(map) = cc.variables_map.get(&map_ident) {
+//            return Ok(map.clone());
+//        }
+//    }
+//    Err(CompilationError::UndefinedVariable(var_ident.to_owned()))
+//}

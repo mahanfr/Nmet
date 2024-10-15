@@ -37,7 +37,6 @@ use super::{
 
 pub fn function_args(cc: &mut CompilerContext, block: &Block, args: &[FunctionArg]) {
     for (args_count, arg) in args.iter().enumerate() {
-        let ident = format!("{}%{}", arg.ident, cc.scoped_blocks.last().unwrap().id);
         let map = VariableMap::new(
             VariableMapBase::Stack(block.id.to_string()),
             cc.mem_offset,
@@ -51,33 +50,29 @@ pub fn function_args(cc: &mut CompilerContext, block: &Block, args: &[FunctionAr
         } else {
             todo!();
         }
-        cc.variables_map.insert(ident, map);
+        cc.variables_map.insert(&arg.ident, map);
         cc.mem_offset += 8;
         cc.codegen.instr2(Sub, RSP, 8);
     }
 }
 
 pub fn compile_function(cc: &mut CompilerContext, f: &FunctionDef) {
-    cc.scoped_blocks = Vec::new();
-    cc.scoped_blocks.push(f.block.clone());
     cc.mem_offset = 0;
-    cc.variables_map = HashMap::new();
+    cc.variables_map.purge();
+    //cc.variables_map = HashMap::new();
     cc.codegen.set_lable(f.block.start_name());
 
     cc.codegen.instr1(Push, RBP);
     cc.codegen.instr2(Mov, RBP, RSP);
     function_args(cc, &f.block, &f.decl.args);
     /*--- Scoping function variables ---*/
-    cc.scoped_blocks.push(f.block.clone());
     compile_function_block_alrady_scoped(cc, &f.block);
     //compile_block(cc, &f.block);
-    cc.scoped_blocks.pop();
     // revert rbp
     cc.codegen.set_lable(f.block.end_name());
     cc.codegen.instr1(Push, RAX);
     // TODO: Issue a warning for assgigning variables in defer block
     compile_function_block_alrady_scoped(cc, &f.defer_block);
-    cc.scoped_blocks.pop().unwrap();
     /*--- Unscoping function variables ---*/
     cc.codegen.instr1(Pop, RAX);
 
