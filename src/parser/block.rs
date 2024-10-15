@@ -27,7 +27,10 @@ use rand::random;
 *
 **********************************************************************************************/
 use crate::{
-    error_handeling::CompilationError, lexer::{Lexer, TokenType}, parser::stmt::Stmt, utils::long2base32
+    error_handeling::CompilationError,
+    lexer::{Lexer, TokenType},
+    parser::stmt::Stmt,
+    utils::long2base32,
 };
 
 use super::{
@@ -56,9 +59,13 @@ pub fn get_last_loop_block_id(child_id: &str) -> Result<String, CompilationError
     let mut id = String::new();
     let mut last_index = 0;
     let mut reached_loop = false;
-    for (i,chr) in child_id.chars().enumerate() {
-        if chr == '.' && reached_loop {last_index = i}
-        if chr == '$' {reached_loop = true;}
+    for (i, chr) in child_id.chars().enumerate() {
+        if chr == '.' && reached_loop {
+            last_index = i
+        }
+        if chr == '$' {
+            reached_loop = true;
+        }
     }
     if last_index == 0 {
         return Err(CompilationError::NotLoopBlock);
@@ -69,7 +76,9 @@ pub fn get_last_loop_block_id(child_id: &str) -> Result<String, CompilationError
 pub fn get_first_block_id(child_id: &str) -> String {
     let mut id = String::new();
     for chr in child_id.chars() {
-        if chr == '.' {break;}
+        if chr == '.' {
+            break;
+        }
         id.push(chr);
     }
     id
@@ -99,8 +108,8 @@ pub struct Block {
 impl Block {
     pub fn new(master: &mut Block, btype: BlockType) -> Self {
         let id = match btype {
-            BlockType::Loop => format!("{}.${}",master.id, master.num_of_children),
-            _ => format!("{}.{}",master.id, master.num_of_children)
+            BlockType::Loop => format!("{}.${}", master.id, master.num_of_children),
+            _ => format!("{}.{}", master.id, master.num_of_children),
         };
         master.num_of_children += 1;
         Self {

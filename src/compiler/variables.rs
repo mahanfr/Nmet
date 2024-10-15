@@ -45,20 +45,22 @@ pub struct NameSpaceMapping {
 impl NameSpaceMapping {
     pub fn new() -> Self {
         Self {
-            items: HashMap::new()
+            items: HashMap::new(),
         }
     }
     pub fn insert(&mut self, ident: &str, value: VariableMap) -> Result<(), CompilationError> {
         if value.is_global() {
-            if self.items.get(ident).is_some() {
-                CompilationError::Err(format!("Local Variable with the name ({ident}) already exists"));
+            if self.items.contains_key(ident) {
+                CompilationError::Err(format!(
+                    "Local Variable with the name ({ident}) already exists"
+                ));
             }
-        } else {
-            if let Some(bucket) = self.items.get(ident) {
-                for item in bucket {
-                    if item.is_global() {
-                        CompilationError::Err(format!("Global Variable with the name ({ident}) already exists"));
-                    }
+        } else if let Some(bucket) = self.items.get(ident) {
+            for item in bucket {
+                if item.is_global() {
+                    CompilationError::Err(format!(
+                        "Global Variable with the name ({ident}) already exists"
+                    ));
                 }
             }
         }
@@ -66,25 +68,24 @@ impl NameSpaceMapping {
         Ok(())
     }
     pub fn get(&self, ident: &str, block: &Block) -> Result<VariableMap, CompilationError> {
-       let Some(bucket) = self.items.get(ident) else {
-           return Err(CompilationError::UndefinedVariable(ident.to_string()));
-       };
-       for item in bucket {
-           match &item.base {
-               VariableMapBase::Global(_) => {
-                   return Ok(item.clone());
-               }
-               VariableMapBase::Stack(id) => {
-                   if *id == block.id || block.id.starts_with(id) {
-                       return Ok(item.clone());
-                   }
-               }
-           }
-
-       }
-       Err(CompilationError::UndefinedVariable(ident.to_string()))
+        let Some(bucket) = self.items.get(ident) else {
+            return Err(CompilationError::UndefinedVariable(ident.to_string()));
+        };
+        for item in bucket {
+            match &item.base {
+                VariableMapBase::Global(_) => {
+                    return Ok(item.clone());
+                }
+                VariableMapBase::Stack(id) => {
+                    if *id == block.id || block.id.starts_with(id) {
+                        return Ok(item.clone());
+                    }
+                }
+            }
+        }
+        Err(CompilationError::UndefinedVariable(ident.to_string()))
     }
-    
+
     pub fn purge(&mut self) {
         let mut copy = self.items.clone();
         for bucket in copy {
@@ -120,20 +121,23 @@ pub fn insert_variable(
     // compile initial value
     if var.init_value.is_some() {
         let init_value = var.init_value.clone().unwrap();
-        let expro = compile_expr(cc,block, &init_value)?;
+        let expro = compile_expr(cc, block, &init_value)?;
         match vtype.cast(&expro.vtype) {
             Ok(vt) => {
                 let mem_acss = match &var_base {
-                    VariableMapBase::Stack(_) => 
-                        MemAddr::new_disp_s(vt.item_size(), RBP, -((cc.mem_offset + vt.size()) as i32)),
-                    VariableMapBase::Global(rela) => 
-                        MemAddr::new_rela(rela.to_string()),
+                    VariableMapBase::Stack(_) => MemAddr::new_disp_s(
+                        vt.item_size(),
+                        RBP,
+                        -((cc.mem_offset + vt.size()) as i32),
+                    ),
+                    VariableMapBase::Global(rela) => MemAddr::new_rela(rela.to_string()),
                 };
                 if expro.value.is_register() {
                     cc.codegen.instr2(Mov, mem_acss, expro.value.sized(&vt));
                 } else {
                     mov_unknown_to_register(cc, RAX, expro.value);
-                    cc.codegen.instr2(Mov, mem_acss, RAX.convert(vt.item_size()));
+                    cc.codegen
+                        .instr2(Mov, mem_acss, RAX.convert(vt.item_size()));
                 }
                 vtype = vt;
             }
@@ -146,12 +150,7 @@ pub fn insert_variable(
     if vtype == VariableType::Any {
         return Err(CompilationError::UnknownType(var.ident.to_owned()));
     }
-    let var_map = VariableMap::new(
-        var_base,
-        cc.mem_offset,
-        vtype.clone(),
-        var.mutable,
-    );
+    let var_map = VariableMap::new(var_base, cc.mem_offset, vtype.clone(), var.mutable);
     cc.codegen.instr2(Sub, RSP, vtype.size());
     cc.mem_offset += vtype.size();
     cc.variables_map.insert(&var.ident, var_map);

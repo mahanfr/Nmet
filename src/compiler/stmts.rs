@@ -55,7 +55,7 @@ fn compile_if_stmt(
     ifs: &IFStmt,
     exit_tag: String,
 ) -> Result<(), CompilationError> {
-    let condition_eo = compile_expr(cc,&ifs.then_block,&ifs.condition)?;
+    let condition_eo = compile_expr(cc, &ifs.then_block, &ifs.condition)?;
     VariableType::Bool.cast(&condition_eo.vtype)?;
 
     let next_loc = match ifs.else_block.as_ref() {
@@ -89,8 +89,12 @@ fn compile_if_stmt(
     }
 }
 
-fn compile_print(cc: &mut CompilerContext, block: &Block, expr: &Expr) -> Result<(), CompilationError> {
-    let expr_opr = compile_expr(cc,block, expr)?;
+fn compile_print(
+    cc: &mut CompilerContext,
+    block: &Block,
+    expr: &Expr,
+) -> Result<(), CompilationError> {
+    let expr_opr = compile_expr(cc, block, expr)?;
     match &expr.etype {
         ExprType::String(s) => {
             cc.codegen.instr2(Mov, RAX, 1);
@@ -114,18 +118,20 @@ pub fn compile_stmt(
     block: &Block,
 ) -> Result<(), CompilationError> {
     match &stmt.stype {
-        StmtType::VariableDecl(v) => insert_variable(cc,block, v, VariableMapBase::Stack(block.id.clone())),
-        StmtType::Print(e) => compile_print(cc,block, e),
+        StmtType::VariableDecl(v) => {
+            insert_variable(cc, block, v, VariableMapBase::Stack(block.id.clone()))
+        }
+        StmtType::Print(e) => compile_print(cc, block, e),
         StmtType::If(ifs) => {
             let exit_tag = ifs.then_block.name_with_prefix("IFE");
             compile_if_stmt(cc, ifs, exit_tag)
         }
-        StmtType::Assign(a) => compile_assgin(cc,block, a),
+        StmtType::Assign(a) => compile_assgin(cc, block, a),
         StmtType::While(w) => compile_while(cc, w),
         StmtType::ForLoop(f) => compile_for_loop(cc, f),
         StmtType::Expr(e) => match &e.etype {
             ExprType::FunctionCall(fc) => {
-                let eo = compile_expr(cc,block, e)?;
+                let eo = compile_expr(cc, block, e)?;
                 if eo.vtype != VariableType::Void {
                     log_warn!(
                         "({}), Unused return value of function {}!",
@@ -141,17 +147,16 @@ pub fn compile_stmt(
             }
         },
         StmtType::Return(e) => {
-            let ret_expr = compile_expr(cc,block, e)?;
+            let ret_expr = compile_expr(cc, block, e)?;
             mov_unknown_to_register(cc, RAX, ret_expr.value);
             // cc.codegen.instr0(Leave);
             // cc.codegen.instr0(Ret);
-            cc.codegen
-                .instr1(Jmp, Opr::Loc(block.master_end_name()));
+            cc.codegen.instr1(Jmp, Opr::Loc(block.master_end_name()));
             Ok(())
         }
         StmtType::InlineAsm(instructs) => {
             for instr in instructs {
-                match compile_inline_asm(cc,block, instr) {
+                match compile_inline_asm(cc, block, instr) {
                     Ok(_) => (),
                     Err(e) => {
                         cc.error();
@@ -167,7 +172,11 @@ pub fn compile_stmt(
     }
 }
 
-fn compile_break_coninue(cc: &mut CompilerContext, block: &Block, is_break: bool) -> Result<(), CompilationError> {
+fn compile_break_coninue(
+    cc: &mut CompilerContext,
+    block: &Block,
+    is_break: bool,
+) -> Result<(), CompilationError> {
     let mut did_break: bool = false;
     let exit_loc = if is_break {
         block.last_loop_end_name()?
@@ -178,7 +187,11 @@ fn compile_break_coninue(cc: &mut CompilerContext, block: &Block, is_break: bool
     Ok(())
 }
 
-fn compile_inline_asm(cc: &mut CompilerContext,block: &Block, instr: &String) -> Result<(), CompilationError> {
+fn compile_inline_asm(
+    cc: &mut CompilerContext,
+    block: &Block,
+    instr: &String,
+) -> Result<(), CompilationError> {
     if instr.contains('%') {
         let mut final_instr = instr.clone();
         let chars = final_instr.chars().collect::<Vec<char>>();
@@ -217,7 +230,12 @@ fn compile_inline_asm(cc: &mut CompilerContext,block: &Block, instr: &String) ->
 }
 
 fn compile_for_loop(cc: &mut CompilerContext, for_stmt: &ForLoop) -> Result<(), CompilationError> {
-    insert_variable(cc, &for_stmt.block, &for_stmt.iterator, VariableMapBase::Stack(for_stmt.block.id.clone()))?;
+    insert_variable(
+        cc,
+        &for_stmt.block,
+        &for_stmt.iterator,
+        VariableMapBase::Stack(for_stmt.block.id.clone()),
+    )?;
     if !matches!(for_stmt.end_expr.etype, ExprType::Int(_)) {
         return Err(CompilationError::Err(format!(
             "Unsupported iterator type (must be type integer insted of ({:?}))",
@@ -229,7 +247,9 @@ fn compile_for_loop(cc: &mut CompilerContext, for_stmt: &ForLoop) -> Result<(), 
     cc.codegen.set_lable(for_stmt.block.start_name());
     compile_block(cc, &for_stmt.block);
 
-    let v_map = cc.variables_map.get(&for_stmt.iterator.ident, &for_stmt.block)?;
+    let v_map = cc
+        .variables_map
+        .get(&for_stmt.iterator.ident, &for_stmt.block)?;
     let mem_acss = v_map.mem();
     cc.codegen.instr1(Inc, mem_acss);
 
@@ -242,7 +262,7 @@ fn compile_for_loop(cc: &mut CompilerContext, for_stmt: &ForLoop) -> Result<(), 
         op: CompareOp::Smaller,
         right: Box::new(for_stmt.end_expr.to_owned()),
     };
-    let condition_eo = compile_compare_expr(cc,&for_stmt.block, &cmp)?;
+    let condition_eo = compile_compare_expr(cc, &for_stmt.block, &cmp)?;
     VariableType::Bool.cast(&condition_eo.vtype)?;
     mov_unknown_to_register(cc, RAX, condition_eo.value);
     cc.codegen.instr2(Test, RAX, RAX);
@@ -259,7 +279,7 @@ fn compile_while(cc: &mut CompilerContext, w_stmt: &WhileStmt) -> Result<(), Com
     compile_block(cc, &w_stmt.block);
     cc.codegen.set_lable(w_stmt.block.name_with_prefix("CND"));
     // Jump after a compare
-    let condition_eo = compile_expr(cc,&w_stmt.block ,&w_stmt.condition)?;
+    let condition_eo = compile_expr(cc, &w_stmt.block, &w_stmt.condition)?;
     VariableType::Bool.cast(&condition_eo.vtype)?;
     mov_unknown_to_register(cc, RAX, condition_eo.value);
     cc.codegen.instr2(Test, RAX, RAX);
@@ -314,14 +334,18 @@ fn assgin_op(
     }
 }
 
-fn compile_assgin(cc: &mut CompilerContext,block: &Block ,assign: &Assign) -> Result<(), CompilationError> {
+fn compile_assgin(
+    cc: &mut CompilerContext,
+    block: &Block,
+    assign: &Assign,
+) -> Result<(), CompilationError> {
     match &assign.left.etype {
         ExprType::Variable(v) => {
             let v_map = cc.variables_map.get(v, block)?;
             if !v_map.is_mut {
                 return Err(CompilationError::ImmutableVariable(v.to_owned()));
             }
-            let right_eo = compile_expr(cc,block ,&assign.right)?;
+            let right_eo = compile_expr(cc, block, &assign.right)?;
             v_map.vtype.cast(&right_eo.vtype)?;
             assgin_op(cc, &assign.op, right_eo.value, v_map.mem())?;
             Ok(())
@@ -331,7 +355,7 @@ fn compile_assgin(cc: &mut CompilerContext,block: &Block ,assign: &Assign) -> Re
             if !v_map.is_mut {
                 return Err(CompilationError::ImmutableVariable(ai.ident.clone()));
             }
-            let right_eo = compile_expr(cc,block, &assign.right)?;
+            let right_eo = compile_expr(cc, block, &assign.right)?;
             if right_eo.is_temp() {
                 save_temp_value(cc, right_eo.value.clone());
             }
@@ -339,7 +363,7 @@ fn compile_assgin(cc: &mut CompilerContext,block: &Block ,assign: &Assign) -> Re
                 VariableType::Array(t, _) => t.cast(&right_eo.vtype)?,
                 _ => unreachable!(),
             };
-            let indexer = compile_expr(cc,block, &ai.indexer)?;
+            let indexer = compile_expr(cc, block, &ai.indexer)?;
             mov_unknown_to_register(cc, RBX, indexer.value);
             let mem = MemAddr::new_sib_s(
                 v_map.vtype.item_size(),
@@ -364,7 +388,7 @@ fn compile_assgin(cc: &mut CompilerContext,block: &Block ,assign: &Assign) -> Re
             match &expr.etype {
                 ExprType::Variable(i) => {
                     let inner_var = struc.items.get(i).unwrap();
-                    let right_eo = compile_expr(cc,block,&assign.right)?;
+                    let right_eo = compile_expr(cc, block, &assign.right)?;
                     inner_var.vtype.cast(&right_eo.vtype)?;
                     cc.codegen.instr2(Mov, RDX, mem!(RBP, v_map.offset));
                     cc.codegen.instr2(Add, RDX, inner_var.offset);

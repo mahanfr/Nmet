@@ -27,7 +27,10 @@ use std::collections::HashMap;
 use crate::{
     codegen::{mnemonic::Mnemonic::*, register::Reg::*},
     compiler::VariableMap,
-    parser::{block::Block, function::{FunctionArg, FunctionDef}},
+    parser::{
+        block::Block,
+        function::{FunctionArg, FunctionDef},
+    },
 };
 
 use super::{

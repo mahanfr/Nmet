@@ -106,7 +106,7 @@ pub enum MemAddrType {
     Addr(Reg),
     AddrRela(String),
     Disp(Reg, i32),
-    Sib(Reg,i32,Reg,u8),
+    Sib(Reg, i32, Reg, u8),
 }
 
 impl MemAddr {
@@ -189,15 +189,15 @@ impl MemAddr {
         match self.addr_type {
             MemAddrType::Addr(r) => r,
             MemAddrType::Disp(r, _) => r,
-            MemAddrType::Sib(r,_ ,_ ,_ ) => r,
-            _ => unreachable!()
+            MemAddrType::Sib(r, _, _, _) => r,
+            _ => unreachable!(),
         }
     }
 
     pub fn get_s_register(&self) -> Option<Reg> {
         match self.addr_type {
-            MemAddrType::Sib(_,_ ,r ,_ ) => Some(r),
-            _ => None
+            MemAddrType::Sib(_, _, r, _) => Some(r),
+            _ => None,
         }
     }
 
@@ -225,13 +225,18 @@ impl Display for MemAddr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let intern = match &self.addr_type {
             MemAddrType::Addr(r) => format!("[{r}]"),
-            MemAddrType::Disp(r, disp) => format!("[{r}{}{}]", Self::internsic(*disp), disp.abs().to_string().as_str()),
-            MemAddrType::Sib(r, disp, r2, scale) => format!("[{r}{}{} + {r2} * {scale}]",
+            MemAddrType::Disp(r, disp) => format!(
+                "[{r}{}{}]",
                 Self::internsic(*disp),
                 disp.abs().to_string().as_str()
             ),
-            MemAddrType::AddrRela(rel) => format!("[{rel}]")
+            MemAddrType::Sib(r, disp, r2, scale) => format!(
+                "[{r}{}{} + {r2} * {scale}]",
+                Self::internsic(*disp),
+                disp.abs().to_string().as_str()
+            ),
+            MemAddrType::AddrRela(rel) => format!("[{rel}]"),
         };
-        write!(f, "{}{intern}",Self::mem_hint(&self.size))
+        write!(f, "{}{intern}", Self::mem_hint(&self.size))
     }
 }

@@ -221,7 +221,12 @@ fn collect_types(cc: &mut CompilerContext, program: &ProgramFile) {
                 cc.structs_map.insert(s.ident.clone(), s.clone());
             }
             ProgramItem::StaticVar(sv) => {
-                let _ = insert_variable(cc, &global_block, sv, VariableMapBase::Global(sv.ident.clone()));
+                let _ = insert_variable(
+                    cc,
+                    &global_block,
+                    sv,
+                    VariableMapBase::Global(sv.ident.clone()),
+                );
             }
         }
     }
