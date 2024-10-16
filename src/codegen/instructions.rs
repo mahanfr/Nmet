@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use crate::parser::types::VariableType;
 
+use super::memory::MemAddrType;
 #[allow(unused_imports)]
 use super::{
     memory::MemAddr,
@@ -197,9 +198,37 @@ impl Instr {
         }
     }
 
+    pub fn get_rela_key(&self) -> Option<String> {
+        match self.oprs.clone() {
+            Oprs::One(Opr::Rela(k)) | Oprs::Two(_, Opr::Rela(k)) => Some(k),
+            Oprs::Two(Opr::Mem(m), _) | Oprs::Two(_, Opr::Mem(m)) | Oprs::One(Opr::Mem(m)) => {
+                if m.is_rela() {
+                    let MemAddrType::AddrRela(k) = m.addr_type else {
+                        return None;
+                    };
+                    return Some(k.clone());
+                }
+                None
+           },
+            _ => None,
+        }
+    }
+
+    pub fn uses_rela_memory(&self) -> bool {
+        match &self.oprs {
+            Oprs::Two(Opr::Mem(m), _) | Oprs::Two(_,Opr::Mem(m)) | Oprs::One(Opr::Mem(m)) => {
+                m.is_rela()
+            }
+            _ => false
+        }
+    }
+
     pub fn needs_rela_map(&self) -> bool {
         if self.mnem == Mnemonic::Lable {
             return false;
+        }
+        if self.uses_rela_memory() {
+            return true;
         }
         matches!(
             self.oprs,

@@ -76,7 +76,7 @@ struct InstrData {
 
 impl InstrData {
     pub fn new(instr: Instr) -> Self {
-        let bytes = match instr.needs_rela_map() || instr.needs_location() {
+        let bytes = match (instr.needs_rela_map() || instr.needs_location()) && !instr.uses_rela_memory() {
             true => assemble_instr(&placeholder(instr.clone())),
             false => assemble_instr(&instr),
         };
@@ -128,9 +128,8 @@ impl Codegen {
         let mut bytes_sum = 0;
         for item in self.instructs.iter_mut() {
             if item.instr.needs_rela_map() {
-                let key = match item.instr.oprs.clone() {
-                    Oprs::One(Opr::Rela(k)) | Oprs::Two(_, Opr::Rela(k)) => k,
-                    _ => unreachable!(),
+                let Some(key) = item.instr.get_rela_key() else {
+                    unreachable!();
                 };
                 let rela_offset = item
                     .bytes

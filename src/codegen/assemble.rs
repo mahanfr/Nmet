@@ -13,6 +13,12 @@ macro_rules! Register {
     };
 }
 
+macro_rules! r_8_64 {
+    () => {
+        Opr::R64(_) | Opr::R32(_) | Opr::R16(_) | Opr::R8(_)
+    };
+}
+
 pub fn assemble_instr(instr: &Instr) -> IBytes {
     let mut bytes = vec![];
     validate_opr_sizes(instr);
@@ -57,6 +63,11 @@ fn include_imm_values(bytes: &mut IBytes, instr: &Instr) {
                 }
                 _ => unreachable!(),
             },
+            Oprs::Two(Opr::Mem(m), r_8_64!()) | Oprs::Two(r_8_64!(), Opr::Mem(m)) | Oprs::One(Opr::Mem(m)) => {
+                if m.is_rela() {
+                    bytes.extend(0u32.to_le_bytes());
+                }
+            }
             Oprs::Two(
                 Opr::R64(r) | Opr::R32(r) | Opr::R16(r) | Opr::R8(r),
                 Opr::Imm8(val) | Opr::Imm32(val) | Opr::Imm64(val),

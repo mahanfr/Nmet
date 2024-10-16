@@ -10,6 +10,11 @@ use super::{
     register::Reg,
 };
 
+macro_rules! r_8_64 {
+    () => {
+        R64(_) | R32(_) | R16(_) | R8(_)
+    };
+}
 macro_rules! rm_8 {
     () => {
         R8(_) | Mem(_)
