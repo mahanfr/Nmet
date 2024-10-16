@@ -107,6 +107,7 @@ pub fn insert_variable(
     var_base: VariableMapBase,
 ) -> Result<(), CompilationError> {
     let mut vtype = var.v_type.clone();
+    let mut var_base = var_base;
     // Declare variable memory
     // No need to do any thing if variable is on the stack
     if let VariableType::Custom(s) = &vtype {
@@ -130,7 +131,11 @@ pub fn insert_variable(
                         RBP,
                         -((cc.mem_offset + vt.size()) as i32),
                     ),
-                    VariableMapBase::Global(rela) => MemAddr::new_rela(rela.to_string()),
+                    VariableMapBase::Global(rela) => {
+                        let tag = cc.codegen.add_bss_seg(vt.size());
+                        var_base = VariableMapBase::Global(tag.to_string());
+                        MemAddr::new_rela_s(vt.item_size(), tag.to_string())
+                    }
                 };
                 if expro.value.is_register() {
                     cc.codegen.instr2(Mov, mem_acss, expro.value.sized(&vt));
@@ -150,10 +155,18 @@ pub fn insert_variable(
     if vtype == VariableType::Any {
         return Err(CompilationError::UnknownType(var.ident.to_owned()));
     }
-    let var_map = VariableMap::new(var_base, cc.mem_offset, vtype.clone(), var.mutable);
-    cc.codegen.instr2(Sub, RSP, vtype.size());
-    cc.mem_offset += vtype.size();
-    cc.variables_map.insert(&var.ident, var_map);
+    match &var_base {
+        VariableMapBase::Stack(_) => {
+            let var_map = VariableMap::new(var_base, cc.mem_offset, vtype.clone(), var.mutable);
+            cc.codegen.instr2(Sub, RSP, vtype.size());
+            cc.mem_offset += vtype.size();
+            cc.variables_map.insert(&var.ident, var_map);
+        },
+        VariableMapBase::Global(_) => {
+            let var_map = VariableMap::new(var_base, 0, vtype.clone(), var.mutable);
+            cc.variables_map.insert(&var.ident, var_map);
+        }
+    }
     Ok(())
 }
 

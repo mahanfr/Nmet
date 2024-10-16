@@ -4,7 +4,7 @@ use super::{
     instructions::{Instr, ModrmType, Opr, Oprs},
     memory::{MemAddr, MemAddrType},
     mnemonic::Mnemonic,
-    opcodes::opcode,
+    opcodes::opcode, register::Reg,
 };
 
 macro_rules! Register {
@@ -81,6 +81,50 @@ fn include_imm_values(bytes: &mut IBytes, instr: &Instr) {
     }
 }
 
+fn rm_rex(r1: &Reg, mem: &MemAddr) -> IBytes {
+    let mut bytes = vec![];
+    let mut rex: u8 = 0x40;
+    if r1.is_extended() {
+        rex |= 0b0100;
+    }
+    if mem.get_register().is_extended() {
+        rex |= 0b0001;
+    }
+    if let Some(s_reg) = mem.get_s_register() {
+        if s_reg.is_extended() {
+            rex |= 0b0010;
+        }
+    };
+    if r1.size() == 64 {
+        rex |= 0b1000;
+    }
+    if r1.size() == 16 {
+        bytes.push(0x66);
+    }
+    if rex != 0x40 {
+        bytes.push(rex);
+    }
+    bytes
+}
+
+fn r_rex(r: &Reg) -> IBytes {
+    let mut bytes = vec![];
+    let mut rex: u8 = 0x40;
+    if r.is_extended() {
+        rex |= 0b0100;
+    }
+    if r.size() == 64 {
+        rex |= 0b1000;
+    }
+    if r.size() == 16 {
+        bytes.push(0x66);
+    }
+    if rex != 0x40 || r.is_new_8bit_reg() {
+        bytes.push(rex);
+    }
+    bytes
+}
+
 fn rex(instr: &Instr) -> IBytes {
     match &instr.oprs {
         Oprs::Two(Register!(r1), Register!(r2)) => {
@@ -104,48 +148,18 @@ fn rex(instr: &Instr) -> IBytes {
             bytes
         }
         Oprs::Two(Register!(r1), Opr::Mem(mem)) | Oprs::Two(Opr::Mem(mem), Register!(r1)) => {
-            let mut bytes = vec![];
-            let mut rex: u8 = 0x40;
-            if r1.is_extended() {
-                rex |= 0b0100;
+            if mem.is_rela() {
+               return r_rex(r1); 
             }
-            if mem.get_register().is_extended() {
-                rex |= 0b0001;
-            }
-            if let Some(s_reg) = mem.get_s_register() {
-                if s_reg.is_extended() {
-                    rex |= 0b0010;
-                }
-            };
-            if r1.size() == 64 {
-                rex |= 0b1000;
-            }
-            if r1.size() == 16 {
-                bytes.push(0x66);
-            }
-            if rex != 0x40 {
-                bytes.push(rex);
-            }
-            bytes
+            rm_rex(r1, mem)
         }
         Oprs::Two(Register!(r), _) => {
-            let mut bytes = vec![];
-            let mut rex: u8 = 0x40;
-            if r.is_extended() {
-                rex |= 0b0100;
-            }
-            if r.size() == 64 {
-                rex |= 0b1000;
-            }
-            if r.size() == 16 {
-                bytes.push(0x66);
-            }
-            if rex != 0x40 || r.is_new_8bit_reg() {
-                bytes.push(rex);
-            }
-            bytes
+            r_rex(r)
         }
         Oprs::Two(Opr::Mem(mem), _) | Oprs::One(Opr::Mem(mem)) => {
+            if mem.is_rela() {
+                todo!()
+            }
             let mut bytes = vec![];
             let mut rex: u8 = 0x40;
             if mem.get_register().is_extended() {
@@ -312,7 +326,7 @@ fn _mem_modrm(r: u8, mem: &MemAddr) -> IBytes {
                 bytes
             }
         }
-        MemAddrType::AddrRela(_) => todo!(),
+        MemAddrType::AddrRela(_) => vec![0x04, 0x25],
     }
 }
 

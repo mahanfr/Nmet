@@ -24,7 +24,12 @@ impl ExprOpr {
     pub fn is_temp(&self) -> bool {
         match &self.value {
             Opr::Imm8(_) | Opr::Imm32(_) | Opr::Imm64(_) | Opr::Rela(_) | Opr::Loc(_) => false,
-            Opr::Mem(m) => m.get_register() != Reg::RBP || m.get_s_register().is_some(),
+            Opr::Mem(m) => {
+                if m.is_rela() {
+                    return false;
+                }
+                m.get_register() != Reg::RBP || m.get_s_register().is_some()
+            },
             Opr::R64(_) | Opr::R32(_) | Opr::R16(_) | Opr::R8(_) => true,
         }
     }

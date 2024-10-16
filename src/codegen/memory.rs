@@ -118,6 +118,10 @@ impl MemAddr {
         matches!(scale, 1 | 2 | 4 | 8)
     }
 
+    pub fn is_rela(&self) -> bool {
+        matches!(self.addr_type, MemAddrType::AddrRela(_))
+    }
+
     pub fn new(reg: Reg) -> Self {
         Self {
             addr_type: MemAddrType::Addr(reg),

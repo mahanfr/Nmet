@@ -103,6 +103,9 @@ impl VariableMap {
     }
 
     pub fn mem(&self) -> MemAddr {
+        if let VariableMapBase::Global(g) = &self.base {
+            return MemAddr::new_rela_s(self.vtype.item_size(), g.to_string())
+        }
         match &self.vtype {
             VariableType::Int | VariableType::UInt => MemAddr::new_disp_s(4, Reg::RBP, self.offset),
             VariableType::Long
@@ -192,8 +195,7 @@ fn _frame_size(mem_offset: usize) -> usize {
 
 pub fn compile(cc: &mut CompilerContext, path: String) {
     let program = parse_source_file(path.clone());
-    collect_types(cc, &program);
-    compile_init_function(cc);
+    compile_init_function(cc, &program);
     for item in program.items.iter() {
         if let ProgramItem::Func(f) = item {
             compile_function(cc, f);
@@ -232,11 +234,12 @@ fn collect_types(cc: &mut CompilerContext, program: &ProgramFile) {
     }
 }
 
-fn compile_init_function(cc: &mut CompilerContext) {
+fn compile_init_function(cc: &mut CompilerContext, program: &ProgramFile) {
     cc.codegen.set_lable("_start");
     cc.codegen.instr1(Mnemonic::Push, Reg::RBP);
     cc.codegen.instr2(Mnemonic::Mov, Reg::RBP, Reg::RSP);
     // TODO: Add a condition for compiling libraries
+    collect_types(cc, &program);
     if !cc.functions_map.contains_key("main") {
         log_error!("Executable programs should have an entry point");
         exit(-1);
