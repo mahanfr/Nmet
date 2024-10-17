@@ -28,10 +28,7 @@ use crate::{
     parser::{block::Block, types::type_def},
 };
 
-use super::{
-    block::{parse_block, BlockType},
-    types::VariableType,
-};
+use super::{block::BlockType, types::VariableType};
 
 /// Function Definition Arguments
 /// * ident - name of argument in function name space
@@ -51,7 +48,7 @@ pub struct FunctionArg {
 pub struct FunctionDef {
     pub decl: FunctionDecl,
     pub block: Block,
-    pub refrence: usize,
+    pub defer_block: Block,
 }
 
 #[derive(Debug, Clone)]
@@ -85,15 +82,15 @@ pub fn parse_function_declaration(lexer: &mut Lexer) -> FunctionDecl {
 /// Parsing Function definition
 pub fn parse_function_definition(lexer: &mut Lexer) -> FunctionDef {
     let decl = parse_function_declaration(lexer);
-    let block = Block::new(
-        decl.ident.clone(),
-        BlockType::Function,
-        parse_block(lexer, &decl.ident),
-    );
+    let mut block = Block::new_global(decl.ident.clone(), BlockType::Function);
+    block.parse_block(lexer);
+    let mut defer_block = Block::new_global(decl.ident.clone(), BlockType::Function);
+    defer_block.stmts = block.defer_stmts.clone();
+    block.defer_stmts.clear();
     FunctionDef {
         decl,
         block,
-        refrence: 0,
+        defer_block,
     }
 }
 

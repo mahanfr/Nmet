@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 /**********************************************************************************************
 *
 *   parser/program: program level parsing
@@ -30,7 +32,8 @@ use crate::{
 use super::{
     function::{parse_function_declaration, parse_function_definition, FunctionDecl, FunctionDef},
     parse_source_file,
-    structs::{struct_def, StructDef},
+    structs::struct_def,
+    types::StructType,
     variable_decl::{variable_declare, VariableDeclare},
 };
 
@@ -41,8 +44,6 @@ use super::{
 /// * items: All supported top level Items
 #[derive(Debug, Clone)]
 pub struct ProgramFile {
-    pub shebang: String,
-    pub file_path: String,
     // pub attrs: Vec<Attr>
     pub items: Vec<ProgramItem>,
 }
@@ -53,7 +54,7 @@ pub struct ProgramFile {
 #[allow(clippy::upper_case_acronyms)]
 pub enum ProgramItem {
     /// Struct Defenition
-    Struct(StructDef),
+    Struct(StructType),
     /// Function Definitions
     Func(FunctionDef),
     /// Static Variables
@@ -62,11 +63,22 @@ pub enum ProgramItem {
     FFI(String, FunctionDecl),
 }
 
+impl ProgramItem {
+    pub fn get_key(&self) -> String {
+        match self {
+            Self::Struct(st) => st.ident.clone(),
+            Self::FFI(_, fun) => fun.ident.clone(),
+            Self::Func(func) => func.decl.ident.clone(),
+            Self::StaticVar(st) => st.ident.clone(),
+        }
+    }
+}
+
 /// Parse Program
 /// Returns Programfile wich is the ast root
 pub fn generate_ast(lexer: &mut Lexer) -> ProgramFile {
     lexer.next_token();
-    let mut items = Vec::<ProgramItem>::new();
+    let mut items = BTreeMap::<String, ProgramItem>::new();
     loop {
         if lexer.get_token().is_empty() {
             break;
@@ -75,24 +87,73 @@ pub fn generate_ast(lexer: &mut Lexer) -> ProgramFile {
         match lexer.get_token_type() {
             TokenType::Struct => {
                 let struct_def = struct_def(lexer);
-                items.push(ProgramItem::Struct(struct_def));
+                let ident = struct_def.ident.clone();
+                let prv_value = items.insert(ident.clone(), ProgramItem::Struct(struct_def));
+                if prv_value.is_some() {
+                    error(
+                        format!("Struct with the name {} already exists", ident.clone()),
+                        loc,
+                    );
+                }
             }
             TokenType::Ffi => {
-                let ffi_function = parse_ffi_function_mapping(lexer);
-                items.push(ProgramItem::FFI(ffi_function.0, ffi_function.1));
+                let ffi_func = parse_ffi_function_mapping(lexer);
+                let ident = ffi_func.1.ident.clone();
+                let prv_value =
+                    items.insert(ident.clone(), ProgramItem::FFI(ffi_func.0, ffi_func.1));
+                if prv_value.is_some() {
+                    error(
+                        format!("Function with the name {} already exists", ident),
+                        loc,
+                    );
+                }
             }
             TokenType::Func => {
                 let function_def = parse_function_definition(lexer);
-                items.push(ProgramItem::Func(function_def));
+                let ident = function_def.decl.ident.clone();
+                let prv_value = items.insert(ident.clone(), ProgramItem::Func(function_def));
+                if prv_value.is_some() {
+                    error(
+                        format!("Function with the name {} already exists", ident),
+                        loc,
+                    );
+                }
             }
-            TokenType::Var => {
-                items.push(ProgramItem::StaticVar(variable_declare(lexer)));
+            TokenType::Static => {
+                lexer.match_token(TokenType::Static);
+                let var_decl = variable_declare(lexer);
+                lexer.match_token(TokenType::SemiColon);
+                let ident = var_decl.ident.clone();
+                let prv_value = items.insert(ident.clone(), ProgramItem::StaticVar(var_decl));
+                if prv_value.is_some() {
+                    error(
+                        format!("Variable with the name {} already exists", ident),
+                        loc,
+                    );
+                }
             }
             TokenType::Import => {
                 let import = parse_mod_import(lexer);
                 let mut new_path = import.0;
                 new_path.push_str(".nmt");
-                items.extend(parse_source_file(new_path).items);
+                let new_file = parse_source_file(new_path);
+                for item_name in import.1.iter() {
+                    if items.contains_key(item_name) {
+                        error(
+                            format!("Import failed beacuse namespace with the name ({}) already exists in this program",
+                            item_name), loc);
+                    }
+                }
+                for item in new_file.items {
+                    if import.1.is_empty() {
+                        items.insert(item.get_key(), item);
+                    } else {
+                        let key = item.get_key();
+                        if import.1.contains(&key) {
+                            items.insert(item.get_key(), item);
+                        }
+                    }
+                }
             }
             _ => error(
                 format!(
@@ -104,9 +165,7 @@ pub fn generate_ast(lexer: &mut Lexer) -> ProgramFile {
         }
     }
     ProgramFile {
-        shebang: String::new(),
-        file_path: lexer.file_path.clone(),
-        items,
+        items: items.values().cloned().collect::<Vec<ProgramItem>>(),
     }
 }
 /// Include FFI

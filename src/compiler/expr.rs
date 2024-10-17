@@ -27,13 +27,14 @@ use crate::{
         instructions::Opr,
         memory::MemAddr,
         mnemonic::Mnemonic::*,
-        register::Reg::*,
+        register::Reg::{self, *},
         utils::{mov_unknown_to_register, restore_last_temp_value, save_temp_value},
     },
     error_handeling::CompilationError,
     mem, memq,
     optim::{fold_binary_expr, fold_compare_expr, fold_unary_expr, ExprOpr},
     parser::{
+        block::Block,
         expr::{
             ArrayIndex, BinaryExpr, CompareExpr, CompareOp, Expr, ExprType, FunctionCall, Op,
             UnaryExpr,
@@ -42,24 +43,28 @@ use crate::{
     },
 };
 
-use super::{function_args_register, variables::get_vriable_map, CompilerContext};
+use super::{function_args_register, CompilerContext};
 
 /// This function is part of the Nmet compiler and programming language.
 /// It takes expression (Expr) and a compiler context (CompilerContext)
 /// as input and generates assembly code for the expression.
-pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> Result<ExprOpr, CompilationError> {
+pub fn compile_expr(
+    cc: &mut CompilerContext,
+    block: &Block,
+    expr: &Expr,
+) -> Result<ExprOpr, CompilationError> {
     match &expr.etype {
-        ExprType::Compare(c) => compile_compare_expr(cc, c),
-        ExprType::Binary(b) => compile_binary_expr(cc, b),
-        ExprType::Access(ident, ac) => compile_access(cc, ident, ac),
-        ExprType::Unary(u) => compile_unaray_expr(cc, u),
-        ExprType::FunctionCall(fc) => compile_function_call(cc, fc),
-        ExprType::Ptr(e) => compile_ptr(cc, e),
-        ExprType::DeRef(e) => compile_deref(cc, e),
-        ExprType::ArrayIndex(ai) => compile_array_index(cc, ai),
+        ExprType::Compare(c) => compile_compare_expr(cc, block, c),
+        ExprType::Binary(b) => compile_binary_expr(cc, block, b),
+        ExprType::Access(ident, ac) => compile_access(cc, block, ident, ac),
+        ExprType::Unary(u) => compile_unaray_expr(cc, block, u),
+        ExprType::FunctionCall(fc) => compile_function_call(cc, block, fc),
+        ExprType::Ptr(e) => compile_ptr(cc, block, e),
+        ExprType::DeRef(e) => compile_deref(cc, block, e),
+        ExprType::ArrayIndex(ai) => compile_array_index(cc, block, ai),
         ExprType::Variable(v) => {
-            let v_map = get_vriable_map(cc, v)?;
-            let mem_acss = MemAddr::new_disp_s(v_map.vtype.item_size(), RBP, v_map.stack_offset());
+            let v_map = cc.variables_map.get(v, block)?;
+            let mem_acss = v_map.mem();
             Ok(ExprOpr::new(mem_acss, v_map.vtype))
         }
         ExprType::Bool(b) => Ok(ExprOpr::new(*b as i32, VariableType::Bool)),
@@ -77,16 +82,17 @@ pub fn compile_expr(cc: &mut CompilerContext, expr: &Expr) -> Result<ExprOpr, Co
 
 pub fn compile_compare_expr(
     cc: &mut CompilerContext,
+    block: &Block,
     cexpr: &CompareExpr,
 ) -> Result<ExprOpr, CompilationError> {
     // Compile the left Exprssion
-    let left = compile_expr(cc, cexpr.left.as_ref())?;
+    let left = compile_expr(cc, block, cexpr.left.as_ref())?;
     // Store in memory if register
     if left.is_temp() {
         save_temp_value(cc, left.value.clone());
     }
     // Compile the right Exprssion
-    let right = compile_expr(cc, cexpr.right.as_ref())?;
+    let right = compile_expr(cc, block, cexpr.right.as_ref())?;
 
     // Check for possiblity of optimization
     // NOTE: If valuse where literal noting has been added to the codegen
@@ -121,16 +127,17 @@ pub fn compile_compare_expr(
 
 fn compile_binary_expr(
     cc: &mut CompilerContext,
+    block: &Block,
     bexpr: &BinaryExpr,
 ) -> Result<ExprOpr, CompilationError> {
     // Compile the left Exprssion
-    let left = compile_expr(cc, bexpr.left.as_ref())?;
+    let left = compile_expr(cc, block, bexpr.left.as_ref())?;
     // Store in memory if register
     if left.is_temp() {
         save_temp_value(cc, left.value.clone());
     }
     // Compile the right Exprssion
-    let right = compile_expr(cc, bexpr.right.as_ref())?;
+    let right = compile_expr(cc, block, bexpr.right.as_ref())?;
 
     // Check for possiblity of optimization
     // NOTE: If valuse where literal noting has been added to the codegen
@@ -201,18 +208,13 @@ fn compile_binary_expr(
 
 fn compile_array_index(
     cc: &mut CompilerContext,
+    block: &Block,
     ai: &ArrayIndex,
 ) -> Result<ExprOpr, CompilationError> {
-    let v_map = get_vriable_map(cc, &ai.ident)?;
-    let indexer = compile_expr(cc, &ai.indexer)?;
+    let v_map = cc.variables_map.get(&ai.ident, block)?;
+    let indexer = compile_expr(cc, block, &ai.indexer)?;
     mov_unknown_to_register(cc, RBX, indexer.value);
-    let mem_acss = MemAddr::new_sib_s(
-        v_map.vtype.item_size(),
-        RBP,
-        v_map.stack_offset(),
-        RBX,
-        v_map.vtype.item_size(),
-    );
+    let mem_acss = v_map.mem_with_offset_reg(Reg::RBX);
     match v_map.vtype {
         VariableType::Array(t, _) => Ok(ExprOpr::new(mem_acss, t.as_ref().clone())),
         _ => unreachable!(),
@@ -221,9 +223,10 @@ fn compile_array_index(
 
 fn compile_unaray_expr(
     cc: &mut CompilerContext,
+    block: &Block,
     uexpr: &UnaryExpr,
 ) -> Result<ExprOpr, CompilationError> {
-    let left_eo = compile_expr(cc, &uexpr.right)?;
+    let left_eo = compile_expr(cc, block, &uexpr.right)?;
     if left_eo.value.is_literal() {
         return fold_unary_expr(&left_eo, &uexpr.op);
     }
@@ -253,52 +256,40 @@ fn compile_unaray_expr(
 
 fn compile_access(
     cc: &mut CompilerContext,
+    block: &Block,
     ident: &str,
     expr: &Expr,
 ) -> Result<ExprOpr, CompilationError> {
-    let v_map = get_vriable_map(cc, ident)?;
-    let VariableType::Custom(struct_ident) = v_map.vtype.clone() else {
+    let v_map = cc.variables_map.get(ident, block)?;
+    let VariableType::Struct(struc) = v_map.vtype.clone() else {
         return Err(CompilationError::UnexpectedType(v_map.vtype.to_string()));
     };
-    let Some(struc) = cc.structs_map.get(&struct_ident) else {
-        return Err(CompilationError::UndifiendStruct(struct_ident));
-    };
-    let mut offset: usize = 0;
-    let mut actype = VariableType::Any;
-    match &expr.etype {
-        ExprType::Variable(v) => {
-            for item in struc.items.iter() {
-                offset += item.1.size();
-                if &item.0 == v {
-                    actype = item.1.clone();
-                    break;
-                }
-            }
-        }
+    let acv = match &expr.etype {
+        ExprType::Variable(v) => struc.items.get(v).unwrap(),
         _ => todo!(),
-    }
-    if actype.is_any() {
-        return Err(CompilationError::UnknownRefrence);
-    }
-    mov_unknown_to_register(cc, RDX, mem!(RBP, v_map.stack_offset()).into());
-    cc.codegen.instr2(Add, RDX, offset);
-    mov_unknown_to_register(cc, RAX, MemAddr::new_s(actype.item_size(), RDX).into());
-    Ok(ExprOpr::new(RAX, actype))
+    };
+    mov_unknown_to_register(cc, RDX, mem!(RBP, v_map.offset).into());
+    cc.codegen.instr2(Add, RDX, acv.offset);
+    mov_unknown_to_register(cc, RAX, MemAddr::new_s(acv.vtype.item_size(), RDX).into());
+    Ok(ExprOpr::new(RAX, acv.vtype.clone()))
 }
 
-fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) -> Result<ExprOpr, CompilationError> {
+fn compile_ptr(
+    cc: &mut CompilerContext,
+    block: &Block,
+    expr: &Expr,
+) -> Result<ExprOpr, CompilationError> {
     match &expr.etype {
         ExprType::Variable(v) => {
-            let v_map = get_vriable_map(cc, v)?;
+            let v_map = cc.variables_map.get(v, block)?;
             match v_map.vtype {
                 VariableType::Array(_, _) => {
-                    cc.codegen.instr2(Lea, RAX, mem!(RBP, v_map.stack_offset()));
+                    cc.codegen.instr2(Lea, RAX, mem!(RBP, v_map.offset));
                     Ok(ExprOpr::new(RAX, VariableType::Pointer))
                 }
                 _ => {
                     cc.codegen.instr2(Mov, RAX, RBP);
-                    cc.codegen
-                        .instr2(Sub, RAX, v_map.offset + v_map.vtype.size());
+                    cc.codegen.instr2(Sub, RAX, -(v_map.offset));
                     Ok(ExprOpr::new(RAX, VariableType::Pointer))
                 }
             }
@@ -311,11 +302,12 @@ fn compile_ptr(cc: &mut CompilerContext, expr: &Expr) -> Result<ExprOpr, Compila
 
 fn compile_function_call(
     cc: &mut CompilerContext,
+    block: &Block,
     fc: &FunctionCall,
 ) -> Result<ExprOpr, CompilationError> {
     let mut expr_list = Vec::new();
     for arg in fc.args.iter().rev() {
-        let expr_op = compile_expr(cc, arg)?;
+        let expr_op = compile_expr(cc, block, arg)?;
         if expr_op.is_temp() {
             save_temp_value(cc, expr_op.value.clone());
         }
@@ -351,8 +343,12 @@ fn compile_function_call(
     }
 }
 
-fn compile_deref(cc: &mut CompilerContext, expr: &Expr) -> Result<ExprOpr, CompilationError> {
-    let t = compile_expr(cc, expr)?;
+fn compile_deref(
+    cc: &mut CompilerContext,
+    block: &Block,
+    expr: &Expr,
+) -> Result<ExprOpr, CompilationError> {
+    let t = compile_expr(cc, block, expr)?;
     match t.vtype {
         VariableType::Array(_, _) => {
             todo!("Changed!");

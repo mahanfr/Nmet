@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 /**********************************************************************************************
 *
 *   parser/structs: parsing strucure defenitions
@@ -24,22 +26,15 @@
 **********************************************************************************************/
 use crate::lexer::{Lexer, TokenType};
 
-use super::types::{type_def, VariableType};
+use super::types::{type_def, StructItemType, StructType};
 
-pub type StructItem = (String, VariableType);
-
-#[derive(Debug, Clone)]
-pub struct StructDef {
-    pub ident: String,
-    pub items: Vec<StructItem>,
-}
-
-pub fn struct_def(lexer: &mut Lexer) -> StructDef {
+pub fn struct_def(lexer: &mut Lexer) -> StructType {
     lexer.match_token(TokenType::Struct);
     let struct_ident_token = lexer.get_token();
     lexer.match_token(TokenType::Identifier);
     lexer.match_token(TokenType::OCurly);
-    let mut items = Vec::<StructItem>::new();
+    let mut items = BTreeMap::<String, StructItemType>::new();
+    let mut offset = 0;
     loop {
         if lexer.get_token_type() == TokenType::CCurly {
             lexer.match_token(TokenType::CCurly);
@@ -49,13 +44,17 @@ pub fn struct_def(lexer: &mut Lexer) -> StructDef {
         lexer.match_token(TokenType::Identifier);
         if lexer.get_token_type() == TokenType::ATSign {
             let ttype = type_def(lexer);
-            items.push((ident, ttype));
+            offset += ttype.item_size();
+            items.insert(
+                ident.clone(),
+                StructItemType::new(ident.clone(), offset as i32, ttype),
+            );
         }
         if lexer.get_token_type() != TokenType::CCurly {
             lexer.match_token(TokenType::Comma);
         }
     }
-    StructDef {
+    StructType {
         ident: struct_ident_token.literal,
         items,
     }

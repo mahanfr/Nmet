@@ -95,21 +95,18 @@ macro_rules! memb {
     };
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MemAddr {
     pub addr_type: MemAddrType,
     pub size: u8,
-    pub register: Reg,
-    pub disp: i32,
-    pub s_register: Option<Reg>,
-    pub scale: u8,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum MemAddrType {
-    Address,
-    Disp,
-    Sib,
+    Addr(Reg),
+    AddrRela(String),
+    Disp(Reg, i32),
+    Sib(Reg, i32, Reg, u8),
 }
 
 impl MemAddr {
@@ -121,14 +118,14 @@ impl MemAddr {
         matches!(scale, 1 | 2 | 4 | 8)
     }
 
+    pub fn is_rela(&self) -> bool {
+        matches!(self.addr_type, MemAddrType::AddrRela(_))
+    }
+
     pub fn new(reg: Reg) -> Self {
         Self {
-            addr_type: MemAddrType::Address,
+            addr_type: MemAddrType::Addr(reg),
             size: 0,
-            register: reg,
-            disp: 0,
-            s_register: None,
-            scale: 1,
         }
     }
 
@@ -141,10 +138,27 @@ impl MemAddr {
         res
     }
 
+    #[allow(dead_code)]
+    pub fn new_rela(rela: String) -> Self {
+        Self {
+            addr_type: MemAddrType::AddrRela(rela),
+            size: 0,
+        }
+    }
+
+    pub fn new_rela_s(size: u8, rela: String) -> Self {
+        if !Self::validate_size(&size) {
+            panic!("unexpected value for memory size");
+        }
+        Self {
+            addr_type: MemAddrType::AddrRela(rela),
+            size,
+        }
+    }
+
     pub fn new_disp(reg: Reg, disp: i32) -> Self {
         let mut res = Self::new(reg);
-        res.addr_type = MemAddrType::Disp;
-        res.disp = disp;
+        res.addr_type = MemAddrType::Disp(reg, disp);
         res
     }
 
@@ -162,12 +176,8 @@ impl MemAddr {
             panic!("unexpected value for scale to size");
         }
         Self {
-            addr_type: MemAddrType::Sib,
+            addr_type: MemAddrType::Sib(reg, disp, reg_s, scale),
             size: 0,
-            register: reg,
-            disp,
-            s_register: Some(reg_s),
-            scale,
         }
     }
 
@@ -180,46 +190,58 @@ impl MemAddr {
         res
     }
 
+    pub fn get_register(&self) -> Reg {
+        match self.addr_type {
+            MemAddrType::Addr(r) => r,
+            MemAddrType::Disp(r, _) => r,
+            MemAddrType::Sib(r, _, _, _) => r,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn get_s_register(&self) -> Option<Reg> {
+        match self.addr_type {
+            MemAddrType::Sib(_, _, r, _) => Some(r),
+            _ => None,
+        }
+    }
+
     fn mem_hint(size: &u8) -> &'static str {
         match size {
             0 => "",
-            1 => "byte",
-            2 => "word",
-            4 => "dword",
-            8 => "qword",
+            1 => "byte ",
+            2 => "word ",
+            4 => "dword ",
+            8 => "qword ",
             _ => unreachable!(),
+        }
+    }
+
+    fn internsic(disp: i32) -> &'static str {
+        if disp < 0 {
+            " - "
+        } else {
+            " + "
         }
     }
 }
 
 impl Display for MemAddr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut view = String::new();
-        match self.size {
-            1 | 2 | 4 | 8 => {
-                view.push_str(Self::mem_hint(&self.size));
-                view.push(' ');
-            }
-            0 => (),
-            _ => unreachable!(),
-        }
-        view.push('[');
-        view.push_str(self.register.to_string().as_str());
-        if self.disp != 0 {
-            if self.disp < 0 {
-                view.push_str(" - ");
-            } else {
-                view.push_str(" + ");
-            }
-            view.push_str(self.disp.abs().to_string().as_str());
-        }
-        if let Some(reg) = self.s_register {
-            view.push_str(" + ");
-            view.push_str(reg.to_string().as_str());
-            view.push_str(" * ");
-            view.push_str(self.scale.to_string().as_str());
-        }
-        view.push(']');
-        write!(f, "{view}")
+        let intern = match &self.addr_type {
+            MemAddrType::Addr(r) => format!("[{r}]"),
+            MemAddrType::Disp(r, disp) => format!(
+                "[{r}{}{}]",
+                Self::internsic(*disp),
+                disp.abs().to_string().as_str()
+            ),
+            MemAddrType::Sib(r, disp, r2, scale) => format!(
+                "[{r}{}{} + {r2} * {scale}]",
+                Self::internsic(*disp),
+                disp.abs().to_string().as_str()
+            ),
+            MemAddrType::AddrRela(rel) => format!("[{rel}]"),
+        };
+        write!(f, "{}{intern}", Self::mem_hint(&self.size))
     }
 }

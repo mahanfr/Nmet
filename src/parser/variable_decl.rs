@@ -42,9 +42,8 @@ use super::{
 #[derive(Debug, Clone)]
 pub struct VariableDeclare {
     pub mutable: bool,
-    pub is_static: bool,
     pub ident: String,
-    pub v_type: Option<VariableType>,
+    pub v_type: VariableType,
     pub init_value: Option<Expr>,
     pub loc: Loc,
 }
@@ -55,16 +54,14 @@ pub fn inline_variable_declare(lexer: &mut Lexer) -> VariableDeclare {
     let _loc = lexer.get_token_loc();
     lexer.match_token(TokenType::Identifier);
     let mut is_mutable: bool = true;
-    let mut is_static: bool = false;
-    let mut v_type: Option<VariableType> = None;
+    let mut v_type: VariableType = VariableType::Any;
     let mut init_value: Option<Expr> = None;
     if lexer.get_token_type() == TokenType::ATSign {
-        v_type = Some(type_def(lexer));
+        v_type = type_def(lexer);
     }
     let loc = lexer.get_current_loc();
     match lexer.get_token_type() {
         TokenType::DoubleColon => {
-            is_static = true;
             is_mutable = false;
             lexer.match_token(TokenType::ColonEq);
             init_value = Some(expr(lexer));
@@ -92,7 +89,6 @@ pub fn inline_variable_declare(lexer: &mut Lexer) -> VariableDeclare {
     }
     VariableDeclare {
         mutable: is_mutable,
-        is_static,
         ident: ident_token.literal,
         v_type,
         init_value,

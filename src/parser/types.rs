@@ -22,12 +22,45 @@
 *     3. This notice may not be removed or altered from any source distribution.
 *
 **********************************************************************************************/
-use std::fmt::Display;
+use std::{collections::BTreeMap, fmt::Display};
 
 use crate::{
     error_handeling::{error, CompilationError},
     lexer::{Lexer, TokenType},
 };
+
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+pub struct StructType {
+    pub ident: String,
+    pub items: BTreeMap<String, StructItemType>,
+}
+
+impl StructType {
+    pub fn size(&self) -> usize {
+        let mut size = 0;
+        for item in self.items.values() {
+            size += item.offset;
+        }
+        size as usize
+    }
+}
+
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+pub struct StructItemType {
+    pub ident: String,
+    pub offset: i32,
+    pub vtype: VariableType,
+}
+
+impl StructItemType {
+    pub fn new(ident: String, offset: i32, vtype: VariableType) -> Self {
+        Self {
+            ident,
+            offset,
+            vtype,
+        }
+    }
+}
 
 /// Type of any variable or function
 /// Expandable
@@ -58,9 +91,12 @@ pub enum VariableType {
     Pointer,
     /// const sized array
     Array(Box<VariableType>, usize),
+    /// Struct
+    Struct(StructType),
     /// user defined types
     Custom(String),
 }
+
 impl VariableType {
     /// Convert String literal to Variable Type
     pub fn from_string(literal: String) -> Self {
@@ -101,6 +137,7 @@ impl VariableType {
             Self::Array(t, s) => t.item_size() as usize * s,
             Self::Float => 8,
             Self::Custom(_) => 8,
+            Self::Struct(_) => 8,
             Self::Any => todo!(),
         }
     }
@@ -189,6 +226,7 @@ impl Display for VariableType {
             VariableType::Char => write!(f, "@char"),
             VariableType::Void => write!(f, "@void"),
             VariableType::Float => write!(f, "@float"),
+            VariableType::Struct(s) => write!(f, "@{}", s.ident),
         }
     }
 }

@@ -99,6 +99,11 @@ mod asm {
 
     test_asm!(for_loops, "./tests/for_loops.nmt", "./tests/for_loops.txt");
     test_asm!(
+        static_var,
+        "./tests/static_var.nmt",
+        "./tests/static_var.txt"
+    );
+    test_asm!(
         binary_expr,
         "./tests/binary_expr.nmt",
         "./tests/binary_expr.txt"
@@ -135,12 +140,18 @@ mod asm {
     test_asm!(functions, "./tests/functions.nmt", "./tests/functions.txt");
     test_asm!(assign, "./tests/assign.nmt", "./tests/assign.txt");
     test_asm!(arrays, "./tests/arrays.nmt", "./tests/arrays.txt");
+    test_asm!(defer, "./tests/defer.nmt", "./tests/defer.txt");
 }
 
 mod elf {
     use super::*;
 
     test_elf!(for_loops, "./tests/for_loops.nmt", "./tests/for_loops.txt");
+    test_elf!(
+        static_var,
+        "./tests/static_var.nmt",
+        "./tests/static_var.txt"
+    );
     test_elf!(
         ffi,
         "./tests/ffi.nmt",
@@ -178,4 +189,5 @@ mod elf {
     test_elf!(functions, "./tests/functions.nmt", "./tests/functions.txt");
     test_elf!(assign, "./tests/assign.nmt", "./tests/assign.txt");
     test_elf!(arrays, "./tests/arrays.nmt", "./tests/arrays.txt");
+    test_elf!(defer, "./tests/defer.nmt", "./tests/defer.txt");
 }

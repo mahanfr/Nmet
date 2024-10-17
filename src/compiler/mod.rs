@@ -33,37 +33,23 @@ use crate::codegen::instructions::Opr;
 use crate::codegen::mnemonic::Mnemonic;
 use crate::codegen::{register::Reg, Codegen};
 use crate::compiler::{bif::Bif, function::compile_function};
-
 use crate::log_error;
 use crate::parser::block::Block;
 use crate::parser::function::FunctionDecl;
 use crate::parser::parse_source_file;
 use crate::parser::program::{ProgramFile, ProgramItem};
-use crate::parser::{structs::StructDef, types::VariableType};
+use crate::parser::types::StructType;
+use crate::parser::types::VariableType;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::process::exit;
 
-#[derive(Debug, Clone)]
-pub struct VariableMap {
-    pub offset_inner: usize,
-    pub offset: usize,
-    pub vtype: VariableType,
-    pub vtype_inner: VariableType,
-    pub is_mut: bool,
-}
-
-impl VariableMap {
-    pub fn stack_offset(&self) -> i32 {
-        -((self.offset + self.vtype.size()) as i32)
-    }
-}
+use self::variables::{insert_variable, NameSpaceMapping, VariableMapBase};
 
 pub struct CompilerContext {
     pub codegen: Codegen,
-    pub scoped_blocks: Vec<Block>,
-    pub variables_map: HashMap<String, VariableMap>,
+    pub variables_map: NameSpaceMapping,
     pub functions_map: BTreeMap<String, FunctionDecl>,
-    pub structs_map: HashMap<String, StructDef>,
+    pub structs_map: HashMap<String, StructType>,
     pub bif_set: HashSet<Bif>,
     pub mem_offset: usize,
     pub program_file: String,
@@ -75,9 +61,8 @@ impl CompilerContext {
         Self {
             program_file,
             codegen: Codegen::new(),
-            scoped_blocks: Vec::new(),
             bif_set: HashSet::new(),
-            variables_map: HashMap::new(),
+            variables_map: NameSpaceMapping::new(),
             functions_map: BTreeMap::new(),
             structs_map: HashMap::new(),
             mem_offset: 0,
@@ -124,9 +109,8 @@ fn _frame_size(mem_offset: usize) -> usize {
 }
 
 pub fn compile(cc: &mut CompilerContext, path: String) {
-    let program = parse_source_file(path);
-    collect_types(cc, &program);
-    compile_init_function(cc);
+    let program = parse_source_file(path.clone());
+    compile_init_function(cc, &program);
     for item in program.items.iter() {
         if let ProgramItem::Func(f) = item {
             compile_function(cc, f);
@@ -136,13 +120,10 @@ pub fn compile(cc: &mut CompilerContext, path: String) {
         log_error!("Compilation Failed due to {} previous errors!", cc.errors);
         exit(-1);
     }
-    assert!(
-        cc.scoped_blocks.is_empty(),
-        "Somting went wrong: Scope has not been cleared"
-    );
 }
 
 fn collect_types(cc: &mut CompilerContext, program: &ProgramFile) {
+    let global_block = Block::new_global("#".to_string(), crate::parser::block::BlockType::Global);
     for item in program.items.iter() {
         match item {
             ProgramItem::Func(f) => {
@@ -156,17 +137,25 @@ fn collect_types(cc: &mut CompilerContext, program: &ProgramFile) {
             ProgramItem::Struct(s) => {
                 cc.structs_map.insert(s.ident.clone(), s.clone());
             }
-            ProgramItem::StaticVar(_) => (),
+            ProgramItem::StaticVar(sv) => {
+                let _ = insert_variable(
+                    cc,
+                    &global_block,
+                    sv,
+                    VariableMapBase::Global(sv.ident.clone()),
+                );
+            }
         }
     }
 }
 
-fn compile_init_function(cc: &mut CompilerContext) {
+fn compile_init_function(cc: &mut CompilerContext, program: &ProgramFile) {
     cc.codegen.set_lable("_start");
     cc.codegen.instr1(Mnemonic::Push, Reg::RBP);
     cc.codegen.instr2(Mnemonic::Mov, Reg::RBP, Reg::RSP);
     // TODO: Add a condition for compiling libraries
-    if cc.functions_map.get("main").is_none() {
+    collect_types(cc, program);
+    if !cc.functions_map.contains_key("main") {
         log_error!("Executable programs should have an entry point");
         exit(-1);
     }
