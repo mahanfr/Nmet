@@ -209,17 +209,17 @@ impl Instr {
                     return Some(k.clone());
                 }
                 None
-           },
+            }
             _ => None,
         }
     }
 
     pub fn uses_rela_memory(&self) -> bool {
         match &self.oprs {
-            Oprs::Two(Opr::Mem(m), _) | Oprs::Two(_,Opr::Mem(m)) | Oprs::One(Opr::Mem(m)) => {
+            Oprs::Two(Opr::Mem(m), _) | Oprs::Two(_, Opr::Mem(m)) | Oprs::One(Opr::Mem(m)) => {
                 m.is_rela()
             }
-            _ => false
+            _ => false,
         }
     }
 

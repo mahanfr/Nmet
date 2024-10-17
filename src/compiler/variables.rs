@@ -161,7 +161,7 @@ pub fn insert_variable(
             cc.codegen.instr2(Sub, RSP, vtype.size());
             cc.mem_offset += vtype.size();
             cc.variables_map.insert(&var.ident, var_map);
-        },
+        }
         VariableMapBase::Global(_) => {
             let var_map = VariableMap::new(var_base, 0, vtype.clone(), var.mutable);
             cc.variables_map.insert(&var.ident, var_map);

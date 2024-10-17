@@ -76,10 +76,11 @@ struct InstrData {
 
 impl InstrData {
     pub fn new(instr: Instr) -> Self {
-        let bytes = match (instr.needs_rela_map() || instr.needs_location()) && !instr.uses_rela_memory() {
-            true => assemble_instr(&placeholder(instr.clone())),
-            false => assemble_instr(&instr),
-        };
+        let bytes =
+            match (instr.needs_rela_map() || instr.needs_location()) && !instr.uses_rela_memory() {
+                true => assemble_instr(&placeholder(instr.clone())),
+                false => assemble_instr(&instr),
+            };
         Self { instr, bytes }
     }
 

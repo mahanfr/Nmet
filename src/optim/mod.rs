@@ -29,7 +29,7 @@ impl ExprOpr {
                     return false;
                 }
                 m.get_register() != Reg::RBP || m.get_s_register().is_some()
-            },
+            }
             Opr::R64(_) | Opr::R32(_) | Opr::R16(_) | Opr::R8(_) => true,
         }
     }

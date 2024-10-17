@@ -4,7 +4,8 @@ use super::{
     instructions::{Instr, ModrmType, Opr, Oprs},
     memory::{MemAddr, MemAddrType},
     mnemonic::Mnemonic,
-    opcodes::opcode, register::Reg,
+    opcodes::opcode,
+    register::Reg,
 };
 
 macro_rules! Register {
@@ -63,7 +64,9 @@ fn include_imm_values(bytes: &mut IBytes, instr: &Instr) {
                 }
                 _ => unreachable!(),
             },
-            Oprs::Two(Opr::Mem(m), r_8_64!()) | Oprs::Two(r_8_64!(), Opr::Mem(m)) | Oprs::One(Opr::Mem(m)) => {
+            Oprs::Two(Opr::Mem(m), r_8_64!())
+            | Oprs::Two(r_8_64!(), Opr::Mem(m))
+            | Oprs::One(Opr::Mem(m)) => {
                 if m.is_rela() {
                     bytes.extend(0u32.to_le_bytes());
                 }
@@ -160,13 +163,11 @@ fn rex(instr: &Instr) -> IBytes {
         }
         Oprs::Two(Register!(r1), Opr::Mem(mem)) | Oprs::Two(Opr::Mem(mem), Register!(r1)) => {
             if mem.is_rela() {
-               return r_rex(r1); 
+                return r_rex(r1);
             }
             rm_rex(r1, mem)
         }
-        Oprs::Two(Register!(r), _) => {
-            r_rex(r)
-        }
+        Oprs::Two(Register!(r), _) => r_rex(r),
         Oprs::Two(Opr::Mem(mem), _) | Oprs::One(Opr::Mem(mem)) => {
             if mem.is_rela() {
                 todo!()
