@@ -22,11 +22,9 @@
 *     3. This notice may not be removed or altered from any source distribution.
 *
 **********************************************************************************************/
-use std::collections::HashMap;
 
 use crate::{
     codegen::{mnemonic::Mnemonic::*, register::Reg::*},
-    compiler::VariableMap,
     parser::{
         block::Block,
         function::{FunctionArg, FunctionDef},
@@ -34,8 +32,8 @@ use crate::{
 };
 
 use super::{
-    block::compile_function_block_alrady_scoped, function_args_register_sized, CompilerContext,
-    VariableMapBase,
+    block::compile_function_block_alrady_scoped, function_args_register_sized,
+    variables::VariableMap, CompilerContext, VariableMapBase,
 };
 
 pub fn function_args(cc: &mut CompilerContext, block: &Block, args: &[FunctionArg]) {
@@ -53,7 +51,7 @@ pub fn function_args(cc: &mut CompilerContext, block: &Block, args: &[FunctionAr
         } else {
             todo!();
         }
-        cc.variables_map.insert(&arg.ident, map);
+        let _ = cc.variables_map.insert(&arg.ident, map);
         cc.mem_offset += 8;
         cc.codegen.instr2(Sub, RSP, 8);
     }

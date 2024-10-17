@@ -26,16 +26,85 @@ use std::collections::HashMap;
 **********************************************************************************************/
 use crate::{
     codegen::{
-        instructions::Opr, memory::MemAddr, mnemonic::Mnemonic::*, register::Reg::*,
+        instructions::Opr,
+        memory::MemAddr,
+        mnemonic::Mnemonic::*,
+        register::Reg::{self, *},
         utils::mov_unknown_to_register,
     },
-    compiler::VariableMap,
     error_handeling::{error, CompilationError},
     memq,
     parser::{block::Block, types::VariableType, variable_decl::VariableDeclare},
 };
 
-use super::{block, expr::compile_expr, BlockID, CompilerContext, VariableMapBase};
+use super::{expr::compile_expr, CompilerContext};
+
+#[derive(Debug, Clone)]
+pub enum VariableMapBase {
+    Stack(String),
+    Global(String),
+}
+
+#[derive(Debug, Clone)]
+pub struct VariableMap {
+    pub base: VariableMapBase,
+    pub offset: i32,
+    pub vtype: VariableType,
+    pub is_mut: bool,
+}
+
+impl VariableMap {
+    pub fn new(base: VariableMapBase, offset: usize, vtype: VariableType, is_mut: bool) -> Self {
+        let new_offset = Self::get_stack_offset(offset, &vtype);
+        Self {
+            base,
+            is_mut,
+            offset: new_offset,
+            vtype,
+        }
+    }
+
+    pub fn is_global(&self) -> bool {
+        matches!(self.base, VariableMapBase::Global(_))
+    }
+
+    pub fn mem_with_offset_reg(&self, offset_reg: Reg) -> MemAddr {
+        MemAddr::new_sib_s(
+            self.vtype.item_size(),
+            Reg::RBP,
+            self.offset,
+            offset_reg,
+            self.vtype.item_size(),
+        )
+    }
+
+    pub fn mem(&self) -> MemAddr {
+        if let VariableMapBase::Global(g) = &self.base {
+            return MemAddr::new_rela_s(self.vtype.item_size(), g.to_string());
+        }
+        match &self.vtype {
+            VariableType::Int | VariableType::UInt => MemAddr::new_disp_s(4, Reg::RBP, self.offset),
+            VariableType::Long
+            | VariableType::ULong
+            | VariableType::Custom(_)
+            | VariableType::Pointer
+            | VariableType::String => MemAddr::new_disp_s(8, Reg::RBP, self.offset),
+            VariableType::Bool | VariableType::Char => {
+                MemAddr::new_disp_s(1, Reg::RBP, self.offset)
+            }
+            VariableType::Any | VariableType::Void => unreachable!(),
+            VariableType::Array(item_vtype, _) => {
+                MemAddr::new_disp_s(item_vtype.item_size(), Reg::RBP, self.offset)
+            }
+            VariableType::Struct(_) => MemAddr::new_disp_s(8, Reg::RBP, self.offset),
+            VariableType::Float => todo!(),
+        }
+    }
+
+    pub fn get_stack_offset(offset: usize, vtype: &VariableType) -> i32 {
+        -((offset + vtype.size()) as i32)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct NameSpaceMapping {
@@ -87,7 +156,7 @@ impl NameSpaceMapping {
     }
 
     pub fn purge(&mut self) {
-        let mut copy = self.items.clone();
+        let copy = self.items.clone();
         for bucket in copy {
             if let Some(map) = bucket.1.first() {
                 if !map.is_global() {
@@ -131,7 +200,7 @@ pub fn insert_variable(
                         RBP,
                         -((cc.mem_offset + vt.size()) as i32),
                     ),
-                    VariableMapBase::Global(rela) => {
+                    VariableMapBase::Global(_) => {
                         let tag = cc.codegen.add_bss_seg(vt.size());
                         var_base = VariableMapBase::Global(tag.to_string());
                         MemAddr::new_rela_s(vt.item_size(), tag.to_string())
@@ -160,26 +229,12 @@ pub fn insert_variable(
             let var_map = VariableMap::new(var_base, cc.mem_offset, vtype.clone(), var.mutable);
             cc.codegen.instr2(Sub, RSP, vtype.size());
             cc.mem_offset += vtype.size();
-            cc.variables_map.insert(&var.ident, var_map);
+            let _ = cc.variables_map.insert(&var.ident, var_map);
         }
         VariableMapBase::Global(_) => {
             let var_map = VariableMap::new(var_base, 0, vtype.clone(), var.mutable);
-            cc.variables_map.insert(&var.ident, var_map);
+            let _ = cc.variables_map.insert(&var.ident, var_map);
         }
     }
     Ok(())
 }
-
-//pub fn get_vriable_map(
-//    cc: &mut CompilerContext,
-//    block: &Block,
-//    var_ident: &str,
-//) -> Result<VariableMap, CompilationError> {
-//    for scoped_block in &cc.scoped_blocks {
-//        let map_ident = format!("{var_ident}%{}", scoped_block.id);
-//        if let Some(map) = cc.variables_map.get(&map_ident) {
-//            return Ok(map.clone());
-//        }
-//    }
-//    Err(CompilationError::UndefinedVariable(var_ident.to_owned()))
-//}

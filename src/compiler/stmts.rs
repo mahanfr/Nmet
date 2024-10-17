@@ -35,7 +35,7 @@ use crate::{
     log_cerror, log_warn, mem,
     parser::{
         assign::{Assign, AssignOp},
-        block::{Block, BlockType},
+        block::Block,
         expr::{CompareExpr, CompareOp, Expr, ExprType},
         stmt::{ElseBlock, ForLoop, IFStmt, Stmt, StmtType, WhileStmt},
         types::VariableType,
@@ -168,7 +168,6 @@ pub fn compile_stmt(
         }
         StmtType::Break => compile_break_coninue(cc, block, true),
         StmtType::Continue => compile_break_coninue(cc, block, false),
-        StmtType::Defer(_) => todo!(),
     }
 }
 
@@ -177,7 +176,6 @@ fn compile_break_coninue(
     block: &Block,
     is_break: bool,
 ) -> Result<(), CompilationError> {
-    let mut did_break: bool = false;
     let exit_loc = if is_break {
         block.last_loop_end_name()?
     } else {

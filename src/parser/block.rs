@@ -1,7 +1,3 @@
-use std::hash::{DefaultHasher, Hash, Hasher};
-
-use rand::random;
-
 /**********************************************************************************************
 *
 *   parser/block: parse blocks syntax (e.g: if/while block)
@@ -30,7 +26,6 @@ use crate::{
     error_handeling::CompilationError,
     lexer::{Lexer, TokenType},
     parser::stmt::Stmt,
-    utils::long2base32,
 };
 
 use super::{
@@ -56,7 +51,6 @@ pub fn parse_statement_outside_of_block(lexer: &mut Lexer, master: &String) -> V
 }
 
 pub fn get_last_loop_block_id(child_id: &str) -> Result<String, CompilationError> {
-    let mut id = String::new();
     let mut last_index = 0;
     let mut reached_loop = false;
     for (i, chr) in child_id.chars().enumerate() {
@@ -141,6 +135,7 @@ impl Block {
         }
     }
 
+    #[allow(dead_code)]
     pub fn master_start_name(&self) -> String {
         get_first_block_id(&self.id)
     }
@@ -153,6 +148,7 @@ impl Block {
     pub fn last_loop_end_name(&self) -> Result<String, CompilationError> {
         Ok(format!("{}.BE__", get_last_loop_block_id(&self.id)?))
     }
+    #[allow(dead_code)]
     pub fn parent_start_name(&self) -> String {
         let parn_id = get_parent_id(&self.id);
         if parn_id.contains('.') {
@@ -161,6 +157,7 @@ impl Block {
             parn_id
         }
     }
+    #[allow(dead_code)]
     pub fn parent_end_name(&self) -> String {
         let parn_id = get_parent_id(&self.id);
         if parn_id.contains('.') {

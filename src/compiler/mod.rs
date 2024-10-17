@@ -30,7 +30,6 @@ mod stmts;
 mod variables;
 
 use crate::codegen::instructions::Opr;
-use crate::codegen::memory::MemAddr;
 use crate::codegen::mnemonic::Mnemonic;
 use crate::codegen::{register::Reg, Codegen};
 use crate::compiler::{bif::Bif, function::compile_function};
@@ -44,91 +43,7 @@ use crate::parser::types::VariableType;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::process::exit;
 
-use self::variables::{insert_variable, NameSpaceMapping};
-
-#[derive(Debug, Clone)]
-pub enum NameSpaceType {
-    Variable(VariableMap),
-    Function(FunctionDecl),
-    Struct(StructType),
-    Unit(String),
-}
-
-#[derive(Debug, Clone)]
-pub struct NameSpace {
-    block_id: BlockID,
-    nstype: NameSpaceType,
-    children: HashMap<String, NameSpace>,
-}
-
-pub type BlockID = i64;
-
-#[derive(Debug, Clone)]
-pub enum VariableMapBase {
-    Stack(String),
-    Global(String),
-}
-
-#[derive(Debug, Clone)]
-pub struct VariableMap {
-    pub base: VariableMapBase,
-    pub offset: i32,
-    pub vtype: VariableType,
-    pub is_mut: bool,
-}
-
-impl VariableMap {
-    pub fn new(base: VariableMapBase, offset: usize, vtype: VariableType, is_mut: bool) -> Self {
-        let new_offset = Self::get_stack_offset(offset, &vtype);
-        Self {
-            base,
-            is_mut,
-            offset: new_offset,
-            vtype,
-        }
-    }
-
-    pub fn is_global(&self) -> bool {
-        matches!(self.base, VariableMapBase::Global(_))
-    }
-
-    pub fn mem_with_offset_reg(&self, offset_reg: Reg) -> MemAddr {
-        MemAddr::new_sib_s(
-            self.vtype.item_size(),
-            Reg::RBP,
-            self.offset,
-            offset_reg,
-            self.vtype.item_size(),
-        )
-    }
-
-    pub fn mem(&self) -> MemAddr {
-        if let VariableMapBase::Global(g) = &self.base {
-            return MemAddr::new_rela_s(self.vtype.item_size(), g.to_string());
-        }
-        match &self.vtype {
-            VariableType::Int | VariableType::UInt => MemAddr::new_disp_s(4, Reg::RBP, self.offset),
-            VariableType::Long
-            | VariableType::ULong
-            | VariableType::Custom(_)
-            | VariableType::Pointer
-            | VariableType::String => MemAddr::new_disp_s(8, Reg::RBP, self.offset),
-            VariableType::Bool | VariableType::Char => {
-                MemAddr::new_disp_s(1, Reg::RBP, self.offset)
-            }
-            VariableType::Any | VariableType::Void => unreachable!(),
-            VariableType::Array(item_vtype, _) => {
-                MemAddr::new_disp_s(item_vtype.item_size(), Reg::RBP, self.offset)
-            }
-            VariableType::Struct(_) => MemAddr::new_disp_s(8, Reg::RBP, self.offset),
-            VariableType::Float => todo!(),
-        }
-    }
-
-    pub fn get_stack_offset(offset: usize, vtype: &VariableType) -> i32 {
-        -((offset + vtype.size()) as i32)
-    }
-}
+use self::variables::{insert_variable, NameSpaceMapping, VariableMapBase};
 
 pub struct CompilerContext {
     pub codegen: Codegen,

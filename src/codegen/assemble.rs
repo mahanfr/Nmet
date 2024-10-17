@@ -321,7 +321,7 @@ fn _mem_modrm(r: u8, mem: &MemAddr) -> IBytes {
                 unreachable!();
             }
         }
-        MemAddrType::Sib(reg1, disp, reg2, scale) => {
+        MemAddrType::Sib(_, disp, _, _) => {
             let mut bytes = vec![];
             if disp == 0 {
                 bytes.push(_modrm(0b00, 0x04, r));

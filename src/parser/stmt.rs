@@ -68,8 +68,6 @@ pub enum StmtType {
     Break,
     /// CONTINUE Stmts
     Continue,
-    /// Defer Stmt
-    Defer(Vec<Stmt>),
 }
 
 /// If Stmt Information

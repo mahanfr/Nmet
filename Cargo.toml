@@ -9,6 +9,3 @@ description = "A general purpose statically typed and compiled programming langu
 
 [dependencies]
 rand = "0.8.5"
-
-[lints.rust]
-unused = "allow"

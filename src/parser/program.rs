@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 /**********************************************************************************************
 *
@@ -92,35 +92,30 @@ pub fn generate_ast(lexer: &mut Lexer) -> ProgramFile {
                 if prv_value.is_some() {
                     error(
                         format!("Struct with the name {} already exists", ident.clone()),
-                        loc
+                        loc,
                     );
                 }
             }
             TokenType::Ffi => {
                 let ffi_func = parse_ffi_function_mapping(lexer);
                 let ident = ffi_func.1.ident.clone();
-                let prv_value = items.insert(
-                    ident.clone(),
-                    ProgramItem::FFI(ffi_func.0, ffi_func.1)
-                );
+                let prv_value =
+                    items.insert(ident.clone(), ProgramItem::FFI(ffi_func.0, ffi_func.1));
                 if prv_value.is_some() {
                     error(
                         format!("Function with the name {} already exists", ident),
-                        loc
+                        loc,
                     );
                 }
             }
             TokenType::Func => {
                 let function_def = parse_function_definition(lexer);
                 let ident = function_def.decl.ident.clone();
-                let prv_value = items.insert(
-                    ident.clone(),
-                    ProgramItem::Func(function_def) 
-                );
+                let prv_value = items.insert(ident.clone(), ProgramItem::Func(function_def));
                 if prv_value.is_some() {
                     error(
                         format!("Function with the name {} already exists", ident),
-                        loc
+                        loc,
                     );
                 }
             }
@@ -129,14 +124,11 @@ pub fn generate_ast(lexer: &mut Lexer) -> ProgramFile {
                 let var_decl = variable_declare(lexer);
                 lexer.match_token(TokenType::SemiColon);
                 let ident = var_decl.ident.clone();
-                let prv_value = items.insert(
-                    ident.clone(),
-                    ProgramItem::StaticVar(var_decl) 
-                );
+                let prv_value = items.insert(ident.clone(), ProgramItem::StaticVar(var_decl));
                 if prv_value.is_some() {
                     error(
                         format!("Variable with the name {} already exists", ident),
-                        loc
+                        loc,
                     );
                 }
             }
@@ -149,8 +141,7 @@ pub fn generate_ast(lexer: &mut Lexer) -> ProgramFile {
                     if items.contains_key(item_name) {
                         error(
                             format!("Import failed beacuse namespace with the name ({}) already exists in this program",
-                            item_name), 
-                            loc);
+                            item_name), loc);
                     }
                 }
                 for item in new_file.items {
@@ -161,7 +152,6 @@ pub fn generate_ast(lexer: &mut Lexer) -> ProgramFile {
                         if import.1.contains(&key) {
                             items.insert(item.get_key(), item);
                         }
-
                     }
                 }
             }
@@ -174,7 +164,9 @@ pub fn generate_ast(lexer: &mut Lexer) -> ProgramFile {
             ),
         }
     }
-    ProgramFile { items: items.values().cloned().collect::<Vec<ProgramItem>>() }
+    ProgramFile {
+        items: items.values().cloned().collect::<Vec<ProgramItem>>(),
+    }
 }
 /// Include FFI
 /// Returns FFI Program Item

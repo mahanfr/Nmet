@@ -138,6 +138,7 @@ impl MemAddr {
         res
     }
 
+    #[allow(dead_code)]
     pub fn new_rela(rela: String) -> Self {
         Self {
             addr_type: MemAddrType::AddrRela(rela),

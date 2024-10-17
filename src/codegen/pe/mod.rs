@@ -1,5 +1,7 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
 pub struct Header {
     machine: u16,
     number_of_sections: u16,
@@ -10,6 +12,7 @@ pub struct Header {
     characteristics: u16,
 }
 
+#[allow(dead_code)]
 impl Header {
     pub fn new(num_sections: u16, symtab_pointer: u32, sym_entries: u32) -> Self {
         Self {

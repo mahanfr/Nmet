@@ -49,7 +49,6 @@ pub struct FunctionDef {
     pub decl: FunctionDecl,
     pub block: Block,
     pub defer_block: Block,
-    pub refrence: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -92,7 +91,6 @@ pub fn parse_function_definition(lexer: &mut Lexer) -> FunctionDef {
         decl,
         block,
         defer_block,
-        refrence: 0,
     }
 }
 
