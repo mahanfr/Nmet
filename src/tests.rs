@@ -99,6 +99,11 @@ mod asm {
 
     test_asm!(for_loops, "./tests/for_loops.nmt", "./tests/for_loops.txt");
     test_asm!(
+        static_var,
+        "./tests/static_var.nmt",
+        "./tests/static_var.txt"
+    );
+    test_asm!(
         binary_expr,
         "./tests/binary_expr.nmt",
         "./tests/binary_expr.txt"
@@ -142,6 +147,11 @@ mod elf {
     use super::*;
 
     test_elf!(for_loops, "./tests/for_loops.nmt", "./tests/for_loops.txt");
+    test_elf!(
+        static_var,
+        "./tests/static_var.nmt",
+        "./tests/static_var.txt"
+    );
     test_elf!(
         ffi,
         "./tests/ffi.nmt",
