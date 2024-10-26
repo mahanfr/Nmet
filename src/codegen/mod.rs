@@ -124,6 +124,10 @@ impl Codegen {
             ffi_map: BTreeMap::new(),
         }
     }
+    
+    pub fn get_raw_instructs(&self) -> Vec<Instr> {
+        self.instructs.iter().map(|x| x.instr.clone()).collect()
+    }
 
     pub fn relocate(&mut self) {
         let mut bytes_sum = 0;
