@@ -12,7 +12,7 @@ use crate::{
 };
 
 mod flags;
-mod header;
+pub mod header;
 mod sections;
 
 use self::{
