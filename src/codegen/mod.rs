@@ -124,7 +124,8 @@ impl Codegen {
             ffi_map: BTreeMap::new(),
         }
     }
-    
+
+    #[allow(dead_code)]
     pub fn get_raw_instructs(&self) -> Vec<Instr> {
         self.instructs.iter().map(|x| x.instr.clone()).collect()
     }

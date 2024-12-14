@@ -36,7 +36,6 @@ use std::sync::Mutex;
 use std::{env::args, process::exit};
 
 mod codegen;
-mod interpreter;
 mod compiler;
 mod error_handeling;
 mod lexer;
@@ -52,7 +51,6 @@ use compiler::{compile, CompilerContext};
 use utils::get_output_path_from_input;
 
 use crate::compiler::impl_bifs;
-use crate::interpreter::simulate_program;
 use crate::utils::padding_right;
 
 // --- Static Compiler Defenition
@@ -199,7 +197,7 @@ pub fn setup_compiler(input: String, co: &CompilerOptions) {
     let prefix = out_path.parent().unwrap();
     std::fs::create_dir_all(prefix).unwrap();
     if co.simulate {
-        simulate_program(&compiler_context);
+        log_info!("Simulation is not supported yet!");
     }
     if co.use_nasm {
         log_info!("Generating asm text file...");
