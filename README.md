@@ -29,12 +29,14 @@
 A General Purpose Compiled Programming Language that compiles to x86-64 ELF object file or Nasm compatable asm text file.
 This compiler can directly generate x86-64 Elf file using it's internal assembler whitout any thirdparty tool or library!
 
-Language is not compelete in the current state and lacks any convenient tools for making real world applications but feel free to check out the [examples](./examples)
-that shows Some of the Nmet programming language capabilities.
+Language is in alpha and in the current state it lacks any standard library for making real world applications but feel free to check out the [examples](./examples)
+and [tests](./tests) that shows Some of the Nmet programming language capabilities.
 
-Use the `docs/README.md` to get started.
+**Checkout similar projects:**
 
-See the [open issues](https://github.com/othneildrew/Best-README-Template/issues) for a full list of proposed features (and known issues).
+***Chap programming language***: <https://github.com/ali77gh/Chap>
+
+***30 C Compiler***: <https://github.com/keyvank/30cc>
 
 ## Quick Start
 The Project is in development state and dose not come with a package yet and **It is Only available fot linux** but you can use wsl in windows!
@@ -62,7 +64,8 @@ now you can run the following commands:
 
 ``` shell
 $ nmet ./hello.nmt
-$ nemt -elf ./hello.nmt
+$ nemt -nasm ./hello.nmt #or
+$ nmet ./hello.nmt
 $ ./build/hello
 ```
 
@@ -122,7 +125,13 @@ a %= 10; ~~ a <- a % 10
 loops are one of the most important parts of any programming language. Nmet loops are defined using the while keyword followed by a condition which indicates when the looping ends pretenses surrounding the condition is optional.
 ```
 while a < 10 {
-	...
+    ...
+}
+```
+Nemt also supports For loops:
+```
+for i to 10 {
+    ...
 }
 ```
 
@@ -144,6 +153,48 @@ because Nmet is a low level language having a way to write in line assembly is e
 asm {
 	"mov rax, %my_u64_variable"
 	"inc rax"
+}
+```
+
+### FFI
+Forien Function Interface or (FFI) allows programmers to link with external libraries by making a wrapper around imported functions
+```
+ffi "add"   func nmt_add(a @int, b @int) @int
+ffi "multi" func nmt_multi(a @int, b @int) @int
+ffi "sub"   func nmt_sub(a @int, b @int) @int
+
+func main() {
+    print nmt_add(2,1);
+    print nmt_multi(2,1);
+    print nmt_sub(2,1);
+}
+```
+
+### Structs
+Structs address multiple variables with different types that share a common porperty
+```
+struct Human {
+    age @int,
+    height @int,
+}
+
+func main() {
+    var a @Human;
+    a.age = 69;
+    a.height = 65;
+    print a.height;
+}
+```
+
+## Defer
+Defer is a modern feature in programming languges like golanf or zig witch primary allows programmes to dref or free variables before exiting
+the function even if the functions has multiple return statements
+```
+func main() {
+    var x @ptr;
+    x = malloc(4);
+    defer free(x);
+    ...
 }
 ```
 
