@@ -1,9 +1,10 @@
 use std::collections::{BTreeMap, HashMap};
 
 use crate::{
-    codegen::{data_bss::DataItem, RelaItem},
-    utils::IBytes,
+    codegen::{data_bss::DataItem, RelaItem}, linker::ElfParser, utils::IBytes
 };
+
+use super::header::chunk_to_number;
 
 /// Generic Section for refrencing and storing
 /// different code sections including .text, .data, or .bss
@@ -58,6 +59,21 @@ impl SectionHeader {
         bytes.extend(self.sh_addralign.to_le_bytes());
         bytes.extend(self.sh_entsize.to_le_bytes());
         bytes
+    }
+
+    pub fn parse(ep: &mut ElfParser) -> Result<Self, String> {
+        let mut section = Self::default();
+        section.sh_name = chunk_to_number(ep, 4) as u32;
+        section.sh_type = chunk_to_number(ep, 4) as u32;
+        section.sh_flags = chunk_to_number(ep, 8);
+        section.sh_addr = chunk_to_number(ep, 8);
+        section.sh_offset = chunk_to_number(ep, 8);
+        section.sh_size = chunk_to_number(ep, 8);
+        section.sh_link = chunk_to_number(ep, 4) as u32;
+        section.sh_info = chunk_to_number(ep, 4) as u32;
+        section.sh_addralign = chunk_to_number(ep, 8);
+        section.sh_entsize = chunk_to_number(ep, 8);
+        Ok(section)
     }
 }
 // section .bss

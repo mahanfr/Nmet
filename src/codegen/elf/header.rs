@@ -135,7 +135,7 @@ impl ElfHeader {
     }
 }
 
-fn chunk_to_number(parser: &mut ElfParser, size: usize) -> u64 {
+pub fn chunk_to_number(parser: &mut ElfParser, size: usize) -> u64 {
     let res = match size {
         1 => parser.bytes[parser.cur] as u64,
         2 => {

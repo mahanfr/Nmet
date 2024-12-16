@@ -13,7 +13,7 @@ use crate::{
 
 mod flags;
 pub mod header;
-mod sections;
+pub mod sections;
 
 use self::{
     flags::{STB_GLOBAL, STB_LOCAL, STT_FILE, STT_NOTYPE, STT_SECTION, STV_DEFAULT},
