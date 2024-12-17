@@ -1,14 +1,11 @@
 use std::{collections::HashMap, fs};
 
-use crate::{codegen::elf::{header::ElfHeader, sections::SectionHeader}, log_error, log_warn};
-
-#[derive(Debug, Clone)]
-pub struct ElfSection {}
+use crate::{codegen::elf::{header::ElfHeader, sections::{Section, SectionHeader, ShstrtabSec}}, log_error, log_warn};
 
 #[derive(Debug, Clone)]
 pub struct ElfFile {
     pub header: ElfHeader,
-    pub sections: HashMap<String, ElfSection>,
+    pub sections: HashMap<String, Box<dyn Section>>,
     pub sec_headers: Vec<SectionHeader>
 }
 
@@ -59,6 +56,7 @@ pub fn parse_elf_objfile(file_path: String) -> ElfFile {
             }
         }
     }
+    println!("ELF FILE BEG:{cur:X}");
     let mut ep = ElfParser::new(source.clone(), cur);
     let header = ElfHeader::parse(&mut ep).unwrap();
     let mut elf_file = ElfFile::new(header);
@@ -73,6 +71,12 @@ pub fn parse_elf_objfile(file_path: String) -> ElfFile {
                 header.e_shentsize, ep.cur - before_cur);
         }
     }
-    println!("{:#?}",elf_file.sec_headers);
+    let shst_header = 
+        elf_file.sec_headers[elf_file.header.e_shstrndx as usize];
+    let shsti = ep.start + shst_header.sh_offset as usize;
+    let shstrtab = ShstrtabSec::new_from_bytes(
+        &ep.bytes[shsti..shsti + shst_header.sh_size as usize]
+    );
+    println!("{:#?}", shstrtab.map);
     elf_file
 }

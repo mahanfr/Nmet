@@ -9,12 +9,30 @@ use super::header::chunk_to_number;
 /// Generic Section for refrencing and storing
 /// different code sections including .text, .data, or .bss
 /// and internal sections like symtab or strtab
-pub trait Section {
+pub trait Section: CloneSection {
     fn to_bytes(&self) -> IBytes;
     fn header(&self, sh_name: u32, sh_offset: u64, sh_link: u32, sh_info: u32) -> SectionHeader;
     fn name(&self) -> &'static str;
     fn size(&self) -> usize;
     fn link_and_info(&self) -> (Option<&'static str>, Option<&'static str>);
+}
+impl std::fmt::Debug for dyn Section {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())
+    }
+}
+pub trait CloneSection {
+    fn clone_box(&self) -> Box<dyn Section>;
+}
+impl<T> CloneSection for T where T: 'static + Section + Clone {
+    fn clone_box(&self) -> Box<dyn Section> {
+        Box::new(self.clone())
+    }
+}
+impl Clone for Box<dyn Section> {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
 }
 // Section header (Shdr)
 //   A file's section header table lets one locate all the file's
@@ -33,16 +51,16 @@ pub trait Section {
 #[allow(dead_code)]
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SectionHeader {
-    sh_name: u32,
-    sh_type: u32,
-    sh_flags: u64,
-    sh_addr: u64,
-    sh_offset: u64,
-    sh_size: u64,
-    sh_link: u32,
-    sh_info: u32,
-    sh_addralign: u64,
-    sh_entsize: u64,
+    pub sh_name: u32,
+    pub sh_type: u32,
+    pub sh_flags: u64,
+    pub sh_addr: u64,
+    pub sh_offset: u64,
+    pub sh_size: u64,
+    pub sh_link: u32,
+    pub sh_info: u32,
+    pub sh_addralign: u64,
+    pub sh_entsize: u64,
 }
 
 impl SectionHeader {
@@ -247,7 +265,7 @@ impl Section for TextSec {
 //        0000000000000021  0000000000000000           0     0     1
 #[derive(Debug, Clone)]
 pub struct ShstrtabSec {
-    map: HashMap<String, usize>,
+    pub map: HashMap<String, usize>,
     data: IBytes,
 }
 impl ShstrtabSec {
@@ -256,6 +274,43 @@ impl ShstrtabSec {
             data: vec![0],
             map: HashMap::new(),
         }
+    }
+   
+    pub fn get_str(&self, index: usize) -> Option<String> {
+        for (k, v) in self.map.iter() {
+            if *v == index {
+                return Some(k.to_string());
+            }
+        }
+        None
+    }
+
+    pub fn new_from_bytes(bytes: &[u8]) -> Self {
+        let mut shtab = Self::new();
+        shtab.data = bytes.to_vec();
+        let mut is_parsing = false;
+        let mut beg = 0;
+        let mut string = String::new();
+        for (index, chr) in shtab.data.iter().enumerate() {
+            if *chr == 0 || index == shtab.data.len() - 1 {
+                if is_parsing == true {
+                    is_parsing = false;
+                    if index == shtab.data.len() - 1 && *chr != 0 {
+                        string.push(*chr as char);
+                    }
+                    shtab.map.insert(string.clone(), beg);
+                    string.clear();
+                }
+                continue;
+            } else {
+                if is_parsing == false {
+                    is_parsing = true;
+                    beg = index;
+                }
+                string.push(*chr as char);
+            }
+        }
+        shtab
     }
 
     pub fn insert(&mut self, name: String) {
