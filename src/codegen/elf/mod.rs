@@ -98,7 +98,7 @@ impl Elf {
         self.set_symbols(cc);
         for item in cc.codegen.rela_map.iter_mut() {
             if item.sym_type == SymbolType::Ffi {
-                let indx = self.strtab.index(&item.sym_name);
+                let indx = self.strtab.index(&item.sym_name).unwrap();
                 item.r_section = self.symtab.find(indx) as u32;
             } else {
                 item.r_section = self.get_sec_index(&item.sym_name) + 1;
@@ -155,21 +155,21 @@ impl Elf {
             let info = self.get_sec_index(info_tag.unwrap_or(""));
             bytes.extend(
                 section
-                    .header(self.shstrtab.index(&section.name()), loc as u64, link, info)
+                    .header(self.shstrtab.index(&section.name()).unwrap(), loc as u64, link, info)
                     .to_bytes(),
             );
             loc += section.size();
         }
         bytes.extend(
             self.shstrtab
-                .header(self.shstrtab.index(".shstrtab"), loc as u64, 0, 0)
+                .header(self.shstrtab.index(".shstrtab").unwrap(), loc as u64, 0, 0)
                 .to_bytes(),
         );
         loc += self.shstrtab.size();
         bytes.extend(
             self.symtab
                 .header(
-                    self.shstrtab.index(".symtab"),
+                    self.shstrtab.index(".symtab").unwrap(),
                     loc as u64,
                     self.get_sec_index(".strtab"),
                     0,
@@ -179,7 +179,7 @@ impl Elf {
         loc += self.symtab.size();
         bytes.extend(
             self.strtab
-                .header(self.shstrtab.index(".strtab"), loc as u64, 0, 0)
+                .header(self.shstrtab.index(".strtab").unwrap(), loc as u64, 0, 0)
                 .to_bytes(),
         );
         loc += self.strtab.size();
@@ -187,7 +187,7 @@ impl Elf {
             bytes.extend(
                 self.rela_text
                     .header(
-                        self.shstrtab.index(".rela.text"),
+                        self.shstrtab.index(".rela.text").unwrap(),
                         loc as u64,
                         self.get_sec_index(".symtab"),
                         self.get_sec_index(".text"),
@@ -200,7 +200,7 @@ impl Elf {
     fn set_symbols(&mut self, cc: &mut CompilerContext) {
         self.strtab.insert(&cc.program_file);
         self.symtab.insert(SymItem {
-            st_name: self.strtab.index(&cc.program_file),
+            st_name: self.strtab.index(&cc.program_file).unwrap(),
             st_info: st_info!(STB_LOCAL, STT_FILE),
             st_other: st_visibility!(STV_DEFAULT),
             st_shndx: 0xfff1,
@@ -238,7 +238,7 @@ impl Elf {
             };
 
             self.symtab.insert(SymItem {
-                st_name: self.strtab.index(label),
+                st_name: self.strtab.index(label).unwrap(),
                 st_info: info,
                 st_other: st_visibility!(STV_DEFAULT),
                 st_shndx: shndx as u16,
@@ -250,7 +250,7 @@ impl Elf {
         self.symtab.set_global_start();
         for item in cc.codegen.ffi_map.values() {
             self.symtab.insert(SymItem {
-                st_name: self.strtab.index(item),
+                st_name: self.strtab.index(item).unwrap(),
                 st_info: st_info!(STB_GLOBAL, STT_NOTYPE),
                 st_other: st_visibility!(STV_DEFAULT),
                 st_shndx: 0,
@@ -259,7 +259,7 @@ impl Elf {
             });
         }
         self.symtab.insert(SymItem {
-            st_name: self.strtab.index(&"_start".to_owned()),
+            st_name: self.strtab.index(&"_start".to_owned()).unwrap(),
             st_info: st_info!(STB_GLOBAL, STT_NOTYPE),
             st_other: st_visibility!(STV_DEFAULT),
             st_shndx: self.get_sec_index(".text") as u16,

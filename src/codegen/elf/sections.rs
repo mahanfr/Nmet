@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 use crate::{
     codegen::{data_bss::DataItem, RelaItem},
@@ -354,7 +354,6 @@ impl Section for PROGBITSSec {
 #[derive(Debug, Clone)]
 pub struct STRTABSec {
     name: String,
-    pub map: HashMap<String, usize>,
     data: IBytes,
 }
 impl STRTABSec {
@@ -362,54 +361,47 @@ impl STRTABSec {
         Self {
             name: name.to_string(),
             data: vec![0],
-            map: HashMap::new(),
         }
-    }
-
-    pub fn get_str(&self, index: usize) -> Option<String> {
-        for (k, v) in self.map.iter() {
-            if *v == index {
-                return Some(k.to_string());
-            }
-        }
-        None
     }
 
     pub fn new_from_bytes(name: &str, bytes: &[u8]) -> Self {
-        let mut stab = Self::new(name);
-        stab.data = bytes.to_vec();
-        let mut current_chunk = String::new();
-        
-        for (i, &val) in stab.data.iter().enumerate() {
-            if val == 0 {
-                if !current_chunk.is_empty() {
-                    let index = i - current_chunk.len();
-                    stab.map.insert(current_chunk.clone(), index);
-                    current_chunk.clear();
-                }
-            } else {
-                current_chunk.push(val as char);
+        Self {
+            name: name.to_string(),
+            data: bytes.to_vec()
+        }
+    }
+
+    pub fn get(&self, index: usize) -> String {
+        let mut i = index;
+        let mut buffer = String::new();
+        while i < self.data.len() && self.data[i] != 0  {
+            buffer.push(self.data[i] as char);
+            i += 1;
+        }
+        return buffer;
+    }
+
+    pub fn insert(&mut self, name: &str) -> u32 {
+        match self.index(name) {
+            Some(x) => x,
+            None => {
+                let index = self.data.len();
+                self.data.push(0);
+                self.data.append(&mut name.as_bytes().to_vec());
+                index as u32
             }
         }
-        if !current_chunk.is_empty() {
-            let index = stab.data.len() - 1 - current_chunk.len();
-            stab.map.insert(current_chunk.clone(), index);
+    }
+
+    pub fn index(&self, name: &str) -> Option<u32> {
+        let substr = name.as_bytes();
+        if substr.len() > self.data.len() {
+            return None;
         }
-
-        stab
-    }
-
-    pub fn insert(&mut self, name: &str) {
-        self.map.insert(name.to_string(), self.data.len());
-        self.data.extend(name.bytes());
-        self.data.push(0);
-    }
-
-    pub fn index(&self, name: &str) -> u32 {
-        *self
-            .map
-            .get(name)
-            .unwrap_or_else(|| panic!("not found {name}")) as u32
+        match self.data.windows(substr.len()).position(|win| win == substr) {
+            Some(x) => Some(x as u32),
+            None => None
+        }
     }
 }
 impl Section for STRTABSec {
@@ -567,12 +559,12 @@ impl SymItem {
 
     pub fn from_bytes(bytes: &[u8]) -> Self {
         Self {
-            st_name: slice_to_u64(&bytes[0..4], 4) as u32,
+            st_name: slice_to_u64(&bytes[0..4]) as u32,
             st_info: bytes[4],
             st_other: bytes[5],
-            st_shndx: slice_to_u64(&bytes[6..8], 2) as u16,
-            st_value: slice_to_u64(&bytes[8..16], 8),
-            st_size: slice_to_u64(&bytes[16..24], 4),
+            st_shndx: slice_to_u64(&bytes[6..8]) as u16,
+            st_value: slice_to_u64(&bytes[8..16]),
+            st_size: slice_to_u64(&bytes[16..24]),
         }
     }
 }
@@ -660,8 +652,8 @@ impl Section for RELASec {
 }
 
 // Vector Slice to u64
-pub fn slice_to_u64(bytes: &[u8], size: usize) -> u64 {
-    match size {
+pub fn slice_to_u64(bytes: &[u8]) -> u64 {
+    match bytes.len() {
         1 => bytes[0] as u64,
         2 => {
             let ins_bytes = <[u8; 2]>::try_from(bytes).unwrap();

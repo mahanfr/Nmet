@@ -60,10 +60,10 @@ impl RelaItem {
 
     pub fn from_bytes(name: &str, bytes: &[u8]) -> Self {
         Self {
-            r_offset: slice_to_u64(&bytes[0..8], 8),
-            r_section: slice_to_u64(&bytes[8..12], 4) as u32,
-            r_platform: slice_to_u64(&bytes[12..16], 4) as u32,
-            r_addend: slice_to_u64(&bytes[16..24], 8) as i64,
+            r_offset: slice_to_u64(&bytes[0..8]),
+            r_section: slice_to_u64(&bytes[8..12]) as u32,
+            r_platform: slice_to_u64(&bytes[12..16]) as u32,
+            r_addend: slice_to_u64(&bytes[16..24]) as i64,
             sym_name: name.to_string(),
             sym_type: SymbolType::Other,
         }

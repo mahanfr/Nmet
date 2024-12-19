@@ -64,11 +64,9 @@ pub fn parse_elf_objfile(file_path: String) -> ElfFile {
             }
         }
     }
-    println!("ELF FILE BEG:{cur:X}");
     let mut ep = ElfParser::new(source.clone(), cur);
     let header = ElfHeader::parse(&mut ep).unwrap();
     let mut elf_file = ElfFile::new(header);
-    println!("{:X?}", header);
 
     ep.jump_to_byte(header.e_shoff as usize);
     for _ in 0..header.e_shnum {
@@ -89,18 +87,11 @@ pub fn parse_elf_objfile(file_path: String) -> ElfFile {
         ".shstrtab",
         &ep.get_section(shst_header.sh_offset as usize, shst_header.sh_size as usize),
     );
-    println!("{:#?}", shstrtab.map);
     for sh in elf_file.sec_headers.iter() {
         if sh.sh_type == 0 {
             continue;
         }
-        let name = match shstrtab.get_str(sh.sh_name as usize) {
-            Some(n) => n,
-            None => {
-                println!("crashed on section: {:#?}", sh);
-                panic!("no string from {}",sh.sh_name);
-            }
-        };
+        let name = shstrtab.get(sh.sh_name as usize);
         let index = sh.sh_offset as usize;
         let size = sh.sh_size as usize;
         match parse_section(sh, &name, &ep.bytes[index..index + size]) {
