@@ -11,16 +11,14 @@ use crate::{
     utils::IBytes,
 };
 
-mod flags;
+pub mod flags;
 pub mod header;
 pub mod sections;
 
 use self::{
     flags::{STB_GLOBAL, STB_LOCAL, STT_FILE, STT_NOTYPE, STT_SECTION, STV_DEFAULT},
     header::ElfHeader,
-    sections::{
-        BssSec, DataSec, RelaSec, Section, ShstrtabSec, StrtabSec, SymItem, SymtabSec, TextSec,
-    },
+    sections::{NOBITSSec, PROGBITSSec, RELASec, STRTABSec, SYMTABSec, Section, SymItem},
 };
 
 use super::SymbolType;
@@ -35,12 +33,21 @@ pub fn generate_bin(out_path: &Path, cc: &mut CompilerContext) {
 
 pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
     let mut elf_object = Elf::new();
-    elf_object.add_section(&TextSec::new(cc.codegen.text_section_bytes()));
+    elf_object.add_section(&PROGBITSSec::new(
+        ".text",
+        0x6,
+        cc.codegen.text_section_bytes(),
+    ));
     if !cc.codegen.data_buf.is_empty() {
-        elf_object.add_section(&DataSec::new(&cc.codegen.data_buf));
+        elf_object.add_section(&PROGBITSSec::new(
+            ".data",
+            0x3,
+            PROGBITSSec::dmap_to_data(&cc.codegen.data_buf),
+        ));
     }
     if !cc.codegen.bss_buf.is_empty() {
-        elf_object.add_section(&BssSec::new(
+        elf_object.add_section(&NOBITSSec::new(
+            ".bss".into(),
             cc.codegen.bss_buf.iter().map(|x| x.size).sum(),
         ));
     }
@@ -53,20 +60,20 @@ pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
 
 struct Elf {
     sections: Vec<Box<dyn Section>>,
-    shstrtab: ShstrtabSec,
-    strtab: StrtabSec,
-    symtab: SymtabSec,
-    rela_text: RelaSec,
+    shstrtab: STRTABSec,
+    strtab: STRTABSec,
+    symtab: SYMTABSec,
+    rela_text: RELASec,
 }
 
 impl Elf {
     pub fn new() -> Self {
         Self {
             sections: Vec::new(),
-            shstrtab: ShstrtabSec::new(),
-            strtab: StrtabSec::new(),
-            symtab: SymtabSec::new(),
-            rela_text: RelaSec::new(),
+            shstrtab: STRTABSec::new(".shstrtab"),
+            strtab: STRTABSec::new(".strtab"),
+            symtab: SYMTABSec::new(".symtab"),
+            rela_text: RELASec::new(".rela.text".into()),
         }
     }
 
@@ -74,7 +81,7 @@ impl Elf {
     where
         T: Section + Clone + 'static,
     {
-        self.shstrtab.insert(section.name().to_string());
+        self.shstrtab.insert(&section.name().to_string());
         self.sections.push(Box::new((*section).clone()));
     }
 
@@ -98,11 +105,11 @@ impl Elf {
             }
             self.rela_text.push(item.to_owned());
         }
-        self.shstrtab.insert(".shstrtab".to_string());
-        self.shstrtab.insert(".symtab".to_string());
-        self.shstrtab.insert(".strtab".to_string());
+        self.shstrtab.insert(".shstrtab");
+        self.shstrtab.insert(".symtab");
+        self.shstrtab.insert(".strtab");
         if !cc.codegen.rela_map.is_empty() {
-            self.shstrtab.insert(".rela.text".to_string());
+            self.shstrtab.insert(".rela.text");
         }
         let header = ElfHeader::new(
             self.sections_count() as u16,
@@ -148,7 +155,7 @@ impl Elf {
             let info = self.get_sec_index(info_tag.unwrap_or(""));
             bytes.extend(
                 section
-                    .header(self.shstrtab.index(section.name()), loc as u64, link, info)
+                    .header(self.shstrtab.index(&section.name()), loc as u64, link, info)
                     .to_bytes(),
             );
             loc += section.size();

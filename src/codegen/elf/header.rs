@@ -45,14 +45,14 @@ impl EMachine {
         match value {
             0x3E => Self::X86_64,
             0x28 => Self::Arm,
-            _ => unreachable!("EMachine: {value:X}")
+            _ => unreachable!("EMachine: {value:X}"),
         }
     }
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct ElfHeader {
-    pub e_ident: [u8;16],
+    pub e_ident: [u8; 16],
     pub e_type: EType,
     pub e_machine: EMachine,
     pub e_version: u32,
@@ -89,8 +89,8 @@ impl ElfHeader {
     }
 
     pub fn parse(parser: &mut ElfParser) -> Result<Self, String> {
-        let mut header = Self::new(0,0);
-        if parser.get_range(4) != [0x7F,0x45,0x4C,0x46] {
+        let mut header = Self::new(0, 0);
+        if parser.get_range(4) != [0x7F, 0x45, 0x4C, 0x46] {
             return Err("File is not an valid elf file!".to_string());
         }
         for i in 0..16 {
@@ -141,16 +141,16 @@ pub fn chunk_to_number(parser: &mut ElfParser, size: usize) -> u64 {
         2 => {
             let ins_bytes = <[u8; 2]>::try_from(parser.get_range(2)).unwrap();
             u16::from_le_bytes(ins_bytes) as u64
-        },
+        }
         4 => {
             let ins_bytes = <[u8; 4]>::try_from(parser.get_range(4)).unwrap();
             u32::from_le_bytes(ins_bytes) as u64
-        },
+        }
         8 => {
             let ins_bytes = <[u8; 8]>::try_from(parser.get_range(8)).unwrap();
             u64::from_le_bytes(ins_bytes)
         }
-        _ => unreachable!("Chunk to number")
+        _ => unreachable!("Chunk to number"),
     };
     parser.cur += size;
     res

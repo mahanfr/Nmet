@@ -1,10 +1,73 @@
 use std::collections::{BTreeMap, HashMap};
 
 use crate::{
-    codegen::{data_bss::DataItem, RelaItem}, linker::ElfParser, utils::IBytes
+    codegen::{data_bss::DataItem, RelaItem},
+    linker::ElfParser,
+    utils::IBytes,
 };
 
-use super::header::chunk_to_number;
+use super::{flags::SHFlags, header::chunk_to_number};
+
+#[repr(u32)]
+#[derive(Debug, Clone)]
+pub enum SHType {
+    Null = 0x0,
+    Progbits = 0x1,
+    Symtab = 0x2,
+    Strtab = 0x3,
+    Rela = 0x4,
+    Hash = 0x5,
+    Dynamic = 0x6,
+    Note = 0x7,
+    Nobits = 0x8,
+    Rel = 0x9,
+    Shlib = 0x0A,
+    Dynsym = 0x0B,
+    InitArray = 0x0E,
+    FiniArray = 0x0F,
+    PreinitArray = 0x10,
+    Group = 0x11,
+    SymtabShndx = 0x12,
+    Num = 0x13,
+    Loos = 0x60000000,
+    GNUAttributes = 0x6ffffff5,
+    GNUHash = 0x6ffffff6,
+    GNULiblist = 0x6ffffff7,
+    Checksum = 0x6ffffff8,
+    Losunw = 0x6ffffffa,
+    GNUVerdef = 0x6ffffffd,
+    GNUVerneed = 0x6ffffffe,
+    Hios = 0x6fffffff,
+    LOProc = 0x70000000,
+    HIProc = 0x7fffffff,
+    LOUser = 0x80000000,
+    HIUser = 0x8fffffff,
+}
+impl SHType {
+    pub fn from_u32(value: u32) -> Self {
+        match value {
+            0x0 => Self::Null,
+            0x1 => Self::Progbits,
+            0x2 => Self::Symtab,
+            0x3 => Self::Strtab,
+            0x4 => Self::Rela,
+            0x5 => Self::Hash,
+            0x6 => Self::Dynamic,
+            0x7 => Self::Note,
+            0x8 => Self::Nobits,
+            0x9 => Self::Rel,
+            0x0A => Self::Shlib,
+            0x0B => Self::Dynsym,
+            0x0E => Self::InitArray,
+            0x0F => Self::FiniArray,
+            0x10 => Self::PreinitArray,
+            0x11 => Self::Group,
+            0x12 => Self::SymtabShndx,
+            0x13 => Self::Num,
+            _ => unimplemented!(),
+        }
+    }
+}
 
 /// Generic Section for refrencing and storing
 /// different code sections including .text, .data, or .bss
@@ -12,7 +75,7 @@ use super::header::chunk_to_number;
 pub trait Section: CloneSection {
     fn to_bytes(&self) -> IBytes;
     fn header(&self, sh_name: u32, sh_offset: u64, sh_link: u32, sh_info: u32) -> SectionHeader;
-    fn name(&self) -> &'static str;
+    fn name(&self) -> String;
     fn size(&self) -> usize;
     fn link_and_info(&self) -> (Option<&'static str>, Option<&'static str>);
 }
@@ -24,7 +87,10 @@ impl std::fmt::Debug for dyn Section {
 pub trait CloneSection {
     fn clone_box(&self) -> Box<dyn Section>;
 }
-impl<T> CloneSection for T where T: 'static + Section + Clone {
+impl<T> CloneSection for T
+where
+    T: 'static + Section + Clone,
+{
     fn clone_box(&self) -> Box<dyn Section> {
         Box::new(self.clone())
     }
@@ -32,6 +98,22 @@ impl<T> CloneSection for T where T: 'static + Section + Clone {
 impl Clone for Box<dyn Section> {
     fn clone(&self) -> Self {
         self.clone_box()
+    }
+}
+pub fn parse_section(sh: &SectionHeader, name: &str, bytes: &[u8]) -> Option<Box<dyn Section>> {
+    match SHType::from_u32(sh.sh_type) {
+        SHType::Null => None,
+        SHType::Nobits => Some(Box::new(NOBITSSec::new(name, sh.sh_size as usize))),
+        SHType::Progbits => Some(Box::new(PROGBITSSec::new(
+            name,
+            sh.sh_flags,
+            bytes.to_vec(),
+        ))),
+        SHType::Symtab => Some(Box::new(SYMTABSec::from_bytes(sh, name, bytes))),
+        SHType::Strtab => Some(Box::new(STRTABSec::new_from_bytes(name, bytes))),
+        SHType::Rela => Some(Box::new(RELASec::from_bytes(sh, name, bytes))),
+        SHType::Note => Some(Box::new(NOTESec::new(name, bytes.to_vec()))),
+        _ => todo!("{name} cannot be parsed by the linker!"),
     }
 }
 // Section header (Shdr)
@@ -94,7 +176,7 @@ impl SectionHeader {
         Ok(section)
     }
 }
-// section .bss
+// section NOBITS
 //   This section holds uninitialized data that contributes to
 //   the program's memory image.  By definition, the system
 //   initializes the data with zeros when the program begins to
@@ -105,15 +187,19 @@ impl SectionHeader {
 //   [ 2] .bss              NOBITS           0000000000000000  00000300
 //        0000000000000008  0000000000000000  WA       0     0     4
 #[derive(Debug, Clone)]
-pub struct BssSec {
-    pub size: usize,
+pub struct NOBITSSec {
+    size: usize,
+    name: String,
 }
-impl BssSec {
-    pub fn new(size: usize) -> Self {
-        Self { size }
+impl NOBITSSec {
+    pub fn new(name: &str, size: usize) -> Self {
+        Self {
+            name: name.to_string(),
+            size,
+        }
     }
 }
-impl Section for BssSec {
+impl Section for NOBITSSec {
     fn to_bytes(&self) -> IBytes {
         vec![]
     }
@@ -126,8 +212,8 @@ impl Section for BssSec {
         0
     }
 
-    fn name(&self) -> &'static str {
-        ".bss"
+    fn name(&self) -> String {
+        self.name.clone()
     }
 
     fn header(&self, sh_name: u32, sh_offset: u64, _: u32, _: u32) -> SectionHeader {
@@ -145,7 +231,52 @@ impl Section for BssSec {
         }
     }
 }
-// section .data
+#[derive(Debug, Clone)]
+pub struct NOTESec {
+    name: String,
+    data: IBytes,
+}
+impl NOTESec {
+    pub fn new(name: &str, data: IBytes) -> Self {
+        Self {
+            name: name.to_string(),
+            data,
+        }
+    }
+}
+impl Section for NOTESec {
+    fn to_bytes(&self) -> IBytes {
+        self.data.clone()
+    }
+
+    fn link_and_info(&self) -> (Option<&'static str>, Option<&'static str>) {
+        (None, None)
+    }
+
+    fn size(&self) -> usize {
+        self.data.len()
+    }
+
+    fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    fn header(&self, sh_name: u32, sh_offset: u64, _: u32, _: u32) -> SectionHeader {
+        SectionHeader {
+            sh_name,
+            sh_type: 1,
+            sh_flags: SHFlags::Alloc as u64,
+            sh_addr: 0,
+            sh_offset,
+            sh_size: self.data.len() as u64,
+            sh_link: 0,
+            sh_info: 0,
+            sh_addralign: 8,
+            sh_entsize: 0,
+        }
+    }
+}
+// section PROGBITS
 //   This section holds initialized data that contribute to the
 //   program's memory image.  This section is of type
 //   SHT_PROGBITS.  The attribute types are SHF_ALLOC and
@@ -155,19 +286,29 @@ impl Section for BssSec {
 //   [ 1] .data             PROGBITS         0000000000000000  00000200
 //        000000000000000c  0000000000000000  WA       0     0     4
 #[derive(Debug, Clone)]
-pub struct DataSec {
+pub struct PROGBITSSec {
+    name: String,
+    flags: u64,
     data: IBytes,
 }
-impl DataSec {
-    pub fn new(items: &BTreeMap<String, DataItem>) -> Self {
+impl PROGBITSSec {
+    pub fn new(name: &str, flags: u64, data: IBytes) -> Self {
+        Self {
+            name: name.to_string(),
+            flags,
+            data,
+        }
+    }
+
+    pub fn dmap_to_data(items: &BTreeMap<String, DataItem>) -> IBytes {
         let mut data = Vec::new();
         for item in items.values() {
             data.extend(item.data.clone());
         }
-        Self { data }
+        data
     }
 }
-impl Section for DataSec {
+impl Section for PROGBITSSec {
     fn to_bytes(&self) -> IBytes {
         let mut bytes = vec![];
         bytes.extend(self.data.clone());
@@ -184,15 +325,15 @@ impl Section for DataSec {
         data_len + (16 - (data_len % 16))
     }
 
-    fn name(&self) -> &'static str {
-        ".data"
+    fn name(&self) -> String {
+        self.name.clone()
     }
 
     fn header(&self, sh_name: u32, sh_offset: u64, _: u32, _: u32) -> SectionHeader {
         SectionHeader {
             sh_name,
             sh_type: 1,
-            sh_flags: 3,
+            sh_flags: self.flags,
             sh_addr: 0,
             sh_offset,
             sh_size: self.data.len() as u64,
@@ -203,60 +344,7 @@ impl Section for DataSec {
         }
     }
 }
-// section .text
-//   This section holds the "text", or executable instructions,
-//   of a program.  This section is of type SHT_PROGBITS.  The
-//   attributes used are SHF_ALLOC and SHF_EXECINSTR.
-//   [Nr] Name              Type             Address           Offset
-//        Size              EntSize          Flags  Link  Info  Align
-//   [ 1] .text             PROGBITS         0000000000000000  00000180
-//        0000000000000195  0000000000000000  AX       0     0     16
-#[derive(Debug, Clone)]
-pub struct TextSec {
-    data: IBytes,
-}
-impl TextSec {
-    pub fn new(data: IBytes) -> Self {
-        Self { data }
-    }
-}
-impl Section for TextSec {
-    fn to_bytes(&self) -> IBytes {
-        let mut bytes = vec![];
-        bytes.extend(self.data.clone());
-        bytes.resize(self.size(), 0);
-        bytes
-    }
-
-    fn link_and_info(&self) -> (Option<&'static str>, Option<&'static str>) {
-        (None, None)
-    }
-
-    fn size(&self) -> usize {
-        let data_len = self.data.len();
-        data_len + (16 - (data_len % 16))
-    }
-
-    fn name(&self) -> &'static str {
-        ".text"
-    }
-
-    fn header(&self, sh_name: u32, sh_offset: u64, _: u32, _: u32) -> SectionHeader {
-        SectionHeader {
-            sh_name,
-            sh_type: 1,
-            sh_flags: 6,
-            sh_addr: 0,
-            sh_offset,
-            sh_size: self.data.len() as u64,
-            sh_link: 0,
-            sh_info: 0,
-            sh_addralign: 16,
-            sh_entsize: 0,
-        }
-    }
-}
-// section .shstrtab
+// section STRTAB
 //   This section holds section names.  This section is of type
 //   SHT_STRTAB.  No attribute types are used.
 //   [Nr] Name              Type             Address           Offset
@@ -264,18 +352,20 @@ impl Section for TextSec {
 //   [ 2] .shstrtab         STRTAB           0000000000000000  00000320
 //        0000000000000021  0000000000000000           0     0     1
 #[derive(Debug, Clone)]
-pub struct ShstrtabSec {
+pub struct STRTABSec {
+    name: String,
     pub map: HashMap<String, usize>,
     data: IBytes,
 }
-impl ShstrtabSec {
-    pub fn new() -> Self {
+impl STRTABSec {
+    pub fn new(name: &str) -> Self {
         Self {
+            name: name.to_string(),
             data: vec![0],
             map: HashMap::new(),
         }
     }
-   
+
     pub fn get_str(&self, index: usize) -> Option<String> {
         for (k, v) in self.map.iter() {
             if *v == index {
@@ -285,36 +375,32 @@ impl ShstrtabSec {
         None
     }
 
-    pub fn new_from_bytes(bytes: &[u8]) -> Self {
-        let mut shtab = Self::new();
-        shtab.data = bytes.to_vec();
-        let mut is_parsing = false;
-        let mut beg = 0;
-        let mut string = String::new();
-        for (index, chr) in shtab.data.iter().enumerate() {
-            if *chr == 0 || index == shtab.data.len() - 1 {
-                if is_parsing == true {
-                    is_parsing = false;
-                    if index == shtab.data.len() - 1 && *chr != 0 {
-                        string.push(*chr as char);
-                    }
-                    shtab.map.insert(string.clone(), beg);
-                    string.clear();
+    pub fn new_from_bytes(name: &str, bytes: &[u8]) -> Self {
+        let mut stab = Self::new(name);
+        stab.data = bytes.to_vec();
+        let mut current_chunk = String::new();
+        
+        for (i, &val) in stab.data.iter().enumerate() {
+            if val == 0 {
+                if !current_chunk.is_empty() {
+                    let index = i - current_chunk.len();
+                    stab.map.insert(current_chunk.clone(), index);
+                    current_chunk.clear();
                 }
-                continue;
             } else {
-                if is_parsing == false {
-                    is_parsing = true;
-                    beg = index;
-                }
-                string.push(*chr as char);
+                current_chunk.push(val as char);
             }
         }
-        shtab
+        if !current_chunk.is_empty() {
+            let index = stab.data.len() - 1 - current_chunk.len();
+            stab.map.insert(current_chunk.clone(), index);
+        }
+
+        stab
     }
 
-    pub fn insert(&mut self, name: String) {
-        self.map.insert(name.clone(), self.data.len());
+    pub fn insert(&mut self, name: &str) {
+        self.map.insert(name.to_string(), self.data.len());
         self.data.extend(name.bytes());
         self.data.push(0);
     }
@@ -326,7 +412,7 @@ impl ShstrtabSec {
             .unwrap_or_else(|| panic!("not found {name}")) as u32
     }
 }
-impl Section for ShstrtabSec {
+impl Section for STRTABSec {
     fn to_bytes(&self) -> IBytes {
         let mut bytes = vec![];
         bytes.extend(self.data.clone());
@@ -343,8 +429,8 @@ impl Section for ShstrtabSec {
         data_len + (16 - (data_len % 16))
     }
 
-    fn name(&self) -> &'static str {
-        ".shstrtab"
+    fn name(&self) -> String {
+        self.name.clone()
     }
 
     fn header(&self, sh_name: u32, sh_offset: u64, _: u32, _: u32) -> SectionHeader {
@@ -373,16 +459,29 @@ impl Section for ShstrtabSec {
 //   [ 3] .symtab           SYMTAB           0000000000000000  00000350
 //        0000000000000090  0000000000000018           4     5     8
 #[derive(Debug, Clone)]
-pub struct SymtabSec {
+pub struct SYMTABSec {
+    name: String,
     data: Vec<SymItem>,
     start_of_global: usize,
 }
-impl SymtabSec {
-    pub fn new() -> Self {
+impl SYMTABSec {
+    pub fn new(name: &str) -> Self {
         Self {
+            name: name.to_string(),
             data: vec![SymItem::default()],
             start_of_global: 4,
         }
+    }
+
+    pub fn from_bytes(sh: &SectionHeader, name: &str, bytes: &[u8]) -> Self {
+        let mut symtab = Self::new(name);
+        let entries = sh.sh_size / sh.sh_entsize;
+        for i in 0..entries {
+            let index = (i * sh.sh_entsize) as usize;
+            let item = SymItem::from_bytes(&bytes[index..index + sh.sh_entsize as usize]);
+            symtab.insert(item);
+        }
+        symtab
     }
 
     pub fn insert(&mut self, item: SymItem) {
@@ -400,7 +499,7 @@ impl SymtabSec {
         self.start_of_global = self.data.len();
     }
 }
-impl Section for SymtabSec {
+impl Section for SYMTABSec {
     fn to_bytes(&self) -> IBytes {
         let mut bytes = vec![];
         for item in self.data.iter() {
@@ -419,8 +518,8 @@ impl Section for SymtabSec {
         data_len + (16 - (data_len % 16))
     }
 
-    fn name(&self) -> &'static str {
-        ".symtab"
+    fn name(&self) -> String {
+        self.name.clone()
     }
 
     fn header(&self, sh_name: u32, sh_offset: u64, sh_link: u32, _: u32) -> SectionHeader {
@@ -465,8 +564,19 @@ impl SymItem {
         bytes.extend(self.st_size.to_le_bytes());
         bytes
     }
+
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        Self {
+            st_name: slice_to_u64(&bytes[0..4], 4) as u32,
+            st_info: bytes[4],
+            st_other: bytes[5],
+            st_shndx: slice_to_u64(&bytes[6..8], 2) as u16,
+            st_value: slice_to_u64(&bytes[8..16], 8),
+            st_size: slice_to_u64(&bytes[16..24], 4),
+        }
+    }
 }
-// section .rela.text
+// section RELA
 //   This section holds relocation information as described
 //   below.  If the file has a loadable segment that includes
 //   relocation, the section's attributes will include the
@@ -481,12 +591,26 @@ impl SymItem {
 //        0000000000000018  0000000000000018           4     1     8
 #[allow(unused)]
 #[derive(Debug, Clone)]
-pub struct RelaSec {
+pub struct RELASec {
+    name: String,
     data: Vec<RelaItem>,
 }
-impl RelaSec {
-    pub fn new() -> Self {
-        Self { data: Vec::new() }
+impl RELASec {
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            data: Vec::new(),
+        }
+    }
+    pub fn from_bytes(sh: &SectionHeader, name: &str, bytes: &[u8]) -> Self {
+        let mut rela = Self::new(name.to_string());
+        let entries = sh.sh_size / sh.sh_entsize;
+        for i in 0..entries {
+            let index = (i * sh.sh_entsize) as usize;
+            let item = RelaItem::from_bytes(name, &bytes[index..index + sh.sh_entsize as usize]);
+            rela.data.push(item);
+        }
+        rela
     }
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
@@ -495,7 +619,7 @@ impl RelaSec {
         self.data.push(item);
     }
 }
-impl Section for RelaSec {
+impl Section for RELASec {
     fn to_bytes(&self) -> IBytes {
         let mut bytes = vec![];
         for item in self.data.iter() {
@@ -514,8 +638,8 @@ impl Section for RelaSec {
         data_len + (16 - (data_len % 16))
     }
 
-    fn name(&self) -> &'static str {
-        ".rela.text"
+    fn name(&self) -> String {
+        self.name.clone()
     }
 
     fn header(&self, sh_name: u32, sh_offset: u64, sh_link: u32, sh_info: u32) -> SectionHeader {
@@ -534,74 +658,23 @@ impl Section for RelaSec {
         }
     }
 }
-// section .strtab
-//   This section holds strings, most commonly the strings that
-//   represent the names associated with symbol table entries.
-//   If the file has a loadable segment that includes the
-//   symbol string table, the section's attributes will include
-//   the SHF_ALLOC bit.  Otherwise, the bit will be off.  This
-//   section is of type SHT_STRTAB.
-//   [Nr] Name              Type             Address           Offset
-//        Size              EntSize          Flags  Link  Info  Align
-//   [ 4] .strtab           STRTAB           0000000000000000  000003e0
-//        0000000000000035  0000000000000000           0     0     1
 
-#[derive(Debug, Clone)]
-pub struct StrtabSec {
-    map: HashMap<String, usize>,
-    data: IBytes,
-}
-impl StrtabSec {
-    pub fn new() -> Self {
-        Self {
-            data: vec![0],
-            map: HashMap::new(),
+// Vector Slice to u64
+pub fn slice_to_u64(bytes: &[u8], size: usize) -> u64 {
+    match size {
+        1 => bytes[0] as u64,
+        2 => {
+            let ins_bytes = <[u8; 2]>::try_from(bytes).unwrap();
+            u16::from_le_bytes(ins_bytes) as u64
         }
-    }
-
-    pub fn insert(&mut self, name: &str) {
-        self.map.insert(name.to_owned(), self.data.len());
-        self.data.extend(name.bytes());
-        self.data.push(0);
-    }
-
-    pub fn index(&self, name: &String) -> u32 {
-        *self.map.get(name).unwrap() as u32
-    }
-}
-impl Section for StrtabSec {
-    fn to_bytes(&self) -> IBytes {
-        let mut bytes = vec![];
-        bytes.extend(self.data.clone());
-        bytes.resize(self.size(), 0);
-        bytes
-    }
-
-    fn link_and_info(&self) -> (Option<&'static str>, Option<&'static str>) {
-        (None, None)
-    }
-
-    fn size(&self) -> usize {
-        let data_len = self.data.len();
-        data_len + (16 - (data_len % 16))
-    }
-
-    fn name(&self) -> &'static str {
-        ".strtab"
-    }
-
-    fn header(&self, sh_name: u32, sh_offset: u64, _: u32, _: u32) -> SectionHeader {
-        SectionHeader {
-            sh_name,
-            sh_type: 3,
-            sh_flags: 0,
-            sh_addr: 0,
-            sh_offset,
-            sh_size: self.data.len() as u64,
-            sh_link: 0,
-            sh_info: 0,
-            sh_addralign: 1,
-            sh_entsize: 0,
+        4 => {
+            let ins_bytes = <[u8; 4]>::try_from(bytes).unwrap();
+            u32::from_le_bytes(ins_bytes) as u64
         }
+        8 => {
+            let ins_bytes = <[u8; 8]>::try_from(bytes).unwrap();
+            u64::from_le_bytes(ins_bytes)
+        }
+        _ => unreachable!("Chunk to number"),
     }
 }

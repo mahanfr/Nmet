@@ -17,6 +17,7 @@ use crate::{parser::types::VariableType, utils::IBytes};
 use self::{
     assemble::assemble_instr,
     data_bss::{BssItem, DataItem},
+    elf::sections::slice_to_u64,
     instructions::{Instr, Opr, Oprs},
     mnemonic::Mnemonic,
 };
@@ -33,7 +34,7 @@ pub fn placeholder(instr: Instr) -> Instr {
 #[derive(Debug, Clone)]
 pub struct RelaItem {
     r_offset: u64,
-    pub r_section: u32,
+    r_section: u32,
     r_platform: u32,
     r_addend: i64,
     sym_name: String,
@@ -54,6 +55,17 @@ impl RelaItem {
             r_addend,
             sym_name: sym_name.to_string(),
             sym_type,
+        }
+    }
+
+    pub fn from_bytes(name: &str, bytes: &[u8]) -> Self {
+        Self {
+            r_offset: slice_to_u64(&bytes[0..8], 8),
+            r_section: slice_to_u64(&bytes[8..12], 4) as u32,
+            r_platform: slice_to_u64(&bytes[12..16], 4) as u32,
+            r_addend: slice_to_u64(&bytes[16..24], 8) as i64,
+            sym_name: name.to_string(),
+            sym_type: SymbolType::Other,
         }
     }
 
@@ -100,6 +112,7 @@ pub enum SymbolType {
     DataSec,
     BssSec,
     TextSec,
+    Other,
 }
 
 #[allow(dead_code)]

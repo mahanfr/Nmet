@@ -36,10 +36,10 @@ use std::sync::Mutex;
 use std::{env::args, process::exit};
 
 mod codegen;
-mod linker;
 mod compiler;
 mod error_handeling;
 mod lexer;
+mod linker;
 mod macros;
 mod optim;
 mod parser;
@@ -314,7 +314,6 @@ pub fn target_string_to_number(target: &str) -> u8 {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    
     parse_elf_objfile("./tests/libadd.a".to_string());
     return Ok(());
 
