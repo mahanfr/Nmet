@@ -47,7 +47,7 @@ pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
     }
     if !cc.codegen.bss_buf.is_empty() {
         elf_object.add_section(&NOBITSSec::new(
-            ".bss".into(),
+            ".bss",
             cc.codegen.bss_buf.iter().map(|x| x.size).sum(),
         ));
     }
@@ -259,7 +259,7 @@ impl Elf {
             });
         }
         self.symtab.insert(SymItem {
-            st_name: self.strtab.index(&"_start".to_owned()).unwrap(),
+            st_name: self.strtab.index("_start").unwrap(),
             st_info: st_info!(STB_GLOBAL, STT_NOTYPE),
             st_other: st_visibility!(STV_DEFAULT),
             st_shndx: self.get_sec_index(".text") as u16,

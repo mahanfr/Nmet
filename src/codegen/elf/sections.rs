@@ -2,11 +2,10 @@ use std::collections::BTreeMap;
 
 use crate::{
     codegen::{data_bss::DataItem, RelaItem},
-    linker::ElfParser,
     utils::IBytes,
 };
 
-use super::{flags::SHFlags, header::chunk_to_number};
+use super::flags::SHFlags;
 
 #[repr(u32)]
 #[derive(Debug, Clone)]
@@ -161,19 +160,19 @@ impl SectionHeader {
         bytes
     }
 
-    pub fn parse(ep: &mut ElfParser) -> Result<Self, String> {
-        let mut section = Self::default();
-        section.sh_name = chunk_to_number(ep, 4) as u32;
-        section.sh_type = chunk_to_number(ep, 4) as u32;
-        section.sh_flags = chunk_to_number(ep, 8);
-        section.sh_addr = chunk_to_number(ep, 8);
-        section.sh_offset = chunk_to_number(ep, 8);
-        section.sh_size = chunk_to_number(ep, 8);
-        section.sh_link = chunk_to_number(ep, 4) as u32;
-        section.sh_info = chunk_to_number(ep, 4) as u32;
-        section.sh_addralign = chunk_to_number(ep, 8);
-        section.sh_entsize = chunk_to_number(ep, 8);
-        Ok(section)
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        Self {
+            sh_name: slice_to_u64(&bytes[0..4]) as u32,
+            sh_type: slice_to_u64(&bytes[4..8]) as u32,
+            sh_flags: slice_to_u64(&bytes[8..16]),
+            sh_addr: slice_to_u64(&bytes[16..24]),
+            sh_offset: slice_to_u64(&bytes[24..32]),
+            sh_size: slice_to_u64(&bytes[32..40]),
+            sh_link: slice_to_u64(&bytes[40..44]) as u32,
+            sh_info: slice_to_u64(&bytes[44..48]) as u32,
+            sh_addralign: slice_to_u64(&bytes[48..56]),
+            sh_entsize: slice_to_u64(&bytes[56..64]),
+        }
     }
 }
 // section NOBITS
@@ -378,7 +377,7 @@ impl STRTABSec {
             buffer.push(self.data[i] as char);
             i += 1;
         }
-        return buffer;
+        buffer
     }
 
     pub fn insert(&mut self, name: &str) -> u32 {
@@ -398,10 +397,7 @@ impl STRTABSec {
         if substr.len() > self.data.len() {
             return None;
         }
-        match self.data.windows(substr.len()).position(|win| win == substr) {
-            Some(x) => Some(x as u32),
-            None => None
-        }
+        self.data.windows(substr.len()).position(|win| win == substr).map(|x| x as u32)
     }
 }
 impl Section for STRTABSec {

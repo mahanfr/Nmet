@@ -1,4 +1,4 @@
-use crate::linker::ElfParser;
+use super::sections::slice_to_u64;
 
 #[allow(unused)]
 #[derive(Debug, Clone, Copy)]
@@ -88,30 +88,26 @@ impl ElfHeader {
         }
     }
 
-    pub fn parse(parser: &mut ElfParser) -> Result<Self, String> {
-        let mut header = Self::new(0, 0);
-        if parser.get_range(4) != [0x7F, 0x45, 0x4C, 0x46] {
-            return Err("File is not an valid elf file!".to_string());
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        if bytes[0..4] != [0x7F, 0x45, 0x4C, 0x46] {
+            panic!("File is not an valid elf file!");
         }
-        for i in 0..16 {
-            header.e_ident[i] = parser.bytes[parser.cur + i];
+        Self {
+            e_ident: bytes[0..16].try_into().expect("Cannot parse elf e_ident"),
+            e_type: EType::from(slice_to_u64(&bytes[16..18])),
+            e_machine: EMachine::from(slice_to_u64(&bytes[18..20])),
+            e_version: slice_to_u64(&bytes[20..24]) as u32,
+            e_entry: slice_to_u64(&bytes[24..32]),
+            e_phoff: slice_to_u64(&bytes[32..40]),
+            e_shoff: slice_to_u64(&bytes[40..48]),
+            e_flags: slice_to_u64(&bytes[48..52]) as u32,
+            e_ehsize: slice_to_u64(&bytes[52..54]) as u16,
+            e_phensize: slice_to_u64(&bytes[54..56]) as u16,
+            e_phnum: slice_to_u64(&bytes[56..58]) as u16,
+            e_shentsize: slice_to_u64(&bytes[58..60])  as u16,
+            e_shnum: slice_to_u64(&bytes[60..62]) as u16,
+            e_shstrndx: slice_to_u64(&bytes[62..64]) as u16,
         }
-        parser.cur += 16;
-        header.e_type = EType::from(chunk_to_number(parser, 2));
-        header.e_machine = EMachine::from(chunk_to_number(parser, 2));
-        header.e_version = chunk_to_number(parser, 4) as u32;
-        header.e_entry = chunk_to_number(parser, 8);
-        header.e_phoff = chunk_to_number(parser, 8);
-        header.e_shoff = chunk_to_number(parser, 8);
-        header.e_flags = chunk_to_number(parser, 4) as u32;
-        header.e_ehsize = chunk_to_number(parser, 2) as u16;
-        header.e_phensize = chunk_to_number(parser, 2) as u16;
-        header.e_phnum = chunk_to_number(parser, 2) as u16;
-        header.e_shentsize = chunk_to_number(parser, 2) as u16;
-        header.e_shnum = chunk_to_number(parser, 2) as u16;
-        header.e_shstrndx = chunk_to_number(parser, 2) as u16;
-
-        Ok(header)
     }
 
     pub fn to_bytes(self) -> Vec<u8> {
@@ -133,25 +129,4 @@ impl ElfHeader {
         bytes.extend(self.e_shstrndx.to_le_bytes());
         bytes
     }
-}
-
-pub fn chunk_to_number(parser: &mut ElfParser, size: usize) -> u64 {
-    let res = match size {
-        1 => parser.bytes[parser.cur] as u64,
-        2 => {
-            let ins_bytes = <[u8; 2]>::try_from(parser.get_range(2)).unwrap();
-            u16::from_le_bytes(ins_bytes) as u64
-        }
-        4 => {
-            let ins_bytes = <[u8; 4]>::try_from(parser.get_range(4)).unwrap();
-            u32::from_le_bytes(ins_bytes) as u64
-        }
-        8 => {
-            let ins_bytes = <[u8; 8]>::try_from(parser.get_range(8)).unwrap();
-            u64::from_le_bytes(ins_bytes)
-        }
-        _ => unreachable!("Chunk to number"),
-    };
-    parser.cur += size;
-    res
 }
