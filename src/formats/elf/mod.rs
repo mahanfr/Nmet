@@ -45,12 +45,14 @@ pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
     elf_object.add_section(&PROGBITSSec::new(
         ".text",
         0x6,
+        16,
         cc.codegen.text_section_bytes(),
     ));
     if !cc.codegen.data_buf.is_empty() {
         elf_object.add_section(&PROGBITSSec::new(
             ".data",
             0x3,
+            4,
             PROGBITSSec::dmap_to_data(&cc.codegen.data_buf),
         ));
     }

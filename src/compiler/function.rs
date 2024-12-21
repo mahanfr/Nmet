@@ -24,7 +24,7 @@
 **********************************************************************************************/
 
 use crate::{
-    codegen::{mnemonic::Mnemonic::*, register::Reg::*},
+    assembler::{mnemonic::Mnemonic::*, register::Reg::*},
     parser::{
         block::Block,
         function::{FunctionArg, FunctionDef},

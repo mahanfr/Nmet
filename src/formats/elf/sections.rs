@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::{codegen::data_bss::DataItem, utils::IBytes};
+use crate::{assembler::data_bss::DataItem, utils::IBytes};
 
 use super::{flags::SHFlags, SymbolType};
 
@@ -103,6 +103,7 @@ pub fn parse_section(sh: &SectionHeader, name: &str, bytes: &[u8]) -> Option<Box
         SHType::Progbits => Some(Box::new(PROGBITSSec::new(
             name,
             sh.sh_flags,
+            sh.sh_addralign,
             bytes.to_vec(),
         ))),
         SHType::Symtab => Some(Box::new(SYMTABSec::from_bytes(sh, name, bytes))),
@@ -284,14 +285,16 @@ impl Section for NOTESec {
 #[derive(Debug, Clone)]
 pub struct PROGBITSSec {
     name: String,
+    align: u64,
     flags: u64,
     data: IBytes,
 }
 impl PROGBITSSec {
-    pub fn new(name: &str, flags: u64, data: IBytes) -> Self {
+    pub fn new(name: &str, flags: u64, alignment:u64, data: IBytes) -> Self {
         Self {
             name: name.to_string(),
             flags,
+            align: alignment,
             data,
         }
     }
@@ -335,7 +338,7 @@ impl Section for PROGBITSSec {
             sh_size: self.data.len() as u64,
             sh_link: 0,
             sh_info: 0,
-            sh_addralign: 4,
+            sh_addralign: self.align,
             sh_entsize: 0,
         }
     }
@@ -382,8 +385,9 @@ impl STRTABSec {
             Some(x) => x,
             None => {
                 let index = self.data.len();
-                self.data.push(0);
                 self.data.append(&mut name.as_bytes().to_vec());
+                // THIS THING WASTED MY TIME FOR 6 HOURS
+                self.data.push(0);
                 index as u32
             }
         }

@@ -35,7 +35,7 @@ use std::str::FromStr;
 use std::sync::Mutex;
 use std::{env::args, process::exit};
 
-mod codegen;
+mod assembler;
 mod compiler;
 mod error_handeling;
 mod formats;
@@ -48,7 +48,7 @@ mod terms;
 #[cfg(test)]
 mod tests;
 mod utils;
-use codegen::text::x86_64_nasm_generator;
+use assembler::text::x86_64_nasm_generator;
 use compiler::{compile, CompilerContext};
 use linker::parse_elf_objfile;
 use utils::get_output_path_from_input;
@@ -316,7 +316,6 @@ pub fn target_string_to_number(target: &str) -> u8 {
 
 fn main() -> Result<(), Box<dyn Error>> {
     parse_elf_objfile("./tests/libadd.a".to_string());
-    return Ok(());
 
     let mut args = args();
     let (ipath, co) = collect_compiler_options(&mut args);
