@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fs};
 
-use crate::codegen::elf::{
+use crate::formats::elf::{
     header::ElfHeader,
     sections::{parse_section, STRTABSec, Section, SectionHeader},
 };
@@ -22,8 +22,10 @@ impl ElfFile {
     }
 }
 
-fn find_elf_start (bytes: &[u8]) -> usize {
-    bytes.windows(4).position(|x| x == b"\x7FELF")
+fn find_elf_start(bytes: &[u8]) -> usize {
+    bytes
+        .windows(4)
+        .position(|x| x == b"\x7FELF")
         .expect("Provided file has no ELF file!")
 }
 
@@ -37,12 +39,15 @@ pub fn parse_elf_objfile(file_path: String) -> ElfFile {
     for i in 0..header.e_shnum {
         let start = (header.e_shoff + (i * header.e_shentsize) as u64) as usize;
         let end = start + header.e_shentsize as usize;
-        elf_file.sec_headers.push(SectionHeader::from_bytes(&elf_bytes[start..end]));
+        elf_file
+            .sec_headers
+            .push(SectionHeader::from_bytes(&elf_bytes[start..end]));
     }
     let shst_header = elf_file.sec_headers[elf_file.header.e_shstrndx as usize];
     let shstrtab = STRTABSec::new_from_bytes(
         ".shstrtab",
-        &elf_bytes[shst_header.sh_offset as usize..(shst_header.sh_offset + shst_header.sh_size) as usize],
+        &elf_bytes[shst_header.sh_offset as usize
+            ..(shst_header.sh_offset + shst_header.sh_size) as usize],
     );
     for sh in elf_file.sec_headers.iter() {
         if sh.sh_type == 0 {

@@ -104,7 +104,7 @@ impl ElfHeader {
             e_ehsize: slice_to_u64(&bytes[52..54]) as u16,
             e_phensize: slice_to_u64(&bytes[54..56]) as u16,
             e_phnum: slice_to_u64(&bytes[56..58]) as u16,
-            e_shentsize: slice_to_u64(&bytes[58..60])  as u16,
+            e_shentsize: slice_to_u64(&bytes[58..60]) as u16,
             e_shnum: slice_to_u64(&bytes[60..62]) as u16,
             e_shstrndx: slice_to_u64(&bytes[62..64]) as u16,
         }

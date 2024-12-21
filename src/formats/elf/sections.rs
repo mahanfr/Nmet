@@ -1,11 +1,8 @@
 use std::collections::BTreeMap;
 
-use crate::{
-    codegen::{data_bss::DataItem, RelaItem},
-    utils::IBytes,
-};
+use crate::{codegen::data_bss::DataItem, utils::IBytes};
 
-use super::flags::SHFlags;
+use super::{flags::SHFlags, SymbolType};
 
 #[repr(u32)]
 #[derive(Debug, Clone)]
@@ -366,14 +363,14 @@ impl STRTABSec {
     pub fn new_from_bytes(name: &str, bytes: &[u8]) -> Self {
         Self {
             name: name.to_string(),
-            data: bytes.to_vec()
+            data: bytes.to_vec(),
         }
     }
 
     pub fn get(&self, index: usize) -> String {
         let mut i = index;
         let mut buffer = String::new();
-        while i < self.data.len() && self.data[i] != 0  {
+        while i < self.data.len() && self.data[i] != 0 {
             buffer.push(self.data[i] as char);
             i += 1;
         }
@@ -397,7 +394,10 @@ impl STRTABSec {
         if substr.len() > self.data.len() {
             return None;
         }
-        self.data.windows(substr.len()).position(|win| win == substr).map(|x| x as u32)
+        self.data
+            .windows(substr.len())
+            .position(|win| win == substr)
+            .map(|x| x as u32)
     }
 }
 impl Section for STRTABSec {
@@ -644,6 +644,54 @@ impl Section for RELASec {
             sh_addralign: 8,
             sh_entsize: 24,
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct RelaItem {
+    r_offset: u64,
+    pub r_section: u32,
+    r_platform: u32,
+    r_addend: i64,
+    pub sym_name: String,
+    pub sym_type: SymbolType,
+}
+impl RelaItem {
+    pub fn new(
+        sym_name: impl ToString,
+        sym_type: SymbolType,
+        r_platform: u32,
+        r_offset: u64,
+        r_addend: i64,
+    ) -> Self {
+        Self {
+            r_offset,
+            r_section: 0,
+            r_platform,
+            r_addend,
+            sym_name: sym_name.to_string(),
+            sym_type,
+        }
+    }
+
+    pub fn from_bytes(name: &str, bytes: &[u8]) -> Self {
+        Self {
+            r_offset: slice_to_u64(&bytes[0..8]),
+            r_section: slice_to_u64(&bytes[8..12]) as u32,
+            r_platform: slice_to_u64(&bytes[12..16]) as u32,
+            r_addend: slice_to_u64(&bytes[16..24]) as i64,
+            sym_name: name.to_string(),
+            sym_type: SymbolType::Other,
+        }
+    }
+
+    pub fn to_bytes(&self) -> IBytes {
+        let mut bytes = vec![];
+        let r_info = ((self.r_section as u64) << 32) | self.r_platform as u64;
+        bytes.extend(self.r_offset.to_le_bytes());
+        bytes.extend(r_info.to_le_bytes());
+        bytes.extend(self.r_addend.to_le_bytes());
+        bytes
     }
 }
 

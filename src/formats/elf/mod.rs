@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::{
-    codegen::elf::sections::SectionHeader, compiler::CompilerContext, st_info, st_visibility,
+    compiler::CompilerContext, formats::elf::sections::SectionHeader, st_info, st_visibility,
     utils::IBytes,
 };
 
@@ -21,7 +21,16 @@ use self::{
     sections::{NOBITSSec, PROGBITSSec, RELASec, STRTABSec, SYMTABSec, Section, SymItem},
 };
 
-use super::SymbolType;
+#[allow(unused)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum SymbolType {
+    Global,
+    Ffi,
+    DataSec,
+    BssSec,
+    TextSec,
+    Other,
+}
 
 pub fn generate_bin(out_path: &Path, cc: &mut CompilerContext) {
     let file_content = cc.codegen.text_section_bytes();
@@ -155,7 +164,12 @@ impl Elf {
             let info = self.get_sec_index(info_tag.unwrap_or(""));
             bytes.extend(
                 section
-                    .header(self.shstrtab.index(&section.name()).unwrap(), loc as u64, link, info)
+                    .header(
+                        self.shstrtab.index(&section.name()).unwrap(),
+                        loc as u64,
+                        link,
+                        info,
+                    )
                     .to_bytes(),
             );
             loc += section.size();
@@ -231,9 +245,9 @@ impl Elf {
                 false => st_info!(STB_LOCAL, STT_NOTYPE),
             };
             let shndx = match sym.1 {
-                super::SymbolType::TextSec => self.get_sec_index(".text"),
-                super::SymbolType::DataSec => self.get_sec_index(".data"),
-                super::SymbolType::BssSec => self.get_sec_index(".bss"),
+                SymbolType::TextSec => self.get_sec_index(".text"),
+                SymbolType::DataSec => self.get_sec_index(".data"),
+                SymbolType::BssSec => self.get_sec_index(".bss"),
                 _ => 0,
             };
 

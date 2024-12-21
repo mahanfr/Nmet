@@ -38,6 +38,7 @@ use std::{env::args, process::exit};
 mod codegen;
 mod compiler;
 mod error_handeling;
+mod formats;
 mod lexer;
 mod linker;
 mod macros;
@@ -216,11 +217,11 @@ pub fn setup_compiler(input: String, co: &CompilerOptions) {
     } else {
         if co.create_bin {
             log_info!("Generating binary file...");
-            crate::codegen::elf::generate_bin(out_path.as_path(), &mut compiler_context);
+            crate::formats::elf::generate_bin(out_path.as_path(), &mut compiler_context);
             log_success!("Instructions Binary file Generated!");
         }
         log_info!("Generating elf object file...");
-        crate::codegen::elf::generate_elf(out_path.as_path(), &mut compiler_context);
+        crate::formats::elf::generate_elf(out_path.as_path(), &mut compiler_context);
         log_success!("Elf object file Generated!");
         if co.no_linking {
             return;

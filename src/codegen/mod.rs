@@ -1,23 +1,24 @@
 pub mod asm_parser;
 pub mod assemble;
 pub mod data_bss;
-pub mod elf;
 pub mod instructions;
 pub mod memory;
 pub mod mnemonic;
 pub mod opcodes;
-pub mod pe;
 pub mod register;
 pub mod text;
 pub mod utils;
 use std::{collections::BTreeMap, fmt::Display};
 
-use crate::{parser::types::VariableType, utils::IBytes};
+use crate::{
+    formats::elf::{sections::RelaItem, SymbolType},
+    parser::types::VariableType,
+    utils::IBytes,
+};
 
 use self::{
     assemble::assemble_instr,
     data_bss::{BssItem, DataItem},
-    elf::sections::slice_to_u64,
     instructions::{Instr, Opr, Oprs},
     mnemonic::Mnemonic,
 };
@@ -30,55 +31,6 @@ pub fn placeholder(instr: Instr) -> Instr {
         _ => unreachable!(),
     }
 }
-
-#[derive(Debug, Clone)]
-pub struct RelaItem {
-    r_offset: u64,
-    r_section: u32,
-    r_platform: u32,
-    r_addend: i64,
-    sym_name: String,
-    sym_type: SymbolType,
-}
-impl RelaItem {
-    pub fn new(
-        sym_name: impl ToString,
-        sym_type: SymbolType,
-        r_platform: u32,
-        r_offset: u64,
-        r_addend: i64,
-    ) -> Self {
-        Self {
-            r_offset,
-            r_section: 0,
-            r_platform,
-            r_addend,
-            sym_name: sym_name.to_string(),
-            sym_type,
-        }
-    }
-
-    pub fn from_bytes(name: &str, bytes: &[u8]) -> Self {
-        Self {
-            r_offset: slice_to_u64(&bytes[0..8]),
-            r_section: slice_to_u64(&bytes[8..12]) as u32,
-            r_platform: slice_to_u64(&bytes[12..16]) as u32,
-            r_addend: slice_to_u64(&bytes[16..24]) as i64,
-            sym_name: name.to_string(),
-            sym_type: SymbolType::Other,
-        }
-    }
-
-    pub fn to_bytes(&self) -> IBytes {
-        let mut bytes = vec![];
-        let r_info = ((self.r_section as u64) << 32) | self.r_platform as u64;
-        bytes.extend(self.r_offset.to_le_bytes());
-        bytes.extend(r_info.to_le_bytes());
-        bytes.extend(self.r_addend.to_le_bytes());
-        bytes
-    }
-}
-
 #[derive(Clone)]
 struct InstrData {
     instr: Instr,
@@ -103,18 +55,6 @@ impl InstrData {
         }
     }
 }
-
-#[allow(unused)]
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum SymbolType {
-    Global,
-    Ffi,
-    DataSec,
-    BssSec,
-    TextSec,
-    Other,
-}
-
 #[allow(dead_code)]
 #[derive(Clone)]
 pub struct Codegen {
