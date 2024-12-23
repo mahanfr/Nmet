@@ -50,7 +50,6 @@ mod tests;
 mod utils;
 use assembler::text::x86_64_nasm_generator;
 use compiler::{compile, CompilerContext};
-use linker::{generate_elf_exec, parse_elf_objfile};
 use utils::get_output_path_from_input;
 
 use crate::compiler::impl_bifs;

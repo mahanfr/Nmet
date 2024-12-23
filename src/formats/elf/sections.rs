@@ -290,7 +290,7 @@ pub struct PROGBITSSec {
     data: IBytes,
 }
 impl PROGBITSSec {
-    pub fn new(name: &str, flags: u64, alignment:u64, data: IBytes) -> Self {
+    pub fn new(name: &str, flags: u64, alignment: u64, data: IBytes) -> Self {
         Self {
             name: name.to_string(),
             flags,

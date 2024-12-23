@@ -1,6 +1,5 @@
 use crate::utils::IBytes;
 
-
 #[derive(Debug, Clone)]
 pub struct ProgramHeader {
     p_type: u32,
@@ -14,13 +13,7 @@ pub struct ProgramHeader {
 }
 
 impl ProgramHeader {
-    pub fn new_default(
-        p_type: u32,
-        offset: u64,
-        flags: u32,
-        addr: u64,
-        size: u64,
-        ) -> Self {
+    pub fn new_default(p_type: u32, offset: u64, flags: u32, addr: u64, size: u64) -> Self {
         Self {
             p_type,
             p_flags: flags,

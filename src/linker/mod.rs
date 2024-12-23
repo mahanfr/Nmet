@@ -1,8 +1,19 @@
-use std::{collections::HashMap, fs::{self, File}, io::{Write, BufWriter}};
+use std::{
+    collections::HashMap,
+    fs::{self, File},
+    io::{BufWriter, Write},
+};
 
-use crate::{formats::elf::{
-    flags::{STB_GLOBAL, STT_NOTYPE, STT_SECTION, STV_DEFAULT}, header::{EType, ElfHeader}, program::ProgramHeader, sections::{parse_section, STRTABSec, Section, SectionHeader, SymItem}, ElfObject
-}, st_info, st_visibility};
+use crate::{
+    formats::elf::{
+        flags::{STB_GLOBAL, STT_NOTYPE, STT_SECTION, STV_DEFAULT},
+        header::{EType, ElfHeader},
+        program::ProgramHeader,
+        sections::{parse_section, STRTABSec, Section, SectionHeader, SymItem},
+        ElfObject,
+    },
+    st_info, st_visibility,
+};
 
 #[derive(Debug, Clone)]
 pub struct ElfFile {
@@ -28,11 +39,12 @@ fn find_elf_start(bytes: &[u8]) -> usize {
         .expect("Provided file has no ELF file!")
 }
 
+#[allow(dead_code)]
 pub fn parse_elf_objfile(file_path: String) -> ElfFile {
     let source = fs::read(file_path).unwrap();
     let elf_start = find_elf_start(&source);
     let elf_bytes = &source[elf_start..];
-    let header = ElfHeader::from_bytes(&elf_bytes);
+    let header = ElfHeader::from_bytes(elf_bytes);
     let mut elf_file = ElfFile::new(header);
 
     for i in 0..header.e_shnum {
@@ -64,6 +76,7 @@ pub fn parse_elf_objfile(file_path: String) -> ElfFile {
     elf_file
 }
 
+#[allow(dead_code)]
 pub fn generate_elf_exec(object: &mut ElfObject) {
     let mut header = object.get_header();
     header.e_type = EType::Exec;
@@ -82,7 +95,10 @@ pub fn generate_elf_exec(object: &mut ElfObject) {
             sym.st_value += 0x400000;
         }
     }
-    object.symtab.data.retain(|x| x.st_info & 0xf == STT_SECTION);
+    object
+        .symtab
+        .data
+        .retain(|x| x.st_info & 0xf == STT_SECTION);
     object.symtab.insert(SymItem {
         st_name: object.strtab.index("_bss_start").unwrap(),
         st_info: st_info!(STB_GLOBAL, STT_NOTYPE),
@@ -109,7 +125,7 @@ pub fn generate_elf_exec(object: &mut ElfObject) {
     });
     object.symtab.data[object.symtab.start_of_global].st_value = 0x401000;
     let mut sec_headers = object.section_headers();
-    for (index ,sec) in sec_headers.iter_mut().enumerate() {
+    for (index, sec) in sec_headers.iter_mut().enumerate() {
         if index == 0 {
             continue;
         }
@@ -118,7 +134,7 @@ pub fn generate_elf_exec(object: &mut ElfObject) {
     let size_of_segment = (sec_headers.len() * 64) + object.section_sizes();
     let ph_header = ProgramHeader::new_default(1, 0, 0b100, 0x400000, 0xb0);
     let ph_program = ProgramHeader::new_default(1, 0, 0b101, 0x401000, size_of_segment as u64);
-    
+
     let stream = File::create("./build/test").unwrap();
     let mut file = BufWriter::new(stream);
     let mut bytes = Vec::<u8>::new();

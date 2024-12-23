@@ -7,13 +7,14 @@ use std::{
 };
 
 use crate::{
-    compiler::CompilerContext, formats::elf::sections::SectionHeader, linker::generate_elf_exec, st_info, st_visibility, utils::IBytes
+    compiler::CompilerContext, formats::elf::sections::SectionHeader,
+    st_info, st_visibility, utils::IBytes,
 };
 
 pub mod flags;
 pub mod header;
-pub mod sections;
 pub mod program;
+pub mod sections;
 
 use self::{
     flags::{STB_GLOBAL, STB_LOCAL, STT_FILE, STT_NOTYPE, STT_SECTION, STV_DEFAULT},
@@ -141,7 +142,10 @@ impl ElfObject {
     }
 
     pub fn get_header(&self) -> ElfHeader {
-        assert!(self.get_sec_index(".shstrtab") != 0,"Header is not ready yet!");
+        assert!(
+            self.get_sec_index(".shstrtab") != 0,
+            "Header is not ready yet!"
+        );
         ElfHeader::new(
             self.sections_count() as u16,
             self.get_sec_index(".shstrtab") as u16,
@@ -180,43 +184,40 @@ impl ElfObject {
             let (link_tag, info_tag) = section.link_and_info();
             let link = self.get_sec_index(link_tag.unwrap_or(""));
             let info = self.get_sec_index(info_tag.unwrap_or(""));
-            secs.push(
-                section.header(
-                    self.shstrtab.index(&section.name()).unwrap(),
-                    loc as u64,
-                    link,
-                    info,
-                )
-            );
+            secs.push(section.header(
+                self.shstrtab.index(&section.name()).unwrap(),
+                loc as u64,
+                link,
+                info,
+            ));
             loc += section.size();
         }
-        secs.push(
-            self.shstrtab
-                .header(self.shstrtab.index(".shstrtab").unwrap(), loc as u64, 0, 0)
-        );
+        secs.push(self.shstrtab.header(
+            self.shstrtab.index(".shstrtab").unwrap(),
+            loc as u64,
+            0,
+            0,
+        ));
         loc += self.shstrtab.size();
-        secs.push(
-            self.symtab.header(
-                self.shstrtab.index(".symtab").unwrap(),
-                loc as u64,
-                self.get_sec_index(".strtab"),
-                0,
-            )
-        );
+        secs.push(self.symtab.header(
+            self.shstrtab.index(".symtab").unwrap(),
+            loc as u64,
+            self.get_sec_index(".strtab"),
+            0,
+        ));
         loc += self.symtab.size();
         secs.push(
-            self.strtab.header(self.shstrtab.index(".strtab").unwrap(), loc as u64, 0, 0)
+            self.strtab
+                .header(self.shstrtab.index(".strtab").unwrap(), loc as u64, 0, 0),
         );
         loc += self.strtab.size();
         if !self.rela_text.is_empty() {
-            secs.push(
-                self.rela_text.header(
-                    self.shstrtab.index(".rela.text").unwrap(),
-                    loc as u64,
-                    self.get_sec_index(".symtab"),
-                    self.get_sec_index(".text"),
-                )
-            );
+            secs.push(self.rela_text.header(
+                self.shstrtab.index(".rela.text").unwrap(),
+                loc as u64,
+                self.get_sec_index(".symtab"),
+                self.get_sec_index(".text"),
+            ));
         }
         secs
     }
