@@ -453,8 +453,8 @@ impl Section for STRTABSec {
 #[derive(Debug, Clone)]
 pub struct SYMTABSec {
     name: String,
-    data: Vec<SymItem>,
-    start_of_global: usize,
+    pub data: Vec<SymItem>,
+    pub start_of_global: usize,
 }
 impl SYMTABSec {
     pub fn new(name: &str) -> Self {

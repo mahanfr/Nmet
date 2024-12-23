@@ -7,13 +7,13 @@ use std::{
 };
 
 use crate::{
-    compiler::CompilerContext, formats::elf::sections::SectionHeader, st_info, st_visibility,
-    utils::IBytes,
+    compiler::CompilerContext, formats::elf::sections::SectionHeader, linker::generate_elf_exec, st_info, st_visibility, utils::IBytes
 };
 
 pub mod flags;
 pub mod header;
 pub mod sections;
+pub mod program;
 
 use self::{
     flags::{STB_GLOBAL, STB_LOCAL, STT_FILE, STT_NOTYPE, STT_SECTION, STV_DEFAULT},
@@ -41,7 +41,7 @@ pub fn generate_bin(out_path: &Path, cc: &mut CompilerContext) {
 }
 
 pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
-    let mut elf_object = Elf::new();
+    let mut elf_object = ElfObject::new();
     elf_object.add_section(&PROGBITSSec::new(
         ".text",
         0x6,
@@ -69,15 +69,15 @@ pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
     file.flush().unwrap();
 }
 
-struct Elf {
+pub struct ElfObject {
     sections: Vec<Box<dyn Section>>,
     shstrtab: STRTABSec,
-    strtab: STRTABSec,
-    symtab: SYMTABSec,
+    pub strtab: STRTABSec,
+    pub symtab: SYMTABSec,
     rela_text: RELASec,
 }
 
-impl Elf {
+impl ElfObject {
     pub fn new() -> Self {
         Self {
             sections: Vec::new(),
@@ -86,6 +86,18 @@ impl Elf {
             symtab: SYMTABSec::new(".symtab"),
             rela_text: RELASec::new(".rela.text".into()),
         }
+    }
+
+    pub fn section_sizes(&self) -> usize {
+        let mut size = 0;
+        for sec in self.sections.iter() {
+            size += sec.size();
+        }
+        size += self.shstrtab.size();
+        size += self.strtab.size();
+        size += self.symtab.size();
+        // size += self.rela_text.size();
+        size
     }
 
     pub fn add_section<T>(&mut self, section: &T)
@@ -122,17 +134,21 @@ impl Elf {
         if !cc.codegen.rela_map.is_empty() {
             self.shstrtab.insert(".rela.text");
         }
-        let header = ElfHeader::new(
-            self.sections_count() as u16,
-            self.get_sec_index(".shstrtab") as u16,
-        );
-        bytes.extend(header.to_bytes());
+        bytes.extend(self.get_header().to_bytes());
         self.section_header_bytes(&mut bytes);
         bytes.extend(self.sections_bytes());
         bytes
     }
 
-    fn sections_bytes(&self) -> IBytes {
+    pub fn get_header(&self) -> ElfHeader {
+        assert!(self.get_sec_index(".shstrtab") != 0,"Header is not ready yet!");
+        ElfHeader::new(
+            self.sections_count() as u16,
+            self.get_sec_index(".shstrtab") as u16,
+        )
+    }
+
+    pub fn sections_bytes(&self) -> IBytes {
         let mut bytes = Vec::new();
         for section in self.sections.iter() {
             bytes.extend(section.to_bytes());
@@ -146,7 +162,7 @@ impl Elf {
         bytes
     }
 
-    fn get_sec_index(&self, tag: &str) -> u32 {
+    pub fn get_sec_index(&self, tag: &str) -> u32 {
         match tag {
             "" => 0,
             ".shstrtab" => (self.sections.len() + 1) as u32,
@@ -157,59 +173,57 @@ impl Elf {
         }
     }
 
-    fn section_header_bytes(&self, bytes: &mut IBytes) {
-        bytes.extend(SectionHeader::default().to_bytes());
+    pub fn section_headers(&self) -> Vec<SectionHeader> {
+        let mut secs = vec![SectionHeader::default()];
         let mut loc = 64 + (self.sections_count() * 64);
         for section in self.sections.iter() {
             let (link_tag, info_tag) = section.link_and_info();
             let link = self.get_sec_index(link_tag.unwrap_or(""));
             let info = self.get_sec_index(info_tag.unwrap_or(""));
-            bytes.extend(
-                section
-                    .header(
-                        self.shstrtab.index(&section.name()).unwrap(),
-                        loc as u64,
-                        link,
-                        info,
-                    )
-                    .to_bytes(),
+            secs.push(
+                section.header(
+                    self.shstrtab.index(&section.name()).unwrap(),
+                    loc as u64,
+                    link,
+                    info,
+                )
             );
             loc += section.size();
         }
-        bytes.extend(
+        secs.push(
             self.shstrtab
                 .header(self.shstrtab.index(".shstrtab").unwrap(), loc as u64, 0, 0)
-                .to_bytes(),
         );
         loc += self.shstrtab.size();
-        bytes.extend(
-            self.symtab
-                .header(
-                    self.shstrtab.index(".symtab").unwrap(),
-                    loc as u64,
-                    self.get_sec_index(".strtab"),
-                    0,
-                )
-                .to_bytes(),
+        secs.push(
+            self.symtab.header(
+                self.shstrtab.index(".symtab").unwrap(),
+                loc as u64,
+                self.get_sec_index(".strtab"),
+                0,
+            )
         );
         loc += self.symtab.size();
-        bytes.extend(
-            self.strtab
-                .header(self.shstrtab.index(".strtab").unwrap(), loc as u64, 0, 0)
-                .to_bytes(),
+        secs.push(
+            self.strtab.header(self.shstrtab.index(".strtab").unwrap(), loc as u64, 0, 0)
         );
         loc += self.strtab.size();
         if !self.rela_text.is_empty() {
-            bytes.extend(
-                self.rela_text
-                    .header(
-                        self.shstrtab.index(".rela.text").unwrap(),
-                        loc as u64,
-                        self.get_sec_index(".symtab"),
-                        self.get_sec_index(".text"),
-                    )
-                    .to_bytes(),
+            secs.push(
+                self.rela_text.header(
+                    self.shstrtab.index(".rela.text").unwrap(),
+                    loc as u64,
+                    self.get_sec_index(".symtab"),
+                    self.get_sec_index(".text"),
+                )
             );
+        }
+        secs
+    }
+
+    fn section_header_bytes(&self, bytes: &mut IBytes) {
+        for sec in self.section_headers().iter() {
+            bytes.extend(sec.to_bytes());
         }
     }
 

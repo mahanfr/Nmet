@@ -50,7 +50,7 @@ mod tests;
 mod utils;
 use assembler::text::x86_64_nasm_generator;
 use compiler::{compile, CompilerContext};
-use linker::parse_elf_objfile;
+use linker::{generate_elf_exec, parse_elf_objfile};
 use utils::get_output_path_from_input;
 
 use crate::compiler::impl_bifs;
@@ -315,7 +315,7 @@ pub fn target_string_to_number(target: &str) -> u8 {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    parse_elf_objfile("./tests/libadd.a".to_string());
+    // parse_elf_objfile("./tests/libadd.a".to_string());
 
     let mut args = args();
     let (ipath, co) = collect_compiler_options(&mut args);
