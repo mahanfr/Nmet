@@ -23,7 +23,7 @@
 *
 **********************************************************************************************/
 use crate::{
-    codegen::{
+    assembler::{
         instructions::Opr, memory::MemAddr, mnemonic::Mnemonic::*, register::Reg::*, Codegen,
     },
     mem, memb, memq,

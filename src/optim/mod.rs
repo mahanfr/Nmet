@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{instructions::Opr, register::Reg},
+    assembler::{instructions::Opr, register::Reg},
     error_handeling::CompilationError,
     parser::{
         expr::{CompareOp, Op},

@@ -29,9 +29,9 @@ mod function;
 mod stmts;
 mod variables;
 
-use crate::codegen::instructions::Opr;
-use crate::codegen::mnemonic::Mnemonic;
-use crate::codegen::{register::Reg, Codegen};
+use crate::assembler::instructions::Opr;
+use crate::assembler::mnemonic::Mnemonic;
+use crate::assembler::{register::Reg, Codegen};
 use crate::compiler::{bif::Bif, function::compile_function};
 use crate::log_error;
 use crate::parser::block::Block;

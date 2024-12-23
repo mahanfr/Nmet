@@ -36,7 +36,7 @@ macro_rules! asm {
 #[macro_export]
 macro_rules! log_info {
     ($($arg:tt)+) => {
-        println!("\x1b[94m[Info]\x1b[0m {}",format_args!($($arg)+))
+        println!("[Info] {}",format_args!($($arg)+))
     };
 }
 
@@ -44,7 +44,7 @@ macro_rules! log_info {
 #[macro_export]
 macro_rules! log_success {
     ($($arg:tt)+) => {
-        println!("\x1b[92m[Success]\x1b[0m {}",format_args!($($arg)+))
+        println!("[Success] {}",format_args!($($arg)+))
     };
 }
 
@@ -52,7 +52,7 @@ macro_rules! log_success {
 #[macro_export]
 macro_rules! log_warn {
     ($($arg:tt)+) => {
-        println!("\x1b[93m[Warn]\x1b[0m {}",format_args!($($arg)+))
+        println!("[Warn] {}",format_args!($($arg)+))
     };
 }
 
@@ -60,7 +60,7 @@ macro_rules! log_warn {
 #[macro_export]
 macro_rules! log_error {
     ($($arg:tt)+) => {
-        eprintln!("\x1b[91m[Error]\x1b[0m {}",format_args!($($arg)+))
+        eprintln!("[Error] {}",format_args!($($arg)+))
     };
 }
 
@@ -68,6 +68,6 @@ macro_rules! log_error {
 #[macro_export]
 macro_rules! log_cerror {
     ($loc:expr, $($arg:tt)+) => {
-        eprintln!("\x1b[91m[{}]\x1b[0m {}",$loc,format_args!($($arg)+))
+        eprintln!("[{}] {}",$loc,format_args!($($arg)+))
     };
 }

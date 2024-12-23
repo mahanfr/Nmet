@@ -7,23 +7,31 @@ use std::{
 };
 
 use crate::{
-    codegen::elf::sections::SectionHeader, compiler::CompilerContext, st_info, st_visibility,
-    utils::IBytes,
+    compiler::CompilerContext, formats::elf::sections::SectionHeader,
+    st_info, st_visibility, utils::IBytes,
 };
 
-mod flags;
-mod header;
-mod sections;
+pub mod flags;
+pub mod header;
+pub mod program;
+pub mod sections;
 
 use self::{
     flags::{STB_GLOBAL, STB_LOCAL, STT_FILE, STT_NOTYPE, STT_SECTION, STV_DEFAULT},
     header::ElfHeader,
-    sections::{
-        BssSec, DataSec, RelaSec, Section, ShstrtabSec, StrtabSec, SymItem, SymtabSec, TextSec,
-    },
+    sections::{NOBITSSec, PROGBITSSec, RELASec, STRTABSec, SYMTABSec, Section, SymItem},
 };
 
-use super::SymbolType;
+#[allow(unused)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum SymbolType {
+    Global,
+    Ffi,
+    DataSec,
+    BssSec,
+    TextSec,
+    Other,
+}
 
 pub fn generate_bin(out_path: &Path, cc: &mut CompilerContext) {
     let file_content = cc.codegen.text_section_bytes();
@@ -34,13 +42,24 @@ pub fn generate_bin(out_path: &Path, cc: &mut CompilerContext) {
 }
 
 pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
-    let mut elf_object = Elf::new();
-    elf_object.add_section(&TextSec::new(cc.codegen.text_section_bytes()));
+    let mut elf_object = ElfObject::new();
+    elf_object.add_section(&PROGBITSSec::new(
+        ".text",
+        0x6,
+        16,
+        cc.codegen.text_section_bytes(),
+    ));
     if !cc.codegen.data_buf.is_empty() {
-        elf_object.add_section(&DataSec::new(&cc.codegen.data_buf));
+        elf_object.add_section(&PROGBITSSec::new(
+            ".data",
+            0x3,
+            4,
+            PROGBITSSec::dmap_to_data(&cc.codegen.data_buf),
+        ));
     }
     if !cc.codegen.bss_buf.is_empty() {
-        elf_object.add_section(&BssSec::new(
+        elf_object.add_section(&NOBITSSec::new(
+            ".bss",
             cc.codegen.bss_buf.iter().map(|x| x.size).sum(),
         ));
     }
@@ -51,30 +70,42 @@ pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
     file.flush().unwrap();
 }
 
-struct Elf {
+pub struct ElfObject {
     sections: Vec<Box<dyn Section>>,
-    shstrtab: ShstrtabSec,
-    strtab: StrtabSec,
-    symtab: SymtabSec,
-    rela_text: RelaSec,
+    shstrtab: STRTABSec,
+    pub strtab: STRTABSec,
+    pub symtab: SYMTABSec,
+    rela_text: RELASec,
 }
 
-impl Elf {
+impl ElfObject {
     pub fn new() -> Self {
         Self {
             sections: Vec::new(),
-            shstrtab: ShstrtabSec::new(),
-            strtab: StrtabSec::new(),
-            symtab: SymtabSec::new(),
-            rela_text: RelaSec::new(),
+            shstrtab: STRTABSec::new(".shstrtab"),
+            strtab: STRTABSec::new(".strtab"),
+            symtab: SYMTABSec::new(".symtab"),
+            rela_text: RELASec::new(".rela.text".into()),
         }
+    }
+
+    pub fn section_sizes(&self) -> usize {
+        let mut size = 0;
+        for sec in self.sections.iter() {
+            size += sec.size();
+        }
+        size += self.shstrtab.size();
+        size += self.strtab.size();
+        size += self.symtab.size();
+        // size += self.rela_text.size();
+        size
     }
 
     pub fn add_section<T>(&mut self, section: &T)
     where
         T: Section + Clone + 'static,
     {
-        self.shstrtab.insert(section.name().to_string());
+        self.shstrtab.insert(&section.name().to_string());
         self.sections.push(Box::new((*section).clone()));
     }
 
@@ -91,30 +122,37 @@ impl Elf {
         self.set_symbols(cc);
         for item in cc.codegen.rela_map.iter_mut() {
             if item.sym_type == SymbolType::Ffi {
-                let indx = self.strtab.index(&item.sym_name);
+                let indx = self.strtab.index(&item.sym_name).unwrap();
                 item.r_section = self.symtab.find(indx) as u32;
             } else {
                 item.r_section = self.get_sec_index(&item.sym_name) + 1;
             }
             self.rela_text.push(item.to_owned());
         }
-        self.shstrtab.insert(".shstrtab".to_string());
-        self.shstrtab.insert(".symtab".to_string());
-        self.shstrtab.insert(".strtab".to_string());
+        self.shstrtab.insert(".shstrtab");
+        self.shstrtab.insert(".symtab");
+        self.shstrtab.insert(".strtab");
         if !cc.codegen.rela_map.is_empty() {
-            self.shstrtab.insert(".rela.text".to_string());
+            self.shstrtab.insert(".rela.text");
         }
-        let header = ElfHeader::new(
-            self.sections_count() as u16,
-            self.get_sec_index(".shstrtab") as u16,
-        );
-        bytes.extend(header.to_bytes());
+        bytes.extend(self.get_header().to_bytes());
         self.section_header_bytes(&mut bytes);
         bytes.extend(self.sections_bytes());
         bytes
     }
 
-    fn sections_bytes(&self) -> IBytes {
+    pub fn get_header(&self) -> ElfHeader {
+        assert!(
+            self.get_sec_index(".shstrtab") != 0,
+            "Header is not ready yet!"
+        );
+        ElfHeader::new(
+            self.sections_count() as u16,
+            self.get_sec_index(".shstrtab") as u16,
+        )
+    }
+
+    pub fn sections_bytes(&self) -> IBytes {
         let mut bytes = Vec::new();
         for section in self.sections.iter() {
             bytes.extend(section.to_bytes());
@@ -128,7 +166,7 @@ impl Elf {
         bytes
     }
 
-    fn get_sec_index(&self, tag: &str) -> u32 {
+    pub fn get_sec_index(&self, tag: &str) -> u32 {
         match tag {
             "" => 0,
             ".shstrtab" => (self.sections.len() + 1) as u32,
@@ -139,61 +177,61 @@ impl Elf {
         }
     }
 
-    fn section_header_bytes(&self, bytes: &mut IBytes) {
-        bytes.extend(SectionHeader::default().to_bytes());
+    pub fn section_headers(&self) -> Vec<SectionHeader> {
+        let mut secs = vec![SectionHeader::default()];
         let mut loc = 64 + (self.sections_count() * 64);
         for section in self.sections.iter() {
             let (link_tag, info_tag) = section.link_and_info();
             let link = self.get_sec_index(link_tag.unwrap_or(""));
             let info = self.get_sec_index(info_tag.unwrap_or(""));
-            bytes.extend(
-                section
-                    .header(self.shstrtab.index(section.name()), loc as u64, link, info)
-                    .to_bytes(),
-            );
+            secs.push(section.header(
+                self.shstrtab.index(&section.name()).unwrap(),
+                loc as u64,
+                link,
+                info,
+            ));
             loc += section.size();
         }
-        bytes.extend(
-            self.shstrtab
-                .header(self.shstrtab.index(".shstrtab"), loc as u64, 0, 0)
-                .to_bytes(),
-        );
+        secs.push(self.shstrtab.header(
+            self.shstrtab.index(".shstrtab").unwrap(),
+            loc as u64,
+            0,
+            0,
+        ));
         loc += self.shstrtab.size();
-        bytes.extend(
-            self.symtab
-                .header(
-                    self.shstrtab.index(".symtab"),
-                    loc as u64,
-                    self.get_sec_index(".strtab"),
-                    0,
-                )
-                .to_bytes(),
-        );
+        secs.push(self.symtab.header(
+            self.shstrtab.index(".symtab").unwrap(),
+            loc as u64,
+            self.get_sec_index(".strtab"),
+            0,
+        ));
         loc += self.symtab.size();
-        bytes.extend(
+        secs.push(
             self.strtab
-                .header(self.shstrtab.index(".strtab"), loc as u64, 0, 0)
-                .to_bytes(),
+                .header(self.shstrtab.index(".strtab").unwrap(), loc as u64, 0, 0),
         );
         loc += self.strtab.size();
         if !self.rela_text.is_empty() {
-            bytes.extend(
-                self.rela_text
-                    .header(
-                        self.shstrtab.index(".rela.text"),
-                        loc as u64,
-                        self.get_sec_index(".symtab"),
-                        self.get_sec_index(".text"),
-                    )
-                    .to_bytes(),
-            );
+            secs.push(self.rela_text.header(
+                self.shstrtab.index(".rela.text").unwrap(),
+                loc as u64,
+                self.get_sec_index(".symtab"),
+                self.get_sec_index(".text"),
+            ));
+        }
+        secs
+    }
+
+    fn section_header_bytes(&self, bytes: &mut IBytes) {
+        for sec in self.section_headers().iter() {
+            bytes.extend(sec.to_bytes());
         }
     }
 
     fn set_symbols(&mut self, cc: &mut CompilerContext) {
         self.strtab.insert(&cc.program_file);
         self.symtab.insert(SymItem {
-            st_name: self.strtab.index(&cc.program_file),
+            st_name: self.strtab.index(&cc.program_file).unwrap(),
             st_info: st_info!(STB_LOCAL, STT_FILE),
             st_other: st_visibility!(STV_DEFAULT),
             st_shndx: 0xfff1,
@@ -224,14 +262,14 @@ impl Elf {
                 false => st_info!(STB_LOCAL, STT_NOTYPE),
             };
             let shndx = match sym.1 {
-                super::SymbolType::TextSec => self.get_sec_index(".text"),
-                super::SymbolType::DataSec => self.get_sec_index(".data"),
-                super::SymbolType::BssSec => self.get_sec_index(".bss"),
+                SymbolType::TextSec => self.get_sec_index(".text"),
+                SymbolType::DataSec => self.get_sec_index(".data"),
+                SymbolType::BssSec => self.get_sec_index(".bss"),
                 _ => 0,
             };
 
             self.symtab.insert(SymItem {
-                st_name: self.strtab.index(label),
+                st_name: self.strtab.index(label).unwrap(),
                 st_info: info,
                 st_other: st_visibility!(STV_DEFAULT),
                 st_shndx: shndx as u16,
@@ -243,7 +281,7 @@ impl Elf {
         self.symtab.set_global_start();
         for item in cc.codegen.ffi_map.values() {
             self.symtab.insert(SymItem {
-                st_name: self.strtab.index(item),
+                st_name: self.strtab.index(item).unwrap(),
                 st_info: st_info!(STB_GLOBAL, STT_NOTYPE),
                 st_other: st_visibility!(STV_DEFAULT),
                 st_shndx: 0,
@@ -252,7 +290,7 @@ impl Elf {
             });
         }
         self.symtab.insert(SymItem {
-            st_name: self.strtab.index(&"_start".to_owned()),
+            st_name: self.strtab.index("_start").unwrap(),
             st_info: st_info!(STB_GLOBAL, STT_NOTYPE),
             st_other: st_visibility!(STV_DEFAULT),
             st_shndx: self.get_sec_index(".text") as u16,

@@ -23,7 +23,7 @@
 *
 **********************************************************************************************/
 use crate::{
-    codegen::{
+    assembler::{
         asm_parser::parse_asm,
         instructions::Opr,
         memory::MemAddr,

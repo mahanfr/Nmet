@@ -1,18 +1,20 @@
 pub mod asm_parser;
 pub mod assemble;
 pub mod data_bss;
-pub mod elf;
 pub mod instructions;
 pub mod memory;
 pub mod mnemonic;
 pub mod opcodes;
-pub mod pe;
 pub mod register;
 pub mod text;
 pub mod utils;
 use std::{collections::BTreeMap, fmt::Display};
 
-use crate::{parser::types::VariableType, utils::IBytes};
+use crate::{
+    formats::elf::{sections::RelaItem, SymbolType},
+    parser::types::VariableType,
+    utils::IBytes,
+};
 
 use self::{
     assemble::assemble_instr,
@@ -29,44 +31,6 @@ pub fn placeholder(instr: Instr) -> Instr {
         _ => unreachable!(),
     }
 }
-
-#[derive(Debug, Clone)]
-pub struct RelaItem {
-    r_offset: u64,
-    pub r_section: u32,
-    r_platform: u32,
-    r_addend: i64,
-    sym_name: String,
-    sym_type: SymbolType,
-}
-impl RelaItem {
-    pub fn new(
-        sym_name: impl ToString,
-        sym_type: SymbolType,
-        r_platform: u32,
-        r_offset: u64,
-        r_addend: i64,
-    ) -> Self {
-        Self {
-            r_offset,
-            r_section: 0,
-            r_platform,
-            r_addend,
-            sym_name: sym_name.to_string(),
-            sym_type,
-        }
-    }
-
-    pub fn to_bytes(&self) -> IBytes {
-        let mut bytes = vec![];
-        let r_info = ((self.r_section as u64) << 32) | self.r_platform as u64;
-        bytes.extend(self.r_offset.to_le_bytes());
-        bytes.extend(r_info.to_le_bytes());
-        bytes.extend(self.r_addend.to_le_bytes());
-        bytes
-    }
-}
-
 #[derive(Clone)]
 struct InstrData {
     instr: Instr,
@@ -91,17 +55,6 @@ impl InstrData {
         }
     }
 }
-
-#[allow(unused)]
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum SymbolType {
-    Global,
-    Ffi,
-    DataSec,
-    BssSec,
-    TextSec,
-}
-
 #[allow(dead_code)]
 #[derive(Clone)]
 pub struct Codegen {
@@ -123,6 +76,11 @@ impl Codegen {
             rela_map: Vec::new(),
             ffi_map: BTreeMap::new(),
         }
+    }
+
+    #[allow(dead_code)]
+    pub fn get_raw_instructs(&self) -> Vec<Instr> {
+        self.instructs.iter().map(|x| x.instr.clone()).collect()
     }
 
     pub fn relocate(&mut self) {

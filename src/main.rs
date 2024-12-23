@@ -35,10 +35,12 @@ use std::str::FromStr;
 use std::sync::Mutex;
 use std::{env::args, process::exit};
 
-mod codegen;
+mod assembler;
 mod compiler;
 mod error_handeling;
+mod formats;
 mod lexer;
+mod linker;
 mod macros;
 mod optim;
 mod parser;
@@ -46,7 +48,7 @@ mod terms;
 #[cfg(test)]
 mod tests;
 mod utils;
-use codegen::text::x86_64_nasm_generator;
+use assembler::text::x86_64_nasm_generator;
 use compiler::{compile, CompilerContext};
 use utils::get_output_path_from_input;
 
@@ -82,12 +84,13 @@ pub struct CompilerOptions {
     pub linker_flags: Vec<String>,
     pub use_libc: bool,
     pub create_bin: bool,
+    pub simulate: bool,
     pub target_platform: u8,
 }
 
 fn copywrite() {
     println!("-------------------------------------------------------------");
-    println!("| Nmet v0.6.0-alpha                                          |");
+    println!("| Nmet v0.7.1                                                |");
     println!("| Nmet Programmin Language Copyright: Mahanfaraneh 2023-2024 |");
     println!("| Project distributed Under MIT License                      |");
     println!("-------------------------------------------------------------");
@@ -101,30 +104,34 @@ pub fn help_command(program_name: &str) {
         padding_right("-o <output_path>")
     );
     println!(
+        "  {} Simulate (Interpet) the program for debugging and running on unsupported OS",
+        padding_right("-s | --simulate")
+    );
+    println!(
         "  {} dump instructions in a binary file",
-        padding_right("-bin")
+        padding_right("-b | --bin")
     );
     println!(
         "  {} use Nasm Assembler to assemble generated code",
-        padding_right("-nasm")
+        padding_right("--nasm")
     );
     println!(
         "  {} Do not link the generated object file",
-        padding_right("-no-link")
+        padding_right("--no-link")
     );
     println!(
         "  {} Only Generates an asm file",
-        padding_right("-no-assemble")
+        padding_right("--no-assemble")
     );
     println!(
         "  {} Do not remove the generated asm file",
-        padding_right("-keep-asm")
+        padding_right("--keep-asm")
     );
     println!(
         "  {} Do not remove the generated object file",
-        padding_right("-keep-obj")
+        padding_right("--keep-obj")
     );
-    println!("  {} Use C library Dynamicaly", padding_right("-use-libc"));
+    println!("  {} Use C library Dynamicaly", padding_right("--use-libc"));
     println!(
         "  {} Search for library LIBNAME",
         padding_right("-l<LIBNAME>")
@@ -191,6 +198,9 @@ pub fn setup_compiler(input: String, co: &CompilerOptions) {
     impl_bifs(&mut compiler_context);
     let prefix = out_path.parent().unwrap();
     std::fs::create_dir_all(prefix).unwrap();
+    if co.simulate {
+        log_info!("Simulation is not supported yet!");
+    }
     if co.use_nasm {
         log_info!("Generating asm text file...");
         x86_64_nasm_generator(out_path.as_path(), &compiler_context).unwrap();
@@ -206,11 +216,11 @@ pub fn setup_compiler(input: String, co: &CompilerOptions) {
     } else {
         if co.create_bin {
             log_info!("Generating binary file...");
-            crate::codegen::elf::generate_bin(out_path.as_path(), &mut compiler_context);
+            crate::formats::elf::generate_bin(out_path.as_path(), &mut compiler_context);
             log_success!("Instructions Binary file Generated!");
         }
         log_info!("Generating elf object file...");
-        crate::codegen::elf::generate_elf(out_path.as_path(), &mut compiler_context);
+        crate::formats::elf::generate_elf(out_path.as_path(), &mut compiler_context);
         log_success!("Elf object file Generated!");
         if co.no_linking {
             return;
@@ -241,22 +251,23 @@ fn collect_compiler_options(args: &mut Args) -> (String, CompilerOptions) {
             continue;
         }
         match arg.as_str() {
-            "-h" => {
+            "-h" | "--help" => {
                 copywrite();
                 help_command(&compiler_path);
                 exit(0);
             }
-            "-v" => {
+            "-v" | "--version" => {
                 copywrite();
                 exit(0);
             }
-            "-no-link" => co.no_linking = true,
-            "-no-assemble" => co.no_assembling = true,
-            "-nasm" => co.use_nasm = true,
-            "-keep-asm" => co.keep_asm = true,
-            "-keep-obj" => co.keep_obj = true,
-            "-use-libc" => co.use_libc = true,
-            "-bin" => co.create_bin = true,
+            "--no-link" => co.no_linking = true,
+            "--no-assemble" => co.no_assembling = true,
+            "--nasm" => co.use_nasm = true,
+            "--keep-asm" => co.keep_asm = true,
+            "--keep-obj" => co.keep_obj = true,
+            "--use-libc" => co.use_libc = true,
+            "-b" | "--bin" => co.create_bin = true,
+            "-s" | "--simulate" => co.simulate = true,
             "-T" => {
                 let Some(target) = args.next() else {
                     log_error!("No target specified!");
@@ -303,6 +314,8 @@ pub fn target_string_to_number(target: &str) -> u8 {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    // parse_elf_objfile("./tests/libadd.a".to_string());
+
     let mut args = args();
     let (ipath, co) = collect_compiler_options(&mut args);
     *TARGET_PLATFORM.lock().unwrap() = co.target_platform;
