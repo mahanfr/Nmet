@@ -259,7 +259,9 @@ impl NOTESec {
 }
 impl Section for NOTESec {
     fn to_bytes(&self) -> IBytes {
-        self.data.clone()
+        let mut data = self.data.clone();
+        data.resize(self.padded_size(), 0);
+        data
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -342,7 +344,7 @@ impl Section for PROGBITSSec {
     fn to_bytes(&self) -> IBytes {
         let mut bytes = vec![];
         bytes.extend(self.data.clone());
-        bytes.resize(self.size(), 0);
+        bytes.resize(self.padded_size(), 0);
         bytes
     }
 
@@ -453,7 +455,7 @@ impl Section for STRTABSec {
     fn to_bytes(&self) -> IBytes {
         let mut bytes = vec![];
         bytes.extend(self.data.clone());
-        bytes.resize(self.size(), 0);
+        bytes.resize(self.padded_size(), 0);
         bytes
     }
 
@@ -554,7 +556,7 @@ impl Section for SYMTABSec {
         for item in self.data.iter() {
             bytes.extend(item.to_bytes());
         }
-        bytes.resize(self.size(), 0);
+        bytes.resize(self.padded_size(), 0);
         bytes
     }
 
@@ -688,7 +690,7 @@ impl Section for RELASec {
         for item in self.data.iter() {
             bytes.extend(item.to_bytes());
         }
-        bytes.resize(self.size(), 0);
+        bytes.resize(self.padded_size(), 0);
         bytes
     }
 
@@ -708,7 +710,7 @@ impl Section for RELASec {
     }
 
     fn padded_size(&self) -> usize {
-        let data_len = (self.data.len() + 1) * 24;
+        let data_len = self.data.len() * 24;
         data_len + (16 - (data_len % 16))
     }
 

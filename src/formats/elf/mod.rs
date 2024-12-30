@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use std::{
-    collections::{btree_map::Entry, BTreeMap}, fs::File, io::{BufWriter, Write}, path::Path
+    fs::File, io::{BufWriter, Write}, path::Path
 };
 
 use crate::{
@@ -55,13 +55,12 @@ pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
     let mut strtab = STRTABSec::new(".strtab");
     strtab.insert(&cc.program_file);
     let symtab = set_symbols(&mut strtab, &dyn_sections, cc);
-    let mut rela_map = RELASec{ name: ".rela.text".into(), data: cc.codegen.rela_map.clone()};
+    let mut rela_map = RELASec{ name:".rela.text".into(), data: vec![]};
     let mut shstrtab = STRTABSec::new(".shstrtab");
-
-    let mut sections = BTreeMap::<String, Box<dyn Section>>::new();
+    let mut sections = Vec::<Box<dyn Section>>::new();
     for sec in dyn_sections.iter() {
         shstrtab.insert(&sec.name());
-        sections.insert(sec.name(), sec.clone_box());
+        sections.push(sec.clone_box());
     }
     shstrtab.insert(".shstrtab");
     shstrtab.insert(".symtab");
@@ -73,22 +72,22 @@ pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
                 let indx = strtab.index(&item.sym_name).unwrap();
                 item.r_section = symtab.find(indx) as u32;
             } else {
-                item.r_section = sections.values().position(|t| t.name() == item.sym_name).unwrap() as u32 + 1;
+                item.r_section = sections.iter().position(|t| t.name() == item.sym_name).unwrap() as u32 + 2;
             }
            rela_map.push(item.to_owned());
         }
     }
-    sections.insert(".shstrtab".into(), Box::new(shstrtab));
-    sections.insert(".symtab".into(), Box::new(symtab));
+    sections.push(Box::new(shstrtab));
+    sections.push(Box::new(symtab));
     if !cc.codegen.rela_map.is_empty() {
-        sections.insert(".rela.text".into(), Box::new(rela_map));
+        sections.push(Box::new(rela_map));
     }
-    sections.insert(".strtab".into(), Box::new(strtab));
+    sections.push(Box::new(strtab));
 
     let elf_sections = ElfSections::new(64 + (64 * (sections.len() + 1)) as u64, sections);
     let section_headers = elf_sections.section_headers();
     let elf_header = ElfHeader::new(section_headers.len() as u16,
-        elf_sections.get_sec_index(".shstrtab") as u16);
+        elf_sections.get_section_header_index(".shstrtab") as u16);
 
     let stream = File::create(out_path.with_extension("o")).unwrap();
     let mut file = BufWriter::new(stream);
@@ -99,12 +98,12 @@ pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
 }
 
 pub struct ElfSections {
-    sections: BTreeMap<String, Box<dyn Section>>,
+    sections: Vec<Box<dyn Section>>,
     offset: u64,
 }
 
 impl ElfSections {
-    pub fn new(offset: u64, sections: BTreeMap<String, Box<dyn Section>>) -> Self {
+    pub fn new(offset: u64, sections: Vec<Box<dyn Section>>) -> Self {
         Self {
             sections,
             offset,
@@ -113,15 +112,25 @@ impl ElfSections {
 
     pub fn section_sizes(&self) -> usize {
         let mut size = 0;
-        for sec in self.sections.values() {
+        for sec in self.sections.iter() {
             size += sec.size();
         }
         size
     }
 
+    pub fn get_section_by_key(&self, name: &str) -> &Box<dyn Section> {
+        match self.sections.iter().position(|x| x.name() == name) {
+            Some(s) => &self.sections[s],
+            None => panic!("{name} section is not present"),
+        }
+    }
+
+    pub fn get_section_index(&self, name: &str) -> Option<usize> {
+        self.sections.iter().position(|x| x.name() == name)
+    }
+
     pub fn section_name_index(&self, name: &str) -> u32 {
-        let strtab = self.sections.get(".shstrtab").expect("shstrtab section must be present")
-            .as_any().downcast_ref::<STRTABSec>().expect("wrong .shstrtab type");
+        let strtab = self.get_section_by_key(".shstrtab").as_any().downcast_ref::<STRTABSec>().expect("wrong .shstrtab type");
         strtab.index(name).expect("Section with this name dosent exist")
     }
 
@@ -129,16 +138,15 @@ impl ElfSections {
     where
         T: Section + Clone + 'static,
     {
-        self.sections.insert(section.name(), Box::new((*section).clone()));
-        match self.sections.entry(".shstrtab".into()) {
-            Entry::Occupied(mut oe) => {
-                let w = oe.get_mut();
-                w.insert(section.name().as_bytes());
+        self.sections.push(Box::new((*section).clone()));
+        match self.get_section_index(".shstrtab") {
+            Some(inx) => {
+                self.sections[inx].insert(section.name().as_bytes())
             },
-            Entry::Vacant(_) => {
+            None => {
                 panic!("shstrtab section must be present");
             }
-        }
+        };
     }
 
     fn sections_count(&self) -> usize {
@@ -147,7 +155,7 @@ impl ElfSections {
 
     pub fn bytes(&self) -> IBytes {
         let mut bytes = Vec::new();
-        for sec in self.sections.values().rev() {
+        for sec in self.sections.iter() {
             bytes.extend(sec.to_bytes());
         }
         bytes
@@ -155,33 +163,29 @@ impl ElfSections {
 
     pub fn get_header(&self) -> ElfHeader {
         assert!(
-            self.get_sec_index(".shstrtab") != 0,
+            self.get_section_header_index(".shstrtab") != 0,
             "Header is not ready yet!"
         );
         ElfHeader::new(
             self.sections_count() as u16,
-            self.get_sec_index(".shstrtab") as u16,
+            self.get_section_header_index(".shstrtab") as u16,
         )
     }
 
-    pub fn get_sec_index(&self, tag: &str) -> u32 {
-       match self.sections.values().rev().position(|x| x.name() == tag) {
-           Some(pos) => {
-               pos as u32 + 1
-           }
-           None => {
-               0
-           }
-       }
+    pub fn get_section_header_index(&self, name: &str) -> u32 {
+        match self.get_section_index(name) {
+            Some(s) => s as u32 + 1,
+            None => 0
+        }
     }
 
     pub fn section_headers(&self) -> Vec<SectionHeader> {
         let mut secs = vec![SectionHeader::default()];
         let mut offset = self.offset;
-        for section in self.sections.values().rev() {
+        for section in self.sections.iter() {
             let (link_tag, info_tag) = section.link_and_info();
-            let link = self.get_sec_index(link_tag.unwrap_or(""));
-            let info = self.get_sec_index(info_tag.unwrap_or(""));
+            let link = self.get_section_header_index(link_tag.unwrap_or(""));
+            let info = self.get_section_header_index(info_tag.unwrap_or(""));
             secs.push(section.header(
                 self.section_name_index(&section.name()),
                 offset,
@@ -250,15 +254,15 @@ pub fn set_symbols(
             SymbolType::TextSec => ".text",
             SymbolType::DataSec => ".data",
             SymbolType::BssSec => ".bss",
-            _ => "",
+            _ => "____",
         };
-        let shndx = dyn_sections.iter().position(|s| s.name() == shndx_tag).expect("shndx with that section dose not exist");
+        let shndx = dyn_sections.iter().position(|s| s.name() == shndx_tag).unwrap_or(0);
 
         symtab.insert(SymItem {
             st_name: strtab.index(label).unwrap(),
             st_info: info,
             st_other: st_visibility!(STV_DEFAULT),
-            st_shndx: shndx as u16,
+            st_shndx: shndx as u16 + 1,
             st_size: 0,
             st_value: sym.0 as u64,
         });
@@ -279,7 +283,7 @@ pub fn set_symbols(
         st_name: strtab.index("_start").unwrap(),
         st_info: st_info!(STB_GLOBAL, STT_NOTYPE),
         st_other: st_visibility!(STV_DEFAULT),
-        st_shndx: dyn_sections.iter().position(|s| s.name() == ".text").unwrap() as u16,
+        st_shndx: dyn_sections.iter().position(|s| s.name() == ".text").unwrap() as u16 + 1,
         st_size: 0,
         st_value: 0,
     });
