@@ -41,10 +41,13 @@ pub fn get_program_name(path: impl ToString) -> String {
 }
 
 /// padding right (like the padding_left library in js)
-pub fn padding_right(str: &str) -> String {
+pub fn padding_right(str: &str, mut len: usize) -> String {
     let mut text = String::with_capacity(20);
     text.push_str(str);
-    for _ in 0..(20 - str.len()) {
+    if len < str.len() {
+        len = 20;
+    }
+    for _ in 0..(len - str.len()) {
         text.push(' ');
     }
     text

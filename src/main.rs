@@ -38,6 +38,7 @@ use std::{env::args, process::exit};
 mod assembler;
 mod compiler;
 mod error_handeling;
+mod commands;
 mod formats;
 mod lexer;
 mod linker;
@@ -56,7 +57,7 @@ use crate::compiler::impl_bifs;
 use crate::utils::padding_right;
 
 // --- Static Compiler Defenition
-pub static VERSION: &str = "v0.0.1-Beta";
+pub static VERSION: &str = "v0.8.1";
 
 /// Terget name for assembling using Nasm
 fn assembler_target() -> &'static str {
@@ -73,7 +74,7 @@ fn assembler_target() -> &'static str {
 // -l<mod_name>
 // -L<mod_path>
 // -T <Target>
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct CompilerOptions {
     pub output_path: Option<PathBuf>,
     pub use_nasm: bool,
@@ -81,16 +82,17 @@ pub struct CompilerOptions {
     pub no_assembling: bool,
     pub keep_asm: bool,
     pub keep_obj: bool,
+    pub static_lib: bool,
+    pub dynamic_lib: bool,
     pub linker_flags: Vec<String>,
     pub use_libc: bool,
     pub create_bin: bool,
-    pub simulate: bool,
     pub target_platform: u8,
 }
 
 fn copywrite() {
     println!("-------------------------------------------------------------");
-    println!("| Nmet v0.7.1                                                |");
+    println!("| Nmet {} |", padding_right(VERSION, 54));
     println!("| Nmet Programmin Language Copyright: Mahanfaraneh 2023-2024 |");
     println!("| Project distributed Under MIT License                      |");
     println!("-------------------------------------------------------------");
@@ -101,47 +103,47 @@ pub fn help_command(program_name: &str) {
     println!("Options:");
     println!(
         "  {} Specify output path (default: \"./build/input_file\")",
-        padding_right("-o <output_path>")
+        padding_right("-o <output_path>",10)
     );
     println!(
         "  {} Simulate (Interpet) the program for debugging and running on unsupported OS",
-        padding_right("-s | --simulate")
+        padding_right("-s | --simulate",10)
     );
     println!(
         "  {} dump instructions in a binary file",
-        padding_right("-b | --bin")
+        padding_right("-b | --bin",10)
     );
     println!(
         "  {} use Nasm Assembler to assemble generated code",
-        padding_right("--nasm")
+        padding_right("--nasm",10)
     );
     println!(
         "  {} Do not link the generated object file",
-        padding_right("--no-link")
+        padding_right("--no-link",10)
     );
     println!(
         "  {} Only Generates an asm file",
-        padding_right("--no-assemble")
+        padding_right("--no-assemble",10)
     );
     println!(
         "  {} Do not remove the generated asm file",
-        padding_right("--keep-asm")
+        padding_right("--keep-asm",10)
     );
     println!(
         "  {} Do not remove the generated object file",
-        padding_right("--keep-obj")
+        padding_right("--keep-obj",10)
     );
-    println!("  {} Use C library Dynamicaly", padding_right("--use-libc"));
+    println!("  {} Use C library Dynamicaly", padding_right("--use-libc",10));
     println!(
         "  {} Search for library LIBNAME",
-        padding_right("-l<LIBNAME>")
+        padding_right("-l<LIBNAME>",10)
     );
     println!(
         "  {} add directory to library search path",
-        padding_right("-L<DIR>")
+        padding_right("-L<DIR>",10)
     );
-    println!("  {} Show help", padding_right("-h, --help"));
-    println!("  {} Show Version", padding_right("-v, --version"));
+    println!("  {} Show help", padding_right("-h, --help",10));
+    println!("  {} Show Version", padding_right("-v, --version",10));
 }
 
 /// Runs External commands for generating the object files
@@ -192,15 +194,12 @@ pub fn setup_compiler(input: String, co: &CompilerOptions) {
         None => get_output_path_from_input(input.clone().into()),
         Some(pt) => pt,
     };
-    let mut compiler_context = CompilerContext::new(input.clone());
+    let mut compiler_context = CompilerContext::new(input.clone(), co);
 
     compile(&mut compiler_context, input.clone());
     impl_bifs(&mut compiler_context);
     let prefix = out_path.parent().unwrap();
     std::fs::create_dir_all(prefix).unwrap();
-    if co.simulate {
-        log_info!("Simulation is not supported yet!");
-    }
     if co.use_nasm {
         log_info!("Generating asm text file...");
         x86_64_nasm_generator(out_path.as_path(), &compiler_context).unwrap();
@@ -222,7 +221,7 @@ pub fn setup_compiler(input: String, co: &CompilerOptions) {
         log_info!("Generating elf object file...");
         crate::formats::elf::generate_elf(out_path.as_path(), &mut compiler_context);
         log_success!("Elf object file Generated!");
-        if co.no_linking {
+        if co.no_linking || co.dynamic_lib || co.static_lib {
             return;
         }
         link_to_exc(out_path.clone(), co);
@@ -260,14 +259,28 @@ fn collect_compiler_options(args: &mut Args) -> (String, CompilerOptions) {
                 copywrite();
                 exit(0);
             }
-            "--no-link" => co.no_linking = true,
-            "--no-assemble" => co.no_assembling = true,
+            "--no-link" | "-c" => {
+                co.no_linking = true;
+                co.keep_obj = true;
+            }
+            "--no-assemble" => {
+                co.no_assembling = true;
+                co.keep_asm = true;
+            }
             "--nasm" => co.use_nasm = true,
             "--keep-asm" => co.keep_asm = true,
             "--keep-obj" => co.keep_obj = true,
             "--use-libc" => co.use_libc = true,
+            "--lib" => {
+                co.static_lib = true;
+                co.dynamic_lib = false;
+                co.keep_obj = true;
+            },
+            "--dynamic-lib" => {
+                co.static_lib = false;
+                co.dynamic_lib = true;
+            }
             "-b" | "--bin" => co.create_bin = true,
-            "-s" | "--simulate" => co.simulate = true,
             "-T" => {
                 let Some(target) = args.next() else {
                     log_error!("No target specified!");

@@ -33,7 +33,7 @@ use crate::assembler::instructions::Opr;
 use crate::assembler::mnemonic::Mnemonic;
 use crate::assembler::{register::Reg, Codegen};
 use crate::compiler::{bif::Bif, function::compile_function};
-use crate::log_error;
+use crate::{log_error, CompilerOptions};
 use crate::parser::block::Block;
 use crate::parser::function::FunctionDecl;
 use crate::parser::parse_source_file;
@@ -47,6 +47,7 @@ use self::variables::{insert_variable, NameSpaceMapping, VariableMapBase};
 
 pub struct CompilerContext {
     pub codegen: Codegen,
+    pub options: CompilerOptions,
     pub variables_map: NameSpaceMapping,
     pub functions_map: BTreeMap<String, FunctionDecl>,
     pub structs_map: HashMap<String, StructType>,
@@ -57,9 +58,10 @@ pub struct CompilerContext {
 }
 
 impl CompilerContext {
-    pub fn new(program_file: String) -> Self {
+    pub fn new(program_file: String, options: &CompilerOptions) -> Self {
         Self {
             program_file,
+            options: options.clone(),
             codegen: Codegen::new(),
             bif_set: HashSet::new(),
             variables_map: NameSpaceMapping::new(),
@@ -71,6 +73,9 @@ impl CompilerContext {
     }
     pub fn error(&mut self) {
         self.errors += 1;
+    }
+    pub fn is_lib(&self) -> bool {
+        self.options.static_lib || self.options.dynamic_lib
     }
 }
 
@@ -150,17 +155,20 @@ fn collect_types(cc: &mut CompilerContext, program: &ProgramFile) {
 }
 
 fn compile_init_function(cc: &mut CompilerContext, program: &ProgramFile) {
-    cc.codegen.set_lable("_start");
-    cc.codegen.instr1(Mnemonic::Push, Reg::RBP);
-    cc.codegen.instr2(Mnemonic::Mov, Reg::RBP, Reg::RSP);
-    // TODO: Add a condition for compiling libraries
+    if !cc.is_lib() {
+        cc.codegen.set_lable("_start");
+        cc.codegen.instr1(Mnemonic::Push, Reg::RBP);
+        cc.codegen.instr2(Mnemonic::Mov, Reg::RBP, Reg::RSP);
+    }
     collect_types(cc, program);
+    if cc.is_lib() {
+        return;
+    }
     if !cc.functions_map.contains_key("main") {
         log_error!("Executable programs should have an entry point");
         exit(-1);
     }
-    cc.codegen
-        .instr1(Mnemonic::Call, Opr::Loc("main".to_owned()));
+    cc.codegen.instr1(Mnemonic::Call, Opr::Loc("main".to_owned()));
     cc.codegen.instr2(Mnemonic::Mov, Reg::RAX, 60);
     cc.codegen.instr2(Mnemonic::Mov, Reg::RDI, 0);
     cc.codegen.instr0(Mnemonic::Syscall);

@@ -279,13 +279,15 @@ pub fn set_symbols(
             st_value: 0,
         });
     }
-    symtab.insert(SymItem {
-        st_name: strtab.index("_start").unwrap(),
-        st_info: st_info!(STB_GLOBAL, STT_NOTYPE),
-        st_other: st_visibility!(STV_DEFAULT),
-        st_shndx: dyn_sections.iter().position(|s| s.name() == ".text").unwrap() as u16 + 1,
-        st_size: 0,
-        st_value: 0,
-    });
+    if !cc.is_lib() {
+        symtab.insert(SymItem {
+            st_name: strtab.index("_start").unwrap(),
+            st_info: st_info!(STB_GLOBAL, STT_NOTYPE),
+            st_other: st_visibility!(STV_DEFAULT),
+            st_shndx: dyn_sections.iter().position(|s| s.name() == ".text").unwrap() as u16 + 1,
+            st_size: 0,
+            st_value: 0,
+        });
+    }
     symtab
 }
