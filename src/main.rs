@@ -38,7 +38,6 @@ use std::{env::args, process::exit};
 mod assembler;
 mod compiler;
 mod error_handeling;
-mod commands;
 mod formats;
 mod lexer;
 mod linker;
