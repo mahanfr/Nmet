@@ -30,7 +30,6 @@ use crate::parser::{expr::Op, types::VariableType};
 pub enum CompilationError {
     UndefinedVariable(String),
     UndefinedNameSpace(String),
-    VariableRedefinition(String),
     UnknownType(String),
     UnexpectedType(String),
     InvalidTypeCasting(String, String),
@@ -56,7 +55,6 @@ impl Display for CompilationError {
             Self::ImmutableVariable(v) => write!(f,"Variable ({v}) is not mutable. Did you forgot to define it with '=' insted of ':=' ?" ),
             Self::UnmatchingTypes(a, b) => write!(f, "Expected type ({a}), found type ({b})"),
             Self::NotLoopBlock => write!(f, "Can not break or continue out of non-loop blocks!"),
-            Self::VariableRedefinition(v) => write!(f,"Redefinition of variable ({v})"),
             Self::Err(e) => write!(f, "{e}"),
         }
     }

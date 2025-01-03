@@ -15,7 +15,7 @@ pub mod program;
 pub mod sections;
 
 use self::{
-    flags::{STB_GLOBAL, STB_LOCAL, STT_FILE, STT_NOTYPE, STT_SECTION, STV_DEFAULT},
+    flags::{STB_GLOBAL, STB_LOCAL, STT_FILE, STT_FUNC, STT_NOTYPE, STT_SECTION, STV_DEFAULT},
     header::ElfHeader,
     sections::{NOBITSSec, PROGBITSSec, RELASec, STRTABSec, SYMTABSec, Section, SymItem},
 };
@@ -280,6 +280,18 @@ pub fn set_symbols(
                     st_size: 0,
                     st_value: 0,
                 });
+            },
+            NSType::Function(f) => {
+                if f.is_extern {
+                    symtab.insert(SymItem {
+                        st_name: strtab.index(&f.ident).unwrap(),
+                        st_info: st_info!(STB_GLOBAL, STT_FUNC),
+                        st_other: st_visibility!(STV_DEFAULT),
+                        st_shndx: 1,
+                        st_size: 0,
+                        st_value: 0,
+                    });
+                }
             },
             _ => (),
         }

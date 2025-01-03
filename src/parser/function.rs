@@ -53,6 +53,7 @@ pub struct FunctionDef {
 
 #[derive(Debug, Clone)]
 pub struct FunctionDecl {
+    pub is_extern: bool,
     pub ident: String,
     pub args: Vec<FunctionArg>,
     pub ret_type: VariableType,
@@ -60,6 +61,13 @@ pub struct FunctionDecl {
 
 pub fn parse_function_declaration(lexer: &mut Lexer) -> FunctionDecl {
     let loc = lexer.get_current_loc();
+    let is_extern = match lexer.get_token_type() {
+        TokenType::Extern => {
+            lexer.match_token(TokenType::Extern);
+            true
+        }
+        _ => false,
+    };
     lexer.match_token(TokenType::Func);
     let function_ident_token = lexer.get_token();
     let mut ret_type = VariableType::Void;
@@ -73,6 +81,7 @@ pub fn parse_function_declaration(lexer: &mut Lexer) -> FunctionDecl {
         ret_type = type_def(lexer);
     }
     FunctionDecl {
+        is_extern,
         ident: fn_ident,
         args,
         ret_type,

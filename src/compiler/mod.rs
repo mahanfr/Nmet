@@ -40,7 +40,7 @@ use crate::parser::parse_source_file;
 use crate::parser::program::{ProgramFile, ProgramItem};
 use crate::parser::types::StructType;
 use crate::parser::types::VariableType;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::process::exit;
 
 use self::variables::{insert_variable, NameSpaceMapping, VariableMapBase};

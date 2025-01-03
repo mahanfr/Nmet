@@ -102,47 +102,55 @@ pub fn help_command(program_name: &str) {
     println!("Options:");
     println!(
         "  {} Specify output path (default: \"./build/input_file\")",
-        padding_right("-o <output_path>",10)
+        padding_right("-o <output_path>",20)
     );
     println!(
         "  {} Simulate (Interpet) the program for debugging and running on unsupported OS",
-        padding_right("-s | --simulate",10)
+        padding_right("-s | --simulate",20)
     );
     println!(
         "  {} dump instructions in a binary file",
-        padding_right("-b | --bin",10)
+        padding_right("-b | --bin",20)
     );
     println!(
         "  {} use Nasm Assembler to assemble generated code",
-        padding_right("--nasm",10)
+        padding_right("--nasm",20)
     );
     println!(
         "  {} Do not link the generated object file",
-        padding_right("--no-link",10)
+        padding_right("--no-link",20)
     );
     println!(
         "  {} Only Generates an asm file",
-        padding_right("--no-assemble",10)
+        padding_right("--no-assemble",20)
     );
     println!(
         "  {} Do not remove the generated asm file",
-        padding_right("--keep-asm",10)
+        padding_right("--keep-asm",20)
     );
     println!(
         "  {} Do not remove the generated object file",
-        padding_right("--keep-obj",10)
+        padding_right("--keep-obj",20)
     );
-    println!("  {} Use C library Dynamicaly", padding_right("--use-libc",10));
+    println!("  {} Use C library Dynamicaly", padding_right("--use-libc",20));
     println!(
         "  {} Search for library LIBNAME",
-        padding_right("-l<LIBNAME>",10)
+        padding_right("-l<LIBNAME>",20)
     );
     println!(
         "  {} add directory to library search path",
-        padding_right("-L<DIR>",10)
+        padding_right("-L<DIR>",20)
     );
-    println!("  {} Show help", padding_right("-h, --help",10));
-    println!("  {} Show Version", padding_right("-v, --version",10));
+    println!(
+        "  {} Generate a dynamic library",
+        padding_right("--dynamic-lib",20)
+    );
+    println!(
+        "  {} Generate a static library",
+        padding_right("--lib",20)
+    );
+    println!("  {} Show help", padding_right("-h, --help",20));
+    println!("  {} Show Version", padding_right("-v, --version",20));
 }
 
 /// Runs External commands for generating the object files
