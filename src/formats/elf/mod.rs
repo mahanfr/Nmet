@@ -1,12 +1,16 @@
 #![allow(dead_code)]
 
 use std::{
-    fs::File, io::{BufWriter, Write}, path::Path
+    fs::File,
+    io::{BufWriter, Write},
+    path::Path,
 };
 
 use crate::{
-    compiler::{CompilerContext, NSType}, formats::elf::sections::SectionHeader,
-    st_info, st_visibility, utils::IBytes,
+    compiler::{CompilerContext, NSType},
+    formats::elf::sections::SectionHeader,
+    st_info, st_visibility,
+    utils::IBytes,
 };
 
 pub mod flags;
@@ -40,22 +44,34 @@ pub fn generate_bin(out_path: &Path, cc: &mut CompilerContext) {
 }
 
 pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
-    let mut dyn_sections: Vec<Box<dyn Section>> = vec![
-        Box::new(PROGBITSSec::new(".text", 0x6, 16, cc.codegen.text_section_bytes()))
-    ];
+    let mut dyn_sections: Vec<Box<dyn Section>> = vec![Box::new(PROGBITSSec::new(
+        ".text",
+        0x6,
+        16,
+        cc.codegen.text_section_bytes(),
+    ))];
     if !cc.codegen.data_buf.is_empty() {
-        dyn_sections.push(
-            Box::new(PROGBITSSec::new(".data", 0x3, 4, PROGBITSSec::dmap_to_data(&cc.codegen.data_buf))));
+        dyn_sections.push(Box::new(PROGBITSSec::new(
+            ".data",
+            0x3,
+            4,
+            PROGBITSSec::dmap_to_data(&cc.codegen.data_buf),
+        )));
     }
     if !cc.codegen.bss_buf.is_empty() {
-        dyn_sections.push(
-            Box::new(NOBITSSec::new(".bss", cc.codegen.bss_buf.iter().map(|x| x.size).sum())));
+        dyn_sections.push(Box::new(NOBITSSec::new(
+            ".bss",
+            cc.codegen.bss_buf.iter().map(|x| x.size).sum(),
+        )));
     }
 
     let mut strtab = STRTABSec::new(".strtab");
     strtab.insert(&cc.program_file);
     let symtab = set_symbols(&mut strtab, &dyn_sections, cc);
-    let mut rela_map = RELASec{ name:".rela.text".into(), data: vec![]};
+    let mut rela_map = RELASec {
+        name: ".rela.text".into(),
+        data: vec![],
+    };
     let mut shstrtab = STRTABSec::new(".shstrtab");
     let mut sections = Vec::<Box<dyn Section>>::new();
     for sec in dyn_sections.iter() {
@@ -72,9 +88,13 @@ pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
                 let indx = strtab.index(&item.sym_name).unwrap();
                 item.r_section = symtab.find(indx) as u32;
             } else {
-                item.r_section = sections.iter().position(|t| t.name() == item.sym_name).unwrap() as u32 + 2;
+                item.r_section = sections
+                    .iter()
+                    .position(|t| t.name() == item.sym_name)
+                    .unwrap() as u32
+                    + 2;
             }
-           rela_map.push(item.to_owned());
+            rela_map.push(item.to_owned());
         }
     }
     sections.push(Box::new(shstrtab));
@@ -86,13 +106,16 @@ pub fn generate_elf(out_path: &Path, cc: &mut CompilerContext) {
 
     let elf_sections = ElfSections::new(64 + (64 * (sections.len() + 1)) as u64, sections);
     let section_headers = elf_sections.section_headers();
-    let elf_header = ElfHeader::new(section_headers.len() as u16,
-        elf_sections.get_section_header_index(".shstrtab") as u16);
+    let elf_header = ElfHeader::new(
+        section_headers.len() as u16,
+        elf_sections.get_section_header_index(".shstrtab") as u16,
+    );
 
     let stream = File::create(out_path.with_extension("o")).unwrap();
     let mut file = BufWriter::new(stream);
     file.write_all(&elf_header.to_bytes()).unwrap();
-    file.write_all(&elf_sections.get_section_header_bytes()).unwrap();
+    file.write_all(&elf_sections.get_section_header_bytes())
+        .unwrap();
     file.write_all(&elf_sections.bytes()).unwrap();
     file.flush().unwrap();
 }
@@ -104,10 +127,7 @@ pub struct ElfSections {
 
 impl ElfSections {
     pub fn new(offset: u64, sections: Vec<Box<dyn Section>>) -> Self {
-        Self {
-            sections,
-            offset,
-        }
+        Self { sections, offset }
     }
 
     pub fn section_sizes(&self) -> usize {
@@ -118,9 +138,9 @@ impl ElfSections {
         size
     }
 
-    pub fn get_section_by_key(&self, name: &str) -> &Box<dyn Section> {
+    pub fn get_section_by_key(&self, name: &str) -> &dyn Section {
         match self.sections.iter().position(|x| x.name() == name) {
-            Some(s) => &self.sections[s],
+            Some(s) => self.sections[s].as_ref(),
             None => panic!("{name} section is not present"),
         }
     }
@@ -130,8 +150,14 @@ impl ElfSections {
     }
 
     pub fn section_name_index(&self, name: &str) -> u32 {
-        let strtab = self.get_section_by_key(".shstrtab").as_any().downcast_ref::<STRTABSec>().expect("wrong .shstrtab type");
-        strtab.index(name).expect("Section with this name dosent exist")
+        let strtab = self
+            .get_section_by_key(".shstrtab")
+            .as_any()
+            .downcast_ref::<STRTABSec>()
+            .expect("wrong .shstrtab type");
+        strtab
+            .index(name)
+            .expect("Section with this name dosent exist")
     }
 
     pub fn add_section<T>(&mut self, section: &T)
@@ -140,9 +166,7 @@ impl ElfSections {
     {
         self.sections.push(Box::new((*section).clone()));
         match self.get_section_index(".shstrtab") {
-            Some(inx) => {
-                self.sections[inx].insert(section.name().as_bytes())
-            },
+            Some(inx) => self.sections[inx].insert(section.name().as_bytes()),
             None => {
                 panic!("shstrtab section must be present");
             }
@@ -175,7 +199,7 @@ impl ElfSections {
     pub fn get_section_header_index(&self, name: &str) -> u32 {
         match self.get_section_index(name) {
             Some(s) => s as u32 + 1,
-            None => 0
+            None => 0,
         }
     }
 
@@ -186,12 +210,7 @@ impl ElfSections {
             let (link_tag, info_tag) = section.link_and_info();
             let link = self.get_section_header_index(link_tag.unwrap_or(""));
             let info = self.get_section_header_index(info_tag.unwrap_or(""));
-            secs.push(section.header(
-                self.section_name_index(&section.name()),
-                offset,
-                link,
-                info,
-            ));
+            secs.push(section.header(self.section_name_index(&section.name()), offset, link, info));
             offset += section.padded_size() as u64;
         }
         secs
@@ -210,14 +229,13 @@ impl ElfSections {
             bytes.extend(sec.to_bytes());
         }
     }
-
 }
 
 pub fn set_symbols(
-        strtab: &mut STRTABSec,
-        dyn_sections: &[Box<dyn Section>],
-        cc: &mut CompilerContext) -> SYMTABSec
-{
+    strtab: &mut STRTABSec,
+    dyn_sections: &[Box<dyn Section>],
+    cc: &mut CompilerContext,
+) -> SYMTABSec {
     let mut symtab = SYMTABSec::new(".symtab");
     symtab.insert(SymItem {
         st_name: strtab.index(&cc.program_file).unwrap(),
@@ -256,7 +274,10 @@ pub fn set_symbols(
             SymbolType::BssSec => ".bss",
             _ => "____",
         };
-        let shndx = dyn_sections.iter().position(|s| s.name() == shndx_tag).unwrap_or(0);
+        let shndx = dyn_sections
+            .iter()
+            .position(|s| s.name() == shndx_tag)
+            .unwrap_or(0);
 
         symtab.insert(SymItem {
             st_name: strtab.index(label).unwrap(),
@@ -271,7 +292,7 @@ pub fn set_symbols(
     symtab.set_global_start();
     for item in cc.namespace_map.values() {
         match item {
-            NSType::FFI(_, ff) => {
+            NSType::Ffi(_, ff) => {
                 symtab.insert(SymItem {
                     st_name: strtab.index(ff).unwrap(),
                     st_info: st_info!(STB_GLOBAL, STT_NOTYPE),
@@ -280,7 +301,7 @@ pub fn set_symbols(
                     st_size: 0,
                     st_value: 0,
                 });
-            },
+            }
             NSType::Function(f) => {
                 if f.is_extern {
                     symtab.insert(SymItem {
@@ -292,7 +313,7 @@ pub fn set_symbols(
                         st_value: 0,
                     });
                 }
-            },
+            }
             _ => (),
         }
     }
@@ -301,7 +322,11 @@ pub fn set_symbols(
             st_name: strtab.index("_start").unwrap(),
             st_info: st_info!(STB_GLOBAL, STT_NOTYPE),
             st_other: st_visibility!(STV_DEFAULT),
-            st_shndx: dyn_sections.iter().position(|s| s.name() == ".text").unwrap() as u16 + 1,
+            st_shndx: dyn_sections
+                .iter()
+                .position(|s| s.name() == ".text")
+                .unwrap() as u16
+                + 1,
             st_size: 0,
             st_value: 0,
         });

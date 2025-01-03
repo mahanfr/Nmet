@@ -329,15 +329,15 @@ fn compile_function_call(
         NSType::Function(f) => {
             fun = f.to_owned();
             cc.codegen.instr1(Call, Opr::Loc(fc.ident.clone()));
-        },
-        NSType::FFI(f, ff) => {
+        }
+        NSType::Ffi(f, ff) => {
             fun = f.to_owned();
             cc.codegen.instr1(Pop, RBP);
             cc.codegen.instr1(Call, Opr::Rela(ff.to_string()));
             cc.codegen.instr1(Push, RBP);
             cc.codegen.instr2(Mov, RBP, RSP);
-        },
-        _ => return Err(CompilationError::UndefinedNameSpace(fc.ident.clone()))
+        }
+        _ => return Err(CompilationError::UndefinedNameSpace(fc.ident.clone())),
     }
     if fun.ret_type != VariableType::Void {
         Ok(ExprOpr::new(RAX, fun.ret_type.clone()))

@@ -33,13 +33,13 @@ use crate::assembler::instructions::Opr;
 use crate::assembler::mnemonic::Mnemonic;
 use crate::assembler::{register::Reg, Codegen};
 use crate::compiler::{bif::Bif, function::compile_function};
-use crate::{log_error, CompilerOptions};
 use crate::parser::block::Block;
 use crate::parser::function::FunctionDecl;
 use crate::parser::parse_source_file;
 use crate::parser::program::{ProgramFile, ProgramItem};
 use crate::parser::types::StructType;
 use crate::parser::types::VariableType;
+use crate::{log_error, CompilerOptions};
 use std::collections::{BTreeMap, HashSet};
 use std::process::exit;
 
@@ -49,7 +49,7 @@ use self::variables::{insert_variable, NameSpaceMapping, VariableMapBase};
 pub enum NSType {
     Function(FunctionDecl),
     Struct(StructType),
-    FFI(FunctionDecl, String),
+    Ffi(FunctionDecl, String),
 }
 
 pub struct CompilerContext {
@@ -142,12 +142,14 @@ fn collect_types(cc: &mut CompilerContext, program: &ProgramFile) {
             }
             ProgramItem::FFI(ff, f) => {
                 //cc.codegen.ffi_map.insert(f.ident.clone(), ff.clone());
-                cc.namespace_map.insert(f.ident.clone(), NSType::FFI(f.clone(), ff.clone()));
+                cc.namespace_map
+                    .insert(f.ident.clone(), NSType::Ffi(f.clone(), ff.clone()));
                 //cc.functions_map.insert(f.ident.clone(), f.clone());
             }
             ProgramItem::Struct(s) => {
                 //cc.structs_map.insert(s.ident.clone(), s.clone());
-                cc.namespace_map.insert(s.ident.clone(), NSType::Struct(s.clone()));
+                cc.namespace_map
+                    .insert(s.ident.clone(), NSType::Struct(s.clone()));
             }
             ProgramItem::StaticVar(sv) => {
                 let _ = insert_variable(
@@ -175,7 +177,8 @@ fn compile_init_function(cc: &mut CompilerContext, program: &ProgramFile) {
         log_error!("Executable programs should have an entry point");
         exit(-1);
     }
-    cc.codegen.instr1(Mnemonic::Call, Opr::Loc("main".to_owned()));
+    cc.codegen
+        .instr1(Mnemonic::Call, Opr::Loc("main".to_owned()));
     cc.codegen.instr2(Mnemonic::Mov, Reg::RAX, 60);
     cc.codegen.instr2(Mnemonic::Mov, Reg::RDI, 0);
     cc.codegen.instr0(Mnemonic::Syscall);

@@ -166,7 +166,7 @@ pub enum TokenType {
     // Static
     Static,
     // Extern
-    Extern
+    Extern,
 }
 
 impl TokenType {

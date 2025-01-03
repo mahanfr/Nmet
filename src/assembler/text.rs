@@ -14,7 +14,7 @@ pub fn x86_64_nasm_generator(output: &Path, cc: &CompilerContext) -> Result<(), 
     file.write_all(b"section .text\n")?;
 
     for mod_name in cc.namespace_map.values() {
-        let NSType::FFI(_, ff) = mod_name else {
+        let NSType::Ffi(_, ff) = mod_name else {
             continue;
         };
         let exten = format!("extern {ff}\n");

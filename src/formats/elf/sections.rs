@@ -210,7 +210,7 @@ impl Section for NOBITSSec {
     }
 
     fn insert(&mut self, _: &[u8]) -> usize {
-        0        
+        0
     }
 
     fn link_and_info(&self) -> (Option<&'static str>, Option<&'static str>) {
@@ -460,7 +460,7 @@ impl Section for STRTABSec {
     }
 
     fn insert(&mut self, bytes: &[u8]) -> usize {
-        self.insert(&String::from_utf8(bytes.to_vec()).unwrap()) as usize
+        self.insert(core::str::from_utf8(bytes).unwrap()) as usize
     }
 
     fn as_any(&self) -> &dyn Any {
