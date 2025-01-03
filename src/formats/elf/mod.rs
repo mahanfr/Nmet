@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    compiler::CompilerContext, formats::elf::sections::SectionHeader,
+    compiler::{CompilerContext, NSType}, formats::elf::sections::SectionHeader,
     st_info, st_visibility, utils::IBytes,
 };
 
@@ -269,15 +269,20 @@ pub fn set_symbols(
     }
     // Global items
     symtab.set_global_start();
-    for item in cc.codegen.ffi_map.values() {
-        symtab.insert(SymItem {
-            st_name: strtab.index(item).unwrap(),
-            st_info: st_info!(STB_GLOBAL, STT_NOTYPE),
-            st_other: st_visibility!(STV_DEFAULT),
-            st_shndx: 0,
-            st_size: 0,
-            st_value: 0,
-        });
+    for item in cc.namespace_map.values() {
+        match item {
+            NSType::FFI(_, ff) => {
+                symtab.insert(SymItem {
+                    st_name: strtab.index(ff).unwrap(),
+                    st_info: st_info!(STB_GLOBAL, STT_NOTYPE),
+                    st_other: st_visibility!(STV_DEFAULT),
+                    st_shndx: 0,
+                    st_size: 0,
+                    st_value: 0,
+                });
+            },
+            _ => (),
+        }
     }
     if !cc.is_lib() {
         symtab.insert(SymItem {

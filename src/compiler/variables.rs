@@ -37,7 +37,7 @@ use crate::{
     parser::{block::Block, types::VariableType, variable_decl::VariableDeclare},
 };
 
-use super::{expr::compile_expr, CompilerContext};
+use super::{expr::compile_expr, CompilerContext, NSType};
 
 #[derive(Debug, Clone)]
 pub enum VariableMapBase {
@@ -180,7 +180,7 @@ pub fn insert_variable(
     // Declare variable memory
     // No need to do any thing if variable is on the stack
     if let VariableType::Custom(s) = &vtype {
-        let Some(struct_map) = cc.structs_map.get(s) else {
+        let Some(NSType::Struct(struct_map)) = cc.namespace_map.get(s) else {
             return Err(CompilationError::UnknownType(s.to_owned()));
         };
         let struct_tag = cc.codegen.add_bss_seg(struct_map.size());

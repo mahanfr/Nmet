@@ -45,12 +45,18 @@ use std::process::exit;
 
 use self::variables::{insert_variable, NameSpaceMapping, VariableMapBase};
 
+/// Name Space Typing
+pub enum NSType {
+    Function(FunctionDecl),
+    Struct(StructType),
+    FFI(FunctionDecl, String),
+}
+
 pub struct CompilerContext {
     pub codegen: Codegen,
     pub options: CompilerOptions,
     pub variables_map: NameSpaceMapping,
-    pub functions_map: BTreeMap<String, FunctionDecl>,
-    pub structs_map: HashMap<String, StructType>,
+    pub namespace_map: BTreeMap<String, NSType>,
     pub bif_set: HashSet<Bif>,
     pub mem_offset: usize,
     pub program_file: String,
@@ -65,8 +71,7 @@ impl CompilerContext {
             codegen: Codegen::new(),
             bif_set: HashSet::new(),
             variables_map: NameSpaceMapping::new(),
-            functions_map: BTreeMap::new(),
-            structs_map: HashMap::new(),
+            namespace_map: BTreeMap::new(),
             mem_offset: 0,
             errors: 0,
         }
@@ -132,15 +137,17 @@ fn collect_types(cc: &mut CompilerContext, program: &ProgramFile) {
     for item in program.items.iter() {
         match item {
             ProgramItem::Func(f) => {
-                cc.functions_map
-                    .insert(f.decl.ident.clone(), f.decl.clone());
+                cc.namespace_map
+                    .insert(f.decl.ident.clone(), NSType::Function(f.decl.clone()));
             }
             ProgramItem::FFI(ff, f) => {
-                cc.codegen.ffi_map.insert(f.ident.clone(), ff.clone());
-                cc.functions_map.insert(f.ident.clone(), f.clone());
+                //cc.codegen.ffi_map.insert(f.ident.clone(), ff.clone());
+                cc.namespace_map.insert(f.ident.clone(), NSType::FFI(f.clone(), ff.clone()));
+                //cc.functions_map.insert(f.ident.clone(), f.clone());
             }
             ProgramItem::Struct(s) => {
-                cc.structs_map.insert(s.ident.clone(), s.clone());
+                //cc.structs_map.insert(s.ident.clone(), s.clone());
+                cc.namespace_map.insert(s.ident.clone(), NSType::Struct(s.clone()));
             }
             ProgramItem::StaticVar(sv) => {
                 let _ = insert_variable(
@@ -164,7 +171,7 @@ fn compile_init_function(cc: &mut CompilerContext, program: &ProgramFile) {
     if cc.is_lib() {
         return;
     }
-    if !cc.functions_map.contains_key("main") {
+    if !cc.namespace_map.contains_key("main") {
         log_error!("Executable programs should have an entry point");
         exit(-1);
     }
