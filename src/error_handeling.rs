@@ -29,6 +29,7 @@ use crate::parser::{expr::Op, types::VariableType};
 #[derive(Debug)]
 pub enum CompilationError {
     UndefinedVariable(String),
+    UndefinedNameSpace(String),
     UnknownType(String),
     UnexpectedType(String),
     InvalidTypeCasting(String, String),
@@ -44,6 +45,7 @@ impl Display for CompilationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::UndefinedVariable(v) => write!(f,"Undifiend Variable ({v})"),
+            Self::UndefinedNameSpace(v) => write!(f,"Undifiend Name Space ({v})"),
             Self::UnknownType(v) => write!(f,"Unknown vaiable type ({v})"),
             Self::UnexpectedType(t) => write!(f,"Unexpected type ({t})"),
             Self::InvalidTypeCasting(a, b) => write!(f, "Types ({a}) and ({b}) can not be casted to eachother for this operation"),

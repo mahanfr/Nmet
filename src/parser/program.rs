@@ -108,7 +108,7 @@ pub fn generate_ast(lexer: &mut Lexer) -> ProgramFile {
                     );
                 }
             }
-            TokenType::Func => {
+            TokenType::Func | TokenType::Extern => {
                 let function_def = parse_function_definition(lexer);
                 let ident = function_def.decl.ident.clone();
                 let prv_value = items.insert(ident.clone(), ProgramItem::Func(function_def));

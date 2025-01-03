@@ -43,7 +43,7 @@ use crate::{
     },
 };
 
-use super::{function_args_register, CompilerContext};
+use super::{function_args_register, CompilerContext, NSType};
 
 /// This function is part of the Nmet compiler and programming language.
 /// It takes expression (Expr) and a compiler context (CompilerContext)
@@ -320,21 +320,24 @@ fn compile_function_call(
             mov_unknown_to_register(cc, function_args_register(i), item.value.clone());
         }
     }
-    let Some(fun) = cc.functions_map.get(&fc.ident) else {
+    let Some(func) = cc.namespace_map.get(&fc.ident) else {
         return Err(CompilationError::FunctionOutOfScope(fc.ident.clone()));
     };
     cc.codegen.instr2(Mov, RAX, 0);
-    let ident = match cc.codegen.ffi_map.get(&fc.ident) {
-        Some(id) => id.to_string(),
-        None => String::new(),
-    };
-    if ident.is_empty() {
-        cc.codegen.instr1(Call, Opr::Loc(fc.ident.clone()));
-    } else {
-        cc.codegen.instr1(Pop, RBP);
-        cc.codegen.instr1(Call, Opr::Rela(ident.to_string()));
-        cc.codegen.instr1(Push, RBP);
-        cc.codegen.instr2(Mov, RBP, RSP);
+    let fun;
+    match func {
+        NSType::Function(f) => {
+            fun = f.to_owned();
+            cc.codegen.instr1(Call, Opr::Loc(fc.ident.clone()));
+        }
+        NSType::Ffi(f, ff) => {
+            fun = f.to_owned();
+            cc.codegen.instr1(Pop, RBP);
+            cc.codegen.instr1(Call, Opr::Rela(ff.to_string()));
+            cc.codegen.instr1(Push, RBP);
+            cc.codegen.instr2(Mov, RBP, RSP);
+        }
+        _ => return Err(CompilationError::UndefinedNameSpace(fc.ident.clone())),
     }
     if fun.ret_type != VariableType::Void {
         Ok(ExprOpr::new(RAX, fun.ret_type.clone()))

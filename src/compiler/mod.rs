@@ -33,23 +33,30 @@ use crate::assembler::instructions::Opr;
 use crate::assembler::mnemonic::Mnemonic;
 use crate::assembler::{register::Reg, Codegen};
 use crate::compiler::{bif::Bif, function::compile_function};
-use crate::log_error;
 use crate::parser::block::Block;
 use crate::parser::function::FunctionDecl;
 use crate::parser::parse_source_file;
 use crate::parser::program::{ProgramFile, ProgramItem};
 use crate::parser::types::StructType;
 use crate::parser::types::VariableType;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use crate::{log_error, CompilerOptions};
+use std::collections::{BTreeMap, HashSet};
 use std::process::exit;
 
 use self::variables::{insert_variable, NameSpaceMapping, VariableMapBase};
 
+/// Name Space Typing
+pub enum NSType {
+    Function(FunctionDecl),
+    Struct(StructType),
+    Ffi(FunctionDecl, String),
+}
+
 pub struct CompilerContext {
     pub codegen: Codegen,
+    pub options: CompilerOptions,
     pub variables_map: NameSpaceMapping,
-    pub functions_map: BTreeMap<String, FunctionDecl>,
-    pub structs_map: HashMap<String, StructType>,
+    pub namespace_map: BTreeMap<String, NSType>,
     pub bif_set: HashSet<Bif>,
     pub mem_offset: usize,
     pub program_file: String,
@@ -57,20 +64,23 @@ pub struct CompilerContext {
 }
 
 impl CompilerContext {
-    pub fn new(program_file: String) -> Self {
+    pub fn new(program_file: String, options: &CompilerOptions) -> Self {
         Self {
             program_file,
+            options: options.clone(),
             codegen: Codegen::new(),
             bif_set: HashSet::new(),
             variables_map: NameSpaceMapping::new(),
-            functions_map: BTreeMap::new(),
-            structs_map: HashMap::new(),
+            namespace_map: BTreeMap::new(),
             mem_offset: 0,
             errors: 0,
         }
     }
     pub fn error(&mut self) {
         self.errors += 1;
+    }
+    pub fn is_lib(&self) -> bool {
+        self.options.static_lib || self.options.dynamic_lib
     }
 }
 
@@ -127,15 +137,19 @@ fn collect_types(cc: &mut CompilerContext, program: &ProgramFile) {
     for item in program.items.iter() {
         match item {
             ProgramItem::Func(f) => {
-                cc.functions_map
-                    .insert(f.decl.ident.clone(), f.decl.clone());
+                cc.namespace_map
+                    .insert(f.decl.ident.clone(), NSType::Function(f.decl.clone()));
             }
             ProgramItem::FFI(ff, f) => {
-                cc.codegen.ffi_map.insert(f.ident.clone(), ff.clone());
-                cc.functions_map.insert(f.ident.clone(), f.clone());
+                //cc.codegen.ffi_map.insert(f.ident.clone(), ff.clone());
+                cc.namespace_map
+                    .insert(f.ident.clone(), NSType::Ffi(f.clone(), ff.clone()));
+                //cc.functions_map.insert(f.ident.clone(), f.clone());
             }
             ProgramItem::Struct(s) => {
-                cc.structs_map.insert(s.ident.clone(), s.clone());
+                //cc.structs_map.insert(s.ident.clone(), s.clone());
+                cc.namespace_map
+                    .insert(s.ident.clone(), NSType::Struct(s.clone()));
             }
             ProgramItem::StaticVar(sv) => {
                 let _ = insert_variable(
@@ -150,12 +164,16 @@ fn collect_types(cc: &mut CompilerContext, program: &ProgramFile) {
 }
 
 fn compile_init_function(cc: &mut CompilerContext, program: &ProgramFile) {
-    cc.codegen.set_lable("_start");
-    cc.codegen.instr1(Mnemonic::Push, Reg::RBP);
-    cc.codegen.instr2(Mnemonic::Mov, Reg::RBP, Reg::RSP);
-    // TODO: Add a condition for compiling libraries
+    if !cc.is_lib() {
+        cc.codegen.set_lable("_start");
+        cc.codegen.instr1(Mnemonic::Push, Reg::RBP);
+        cc.codegen.instr2(Mnemonic::Mov, Reg::RBP, Reg::RSP);
+    }
     collect_types(cc, program);
-    if !cc.functions_map.contains_key("main") {
+    if cc.is_lib() {
+        return;
+    }
+    if !cc.namespace_map.contains_key("main") {
         log_error!("Executable programs should have an entry point");
         exit(-1);
     }

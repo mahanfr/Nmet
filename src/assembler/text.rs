@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
 
-use crate::compiler::CompilerContext;
+use crate::compiler::{CompilerContext, NSType};
 
 pub fn x86_64_nasm_generator(output: &Path, cc: &CompilerContext) -> Result<(), Box<dyn Error>> {
     let stream = File::create(output.with_extension("asm")).unwrap();
@@ -13,8 +13,11 @@ pub fn x86_64_nasm_generator(output: &Path, cc: &CompilerContext) -> Result<(), 
 
     file.write_all(b"section .text\n")?;
 
-    for mod_name in cc.codegen.ffi_map.values() {
-        let exten = format!("extern {mod_name}\n");
+    for mod_name in cc.namespace_map.values() {
+        let NSType::Ffi(_, ff) = mod_name else {
+            continue;
+        };
+        let exten = format!("extern {ff}\n");
         file.write_all(exten.as_bytes())?;
     }
 

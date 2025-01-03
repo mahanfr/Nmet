@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{any::Any, collections::BTreeMap};
 
 use crate::{assembler::data_bss::DataItem, utils::IBytes};
 
@@ -68,10 +68,13 @@ impl SHType {
 /// Generic Section for refrencing and storing
 /// different code sections including .text, .data, or .bss
 /// and internal sections like symtab or strtab
-pub trait Section: CloneSection {
+pub trait Section: CloneSection + Any {
     fn to_bytes(&self) -> IBytes;
     fn header(&self, sh_name: u32, sh_offset: u64, sh_link: u32, sh_info: u32) -> SectionHeader;
     fn name(&self) -> String;
+    fn as_any(&self) -> &dyn Any;
+    fn insert(&mut self, bytes: &[u8]) -> usize;
+    fn padded_size(&self) -> usize;
     fn size(&self) -> usize;
     fn link_and_info(&self) -> (Option<&'static str>, Option<&'static str>);
 }
@@ -96,6 +99,7 @@ impl Clone for Box<dyn Section> {
         self.clone_box()
     }
 }
+
 pub fn parse_section(sh: &SectionHeader, name: &str, bytes: &[u8]) -> Option<Box<dyn Section>> {
     match SHType::from_u32(sh.sh_type) {
         SHType::Null => None,
@@ -201,11 +205,23 @@ impl Section for NOBITSSec {
         vec![]
     }
 
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn insert(&mut self, _: &[u8]) -> usize {
+        0
+    }
+
     fn link_and_info(&self) -> (Option<&'static str>, Option<&'static str>) {
         (None, None)
     }
 
     fn size(&self) -> usize {
+        0
+    }
+
+    fn padded_size(&self) -> usize {
         0
     }
 
@@ -243,11 +259,28 @@ impl NOTESec {
 }
 impl Section for NOTESec {
     fn to_bytes(&self) -> IBytes {
-        self.data.clone()
+        let mut data = self.data.clone();
+        data.resize(self.padded_size(), 0);
+        data
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn insert(&mut self, bytes: &[u8]) -> usize {
+        let index = self.data.len();
+        self.data.extend(bytes);
+        index
     }
 
     fn link_and_info(&self) -> (Option<&'static str>, Option<&'static str>) {
         (None, None)
+    }
+
+    fn padded_size(&self) -> usize {
+        let data_len = self.data.len();
+        data_len + (16 - (data_len % 16))
     }
 
     fn size(&self) -> usize {
@@ -265,7 +298,7 @@ impl Section for NOTESec {
             sh_flags: SHFlags::Alloc as u64,
             sh_addr: 0,
             sh_offset,
-            sh_size: self.data.len() as u64,
+            sh_size: self.size() as u64,
             sh_link: 0,
             sh_info: 0,
             sh_addralign: 8,
@@ -311,17 +344,31 @@ impl Section for PROGBITSSec {
     fn to_bytes(&self) -> IBytes {
         let mut bytes = vec![];
         bytes.extend(self.data.clone());
-        bytes.resize(self.size(), 0);
+        bytes.resize(self.padded_size(), 0);
         bytes
+    }
+
+    fn insert(&mut self, bytes: &[u8]) -> usize {
+        let index = self.data.len();
+        self.data.extend(bytes);
+        index
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 
     fn link_and_info(&self) -> (Option<&'static str>, Option<&'static str>) {
         (None, None)
     }
 
-    fn size(&self) -> usize {
+    fn padded_size(&self) -> usize {
         let data_len = self.data.len();
         data_len + (16 - (data_len % 16))
+    }
+
+    fn size(&self) -> usize {
+        self.data.len()
     }
 
     fn name(&self) -> String {
@@ -335,7 +382,7 @@ impl Section for PROGBITSSec {
             sh_flags: self.flags,
             sh_addr: 0,
             sh_offset,
-            sh_size: self.data.len() as u64,
+            sh_size: self.size() as u64,
             sh_link: 0,
             sh_info: 0,
             sh_addralign: self.align,
@@ -408,17 +455,29 @@ impl Section for STRTABSec {
     fn to_bytes(&self) -> IBytes {
         let mut bytes = vec![];
         bytes.extend(self.data.clone());
-        bytes.resize(self.size(), 0);
+        bytes.resize(self.padded_size(), 0);
         bytes
+    }
+
+    fn insert(&mut self, bytes: &[u8]) -> usize {
+        self.insert(core::str::from_utf8(bytes).unwrap()) as usize
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 
     fn link_and_info(&self) -> (Option<&'static str>, Option<&'static str>) {
         (None, None)
     }
 
-    fn size(&self) -> usize {
+    fn padded_size(&self) -> usize {
         let data_len = self.data.len();
         data_len + (16 - (data_len % 16))
+    }
+
+    fn size(&self) -> usize {
+        self.data.len()
     }
 
     fn name(&self) -> String {
@@ -432,7 +491,7 @@ impl Section for STRTABSec {
             sh_flags: 0,
             sh_addr: 0,
             sh_offset,
-            sh_size: self.data.len() as u64,
+            sh_size: self.size() as u64,
             sh_link: 0,
             sh_info: 0,
             sh_addralign: 1,
@@ -497,17 +556,31 @@ impl Section for SYMTABSec {
         for item in self.data.iter() {
             bytes.extend(item.to_bytes());
         }
-        bytes.resize(self.size(), 0);
+        bytes.resize(self.padded_size(), 0);
         bytes
+    }
+
+    fn insert(&mut self, bytes: &[u8]) -> usize {
+        let index = self.data.len() * 24;
+        self.data.push(SymItem::from_bytes(bytes));
+        index
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 
     fn link_and_info(&self) -> (Option<&'static str>, Option<&'static str>) {
         (Some(".strtab"), None)
     }
 
-    fn size(&self) -> usize {
+    fn padded_size(&self) -> usize {
         let data_len = (self.data.len() + 1) * 24;
         data_len + (16 - (data_len % 16))
+    }
+
+    fn size(&self) -> usize {
+        self.data.len() * 24
     }
 
     fn name(&self) -> String {
@@ -521,7 +594,7 @@ impl Section for SYMTABSec {
             sh_flags: 0,
             sh_addr: 0,
             sh_offset,
-            sh_size: (self.data.len() * 24) as u64,
+            sh_size: self.size() as u64,
             sh_link,
             sh_info: self.start_of_global as u32,
             sh_addralign: 8,
@@ -584,8 +657,8 @@ impl SymItem {
 #[allow(unused)]
 #[derive(Debug, Clone)]
 pub struct RELASec {
-    name: String,
-    data: Vec<RelaItem>,
+    pub name: String,
+    pub data: Vec<RelaItem>,
 }
 impl RELASec {
     pub fn new(name: String) -> Self {
@@ -617,17 +690,32 @@ impl Section for RELASec {
         for item in self.data.iter() {
             bytes.extend(item.to_bytes());
         }
-        bytes.resize(self.size(), 0);
+        bytes.resize(self.padded_size(), 0);
         bytes
+    }
+
+    fn insert(&mut self, bytes: &[u8]) -> usize {
+        let index = self.data.len() * 24;
+        //TODO: FIX THIS
+        self.data.push(RelaItem::from_bytes(&self.name, bytes));
+        index
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 
     fn link_and_info(&self) -> (Option<&'static str>, Option<&'static str>) {
         (Some(".symtab"), Some(".text"))
     }
 
-    fn size(&self) -> usize {
-        let data_len = (self.data.len() + 1) * 24;
+    fn padded_size(&self) -> usize {
+        let data_len = self.data.len() * 24;
         data_len + (16 - (data_len % 16))
+    }
+
+    fn size(&self) -> usize {
+        self.data.len() * 24
     }
 
     fn name(&self) -> String {
@@ -642,7 +730,7 @@ impl Section for RELASec {
             sh_flags: 0,
             sh_addr: 0,
             sh_offset,
-            sh_size: (self.data.len() * 24) as u64,
+            sh_size: self.size() as u64,
             sh_link,
             sh_info,
             sh_addralign: 8,

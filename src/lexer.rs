@@ -165,6 +165,8 @@ pub enum TokenType {
     Defer,
     // Static
     Static,
+    // Extern
+    Extern,
 }
 
 impl TokenType {
@@ -246,6 +248,7 @@ impl Display for TokenType {
             TokenType::To => write!(f, "to"),
             TokenType::Defer => write!(f, "defer"),
             TokenType::Static => write!(f, "static"),
+            TokenType::Extern => write!(f, "extern"),
         }
     }
 }
@@ -628,6 +631,7 @@ impl Lexer {
             "to" => Some(TokenType::To),
             "defer" => Some(TokenType::Defer),
             "static" => Some(TokenType::Static),
+            "extern" => Some(TokenType::Extern),
             _ => None,
         }
     }
